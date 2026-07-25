@@ -8,6 +8,7 @@ import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/skeleton/video_card_v.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/common/widgets/video_card_v.dart';
+import 'package:pilipalaz/models/rcmd_video_item.dart';
 import 'package:pilipalaz/pages/home/index.dart';
 import 'package:pilipalaz/pages/main/index.dart';
 
@@ -38,26 +39,27 @@ class _RcmdPageState extends State<RcmdPage>
         Get.find<MainController>().bottomBarStream;
     StreamController<bool> searchBarStream =
         Get.find<HomeController>().searchBarStream;
-    scrollController.addListener(
-      () {
-        if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 200) {
-          EasyThrottle.throttle(
-              'my-throttler', const Duration(milliseconds: 200), () {
+    scrollController.addListener(() {
+      if (scrollController.position.pixels >=
+          scrollController.position.maxScrollExtent - 200) {
+        EasyThrottle.throttle(
+          'my-throttler',
+          const Duration(milliseconds: 200),
+          () {
             _rcmdController.onLoad();
-          });
-        }
-        final ScrollDirection direction =
-            scrollController.position.userScrollDirection;
-        if (direction == ScrollDirection.forward) {
-          mainStream.add(true);
-          searchBarStream.add(true);
-        } else if (direction == ScrollDirection.reverse) {
-          mainStream.add(false);
-          searchBarStream.add(false);
-        }
-      },
-    );
+          },
+        );
+      }
+      final ScrollDirection direction =
+          scrollController.position.userScrollDirection;
+      if (direction == ScrollDirection.forward) {
+        mainStream.add(true);
+        searchBarStream.add(true);
+      } else if (direction == ScrollDirection.reverse) {
+        mainStream.add(false);
+        searchBarStream.add(false);
+      }
+    });
   }
 
   @override
@@ -72,7 +74,9 @@ class _RcmdPageState extends State<RcmdPage>
     return Container(
       clipBehavior: Clip.hardEdge,
       margin: const EdgeInsets.only(
-          left: StyleString.safeSpace, right: StyleString.safeSpace),
+        left: StyleString.safeSpace,
+        right: StyleString.safeSpace,
+      ),
       decoration: const BoxDecoration(
         borderRadius: BorderRadius.all(StyleString.imgRadius),
       ),
@@ -89,8 +93,12 @@ class _RcmdPageState extends State<RcmdPage>
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverPadding(
-              padding:
-                  const EdgeInsets.fromLTRB(0, StyleString.cardSpace, 0, 0),
+              padding: const EdgeInsets.fromLTRB(
+                0,
+                StyleString.cardSpace,
+                0,
+                0,
+              ),
               sliver: FutureBuilder(
                 future: _futureBuilderFuture,
                 builder: (context, snapshot) {
@@ -99,25 +107,24 @@ class _RcmdPageState extends State<RcmdPage>
                     Map data = snapshot.data as Map;
                     if (data['status']) {
                       return Obx(
-                        () => contentGrid(
-                            _rcmdController,
-                            _rcmdController.videoList.isEmpty
-                                ? []
-                                : _rcmdController.videoList),
+                        () => _buildContentGrid(
+                          _rcmdController.videoList,
+                          _rcmdController.lastSeenIndex.value,
+                        ),
                       );
                     } else {
                       return HttpError(
                         errMsg: data['msg'],
                         fn: () {
                           setState(() {
-                            _futureBuilderFuture =
-                                _rcmdController.queryRcmdFeed('init');
+                            _futureBuilderFuture = _rcmdController
+                                .queryRcmdFeed('init');
                           });
                         },
                       );
                     }
                   } else {
-                    return contentGrid(_rcmdController, []);
+                    return _buildContentGrid(const <RcmdVideoItem>[], null);
                   }
                 },
               ),
@@ -128,7 +135,54 @@ class _RcmdPageState extends State<RcmdPage>
     );
   }
 
-  Widget contentGrid(ctr, videoList) {
+  Widget _buildContentGrid(List<RcmdVideoItem> videoList, int? lastSeenIndex) {
+    if (videoList.isEmpty) {
+      return _buildVideoGrid(const <RcmdVideoItem>[]);
+    }
+
+    final dividerIndex = lastSeenIndex;
+    if (dividerIndex == null ||
+        dividerIndex <= 0 ||
+        dividerIndex >= videoList.length) {
+      return _buildVideoGrid(videoList);
+    }
+
+    return SliverMainAxisGroup(
+      slivers: <Widget>[
+        _buildVideoGrid(videoList.sublist(0, dividerIndex)),
+        _buildLastSeenDivider(),
+        _buildVideoGrid(videoList.sublist(dividerIndex)),
+      ],
+    );
+  }
+
+  Widget _buildLastSeenDivider() {
+    return SliverToBoxAdapter(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 15),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Expanded(
+              child: Divider(indent: 20, endIndent: 15, thickness: 0.5),
+            ),
+            Text(
+              '上次看到这里',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.outline,
+                fontSize: 12,
+              ),
+            ),
+            const Expanded(
+              child: Divider(indent: 15, endIndent: 20, thickness: 0.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoGrid(List<RcmdVideoItem> videoList) {
     return SliverGrid(
       gridDelegate: SliverGridDelegateWithExtentAndRatio(
         // 行间距
@@ -140,14 +194,11 @@ class _RcmdPageState extends State<RcmdPage>
         childAspectRatio: StyleString.aspectRatio,
         mainAxisExtent: MediaQuery.textScalerOf(context).scale(90),
       ),
-      delegate: SliverChildBuilderDelegate(
-        (BuildContext context, int index) {
-          return videoList!.isNotEmpty
-              ? VideoCardV(videoItem: videoList[index])
-              : const VideoCardVSkeleton();
-        },
-        childCount: videoList!.isNotEmpty ? videoList!.length : 10,
-      ),
+      delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
+        return videoList.isNotEmpty
+            ? VideoCardV(videoItem: videoList[index])
+            : const VideoCardVSkeleton();
+      }, childCount: videoList.isNotEmpty ? videoList.length : 10),
     );
   }
 }

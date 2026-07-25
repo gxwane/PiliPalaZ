@@ -1,10 +1,11 @@
 import './model_owner.dart';
 import 'package:hive/hive.dart';
+import 'package:pilipalaz/models/rcmd_video_item.dart';
 
 part 'model_rec_video_item.g.dart';
 
 @HiveType(typeId: 0)
-class RecVideoItemModel {
+class RecVideoItemModel implements RcmdVideoItem {
   RecVideoItemModel({
     this.id,
     this.bvid,
@@ -70,11 +71,7 @@ class RecVideoItemModel {
 
 @HiveType(typeId: 1)
 class Stat {
-  Stat({
-    this.view,
-    this.like,
-    this.danmu,
-  });
+  Stat({this.view, this.like, this.danmu});
   @HiveField(0)
   int? view;
   @HiveField(1)

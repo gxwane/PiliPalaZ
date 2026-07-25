@@ -1,6 +1,7 @@
+import 'package:pilipalaz/models/rcmd_video_item.dart';
 import 'package:pilipalaz/utils/id_utils.dart';
 
-class RecVideoItemAppModel {
+class RecVideoItemAppModel implements RcmdVideoItem {
   RecVideoItemAppModel({
     this.id,
     this.aid,
@@ -61,8 +62,9 @@ class RecVideoItemAppModel {
     pic = json['cover'];
     stat = RcmdStat.fromJson(json);
     // 改用player_args中的duration作为原始数据（秒数）
-    duration =
-        json['player_args'] != null ? json['player_args']['duration'] : -1;
+    duration = json['player_args'] != null
+        ? json['player_args']['duration']
+        : -1;
     //duration = json['cover_right_text'];
     title = json['title'];
     owner = RcmdOwner.fromJson(json);
@@ -100,11 +102,7 @@ class RecVideoItemAppModel {
 }
 
 class RcmdStat {
-  RcmdStat({
-    this.view,
-    this.like,
-    this.danmu,
-  });
+  RcmdStat({this.view, this.like, this.danmu});
   String? view;
   String? like;
   String? danmu;
@@ -125,8 +123,8 @@ class RcmdOwner {
     name = json['goto'] == 'av'
         ? json['args']['up_name']
         : json['desc_button'] != null
-            ? json['desc_button']['text']
-            : '';
+        ? json['desc_button']['text']
+        : '';
     mid = json['args']['up_id'] ?? -1;
   }
 }
@@ -160,11 +158,7 @@ class RcmdOwner {
 // }
 
 class DislikeReason {
-  DislikeReason({
-    this.id,
-    this.name,
-    this.toast,
-  });
+  DislikeReason({this.id, this.name, this.toast});
 
   int? id;
   String? name;
