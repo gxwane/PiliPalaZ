@@ -197,8 +197,8 @@ flutter_native_splash:
   android_12:
     color: "#ffffff"
     color_dark: "#212121"
-    image: icon_sources/pilipalaz_splash.png
-    image_dark: icon_sources/pilipalaz_splash.png
+    image: icon_sources/pilipalaz_splash_android12.png
+    image_dark: icon_sources/pilipalaz_splash_android12.png
   color: "#ffffff"
   color_dark: "#212121"
   image: icon_sources/pilipalaz_splash.png
