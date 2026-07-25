@@ -5,6 +5,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:catcher_2/catcher_2.dart';
 import 'package:easy_debounce/easy_throttle.dart';
 import 'package:fl_pip/fl_pip.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,8 @@ import 'package:pilipalaz/http/video.dart';
 import 'package:pilipalaz/pages/mine/controller.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
+import 'package:pilipalaz/plugin/pl_player/playback_position_guard.dart';
+import 'package:pilipalaz/services/player_diagnostics.dart';
 import 'package:pilipalaz/services/service_locator.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
 import 'package:pilipalaz/utils/storage.dart';
@@ -43,7 +46,7 @@ Box videoStorage = GStorage.video;
 Box setting = GStorage.setting;
 Box onlineCache = GStorage.onlineCache;
 
-class PlPlayerController {
+class PlPlayerController with WidgetsBindingObserver {
   static Player? _videoPlayerController;
   VideoController? _videoController;
 
@@ -111,7 +114,14 @@ class PlPlayerController {
   Rx<bool> _isSliderMoving = false.obs;
   PlaylistMode _looping = PlaylistMode.none;
   bool _autoPlay = false;
-  final bool _listenersInitialized = false;
+  final PlaybackPositionGuard _positionGuard = PlaybackPositionGuard();
+  Future<void> _sourceOperation = Future<void>.value();
+  Timer? _retryTimer;
+  int _playbackSession = 0;
+  bool _positionCorrectionInFlight = false;
+  bool _refreshInFlight = false;
+  bool _nativePlayerStale = false;
+  PlayerDiagnosticSession? _diagnosticSession;
 
   // 记录历史记录
   String _bvid = '';
@@ -286,7 +296,7 @@ class PlPlayerController {
   // 播放顺序相关
   PlayRepeat playRepeat = PlayRepeat.pause;
 
-  List<StreamSubscription> subscriptions = [];
+  final List<StreamSubscription<dynamic>> subscriptions = [];
 
   void updateSliderPositionSecond() {
     int newSecond =
@@ -441,6 +451,7 @@ class PlPlayerController {
   PlPlayerController._() {
     _videoType = videoType;
     updateSettings();
+    WidgetsBinding.instance.addObserver(this);
     // _playerEventSubs = onPlayerStatusChanged.listen((PlayerStatus status) {
     //   if (status == PlayerStatus.playing) {
     //     WakelockPlus.enable();
@@ -449,6 +460,41 @@ class PlPlayerController {
     //   }
     // });
     enableAutoPip();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!Platform.isAndroid) return;
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      final String route = Get.currentRoute;
+      final bool isPlayerRoute =
+          route.startsWith('/video') || route.startsWith('/live');
+      if (!isPlayerRoute && !floatingManager.containsFloating(globalId)) {
+        _nativePlayerStale = true;
+        unawaited(PlayerDiagnostics.instance.record(
+          'idle_player_marked_stale',
+          <String, Object?>{'lifecycle': state.name, 'route': route},
+        ));
+      }
+    }
+  }
+
+  @override
+  void didHaveMemoryPressure() {
+    if (!Platform.isAndroid) return;
+    final String route = Get.currentRoute;
+    final bool isPlayerRoute =
+        route.startsWith('/video') || route.startsWith('/live');
+    if (!isPlayerRoute ||
+        _videoPlayerController?.state.playing != true) {
+      _nativePlayerStale = true;
+      unawaited(PlayerDiagnostics.instance.record(
+        'memory_pressure_player_marked_stale',
+        <String, Object?>{'route': route},
+      ));
+    }
   }
 
   void enableAutoPip() async {
@@ -523,7 +569,17 @@ class PlPlayerController {
     // 历史记录开关
     bool enableHeart = true,
   }) async {
+    final int session = ++_playbackSession;
+    _retryTimer?.cancel();
+    final Future<void> previousOperation = _sourceOperation;
+    final Completer<void> operationCompleter = Completer<void>();
+    _sourceOperation = operationCompleter.future;
     try {
+      await previousOperation;
+    } catch (_) {}
+
+    try {
+      if (session != _playbackSession) return;
       // if (playerStatus.status.value == PlayerStatus.disabled) return;
 
       this.dataSource = dataSource;
@@ -539,6 +595,37 @@ class PlPlayerController {
       _cid = cid;
       _enableHeart = enableHeart;
 
+      await _diagnosticSession?.complete('session_replaced');
+      _diagnosticSession = await PlayerDiagnostics.instance.startSession(
+        context: <String, Object?>{
+          'controllerSession': session,
+          'bvid': bvid,
+          'cid': cid,
+          'videoType': videoType.value,
+          'videoSource': dataSource.videoSource,
+          'audioSource': dataSource.audioSource,
+          'autoplay': autoplay,
+          'enableHardwareAcceleration': enableHA,
+          'hwdec': hwdec,
+          'videoSync': setting.get(
+            SettingBoxKey.videoSync,
+            defaultValue: 'display-resample',
+          ),
+          'expandedBuffer':
+              setting.get(SettingBoxKey.expandBuffer, defaultValue: false),
+        },
+      );
+      await _diagnosticSession?.checkpoint('set_data_source_begin');
+
+      if (_nativePlayerStale) {
+        await _diagnosticSession?.checkpoint('stale_native_player_recreate');
+        await _disposeNativePlayer();
+        _nativePlayerStale = false;
+        await _diagnosticSession?.checkpoint(
+          'stale_native_player_recreated',
+        );
+      }
+
       if (_videoPlayerController != null &&
           _videoPlayerController!.state.playing) {
         await pause(notify: false);
@@ -550,6 +637,7 @@ class PlPlayerController {
       // 配置Player 音轨、字幕等等
       _videoPlayerController = await _createVideoController(
           dataSource, _looping, enableHA, hwdec, width, height, seekTo);
+      if (session != _playbackSession) return;
       // 获取视频时长 00:00
       _duration.value = duration ?? _videoPlayerController!.state.duration;
       updateDurationSecond();
@@ -557,19 +645,37 @@ class PlPlayerController {
       dataStatus.status.value = DataStatus.loaded;
 
       // listen the video player events
-      if (!_listenersInitialized) {
-        startListeners();
-      }
+      startListeners(session);
       await _initializePlayer();
+      await _diagnosticSession?.checkpoint('playback_initialized');
       if (videoType.value != 'live' && _cid != 0) {
         refreshVideoMetaInfo().then((_) {
-          chooseSubtitle();
+          if (session == _playbackSession) {
+            chooseSubtitle();
+          }
         });
       }
     } catch (err, stackTrace) {
       dataStatus.status.value = DataStatus.error;
+      await _diagnosticSession?.checkpoint(
+        'set_data_source_error',
+        <String, Object?>{'error': err.toString()},
+      );
+      Catcher2.reportCheckedError(
+        err,
+        stackTrace,
+        extraData: <String, Object?>{
+          'phase': 'player_set_data_source',
+          'controllerSession': session,
+          'diagnosticSession': _diagnosticSession?.id,
+          'bvid': bvid,
+          'cid': cid,
+        },
+      );
       debugPrint(stackTrace.toString());
       print('plPlayer err:  $err');
+    } finally {
+      operationCompleter.complete();
     }
   }
 
@@ -584,17 +690,29 @@ class PlPlayerController {
     Duration? seekTo,
   ) async {
     // 每次配置时先移除监听
-    removeListeners();
+    await removeListeners();
     isBuffering.value = false;
     buffered.value = Duration.zero;
     _heartDuration = 0;
-    _position.value = Duration.zero;
+    final Duration initialPosition = seekTo ?? Duration.zero;
+    _positionGuard.reset(initialPosition: initialPosition);
+    _positionGuard.expectPosition(initialPosition);
+    _position.value = initialPosition;
+    updatePositionSecond();
     // 初始化时清空弹幕，防止上次重叠
     danmakuController?.clear();
     int bufferSize =
         setting.get(SettingBoxKey.expandBuffer, defaultValue: false)
             ? (videoType.value == 'live' ? 64 * 1024 * 1024 : 32 * 1024 * 1024)
             : (videoType.value == 'live' ? 16 * 1024 * 1024 : 4 * 1024 * 1024);
+    await _diagnosticSession?.checkpoint(
+      'native_player_prepare',
+      <String, Object?>{
+        'reuse': _videoPlayerController != null,
+        'bufferSize': bufferSize,
+        'initialPositionMs': initialPosition.inMilliseconds,
+      },
+    );
     Player player = _videoPlayerController ??
         Player(
           configuration: PlayerConfiguration(
@@ -602,7 +720,9 @@ class PlPlayerController {
               bufferSize: bufferSize,
               logLevel: MPVLogLevel.v),
         );
+    await _diagnosticSession?.checkpoint('native_player_ready');
     var pp = player.platform as NativePlayer;
+    await _diagnosticSession?.checkpoint('native_properties_begin');
     // 解除倍速限制
     await pp.setProperty("af", "scaletempo2=max-speed=8");
     //  音量不一致
@@ -643,6 +763,7 @@ class PlPlayerController {
         '',
       );
     }
+    await _diagnosticSession?.checkpoint('native_properties_complete');
 
     // 字幕
     if (dataSource.subFiles != '' && dataSource.subFiles != null) {
@@ -657,6 +778,10 @@ class PlPlayerController {
       await pp.setProperty("blend-subtitles", "video");
     }
 
+    await _diagnosticSession?.checkpoint(
+      'video_controller_prepare',
+      <String, Object?>{'reuse': _videoController != null},
+    );
     _videoController = _videoController ??
         VideoController(
           player,
@@ -666,8 +791,10 @@ class PlPlayerController {
             hwdec: enableHA ? hwdec : null,
           ),
         );
+    await _diagnosticSession?.checkpoint('video_controller_ready');
 
     player.setPlaylistMode(looping);
+    await _diagnosticSession?.checkpoint('media_open_begin');
     if (dataSource.type == DataSourceType.asset) {
       final assetUrl = dataSource.videoSource!.startsWith("asset://")
           ? dataSource.videoSource!
@@ -683,6 +810,7 @@ class PlPlayerController {
         play: false,
       );
     }
+    await _diagnosticSession?.checkpoint('media_open_complete');
     // 音轨
     // player.setAudioTrack(
     //   AudioTrack.uri(dataSource.audioSource!),
@@ -691,35 +819,59 @@ class PlPlayerController {
     return player;
   }
 
-  Future<bool> refreshPlayer() async {
+  Future<bool> refreshPlayer({int? expectedSession}) async {
+    if (expectedSession != null && expectedSession != _playbackSession) {
+      return false;
+    }
+    if (_refreshInFlight) return false;
+    _refreshInFlight = true;
     Duration currentPos = _position.value;
-    if (_videoPlayerController == null) {
-      SmartDialog.showToast('视频播放器为空，请重新进入本页面');
-      return false;
-    }
-    if (dataSource.videoSource?.isEmpty ?? true) {
-      SmartDialog.showToast('视频源为空，请重新进入本页面');
-      return false;
-    }
-    if (dataSource.audioSource?.isEmpty ?? true) {
-      SmartDialog.showToast('音频源为空');
-    } else {
-      await (_videoPlayerController!.platform as NativePlayer).setProperty(
-        'audio-files',
-        UniversalPlatform.isWindows
-            ? dataSource.audioSource!.replaceAll(';', '\\;')
-            : dataSource.audioSource!.replaceAll(':', '\\:'),
+    try {
+      await _diagnosticSession?.checkpoint(
+        'media_refresh_begin',
+        <String, Object?>{'positionMs': currentPos.inMilliseconds},
       );
+      if (_videoPlayerController == null) {
+        SmartDialog.showToast('视频播放器为空，请重新进入本页面');
+        return false;
+      }
+      if (dataSource.videoSource?.isEmpty ?? true) {
+        SmartDialog.showToast('视频源为空，请重新进入本页面');
+        return false;
+      }
+      if (dataSource.audioSource?.isEmpty ?? true) {
+        SmartDialog.showToast('音频源为空');
+      } else {
+        await (_videoPlayerController!.platform as NativePlayer).setProperty(
+          'audio-files',
+          UniversalPlatform.isWindows
+              ? dataSource.audioSource!.replaceAll(';', '\\;')
+              : dataSource.audioSource!.replaceAll(':', '\\:'),
+        );
+      }
+      if (expectedSession != null && expectedSession != _playbackSession) {
+        return false;
+      }
+      _positionGuard.expectPosition(currentPos);
+      await _videoPlayerController!.open(
+        Media(
+          dataSource.videoSource!,
+          httpHeaders: dataSource.httpHeaders,
+          start: currentPos,
+        ),
+        play: true,
+      );
+      await _diagnosticSession?.checkpoint('media_refresh_complete');
+      return true;
+    } catch (err) {
+      await _diagnosticSession?.checkpoint(
+        'media_refresh_error',
+        <String, Object?>{'error': err.toString()},
+      );
+      return false;
+    } finally {
+      _refreshInFlight = false;
     }
-    await _videoPlayerController!.open(
-      Media(
-        dataSource.videoSource!,
-        httpHeaders: dataSource.httpHeaders,
-        start: currentPos,
-      ),
-      play: true,
-    );
-    return true;
     // seekTo(currentPos);
   }
 
@@ -776,10 +928,12 @@ class PlPlayerController {
   final List<Function(PlayerStatus status)> _statusListeners = [];
 
   /// 播放事件监听
-  void startListeners() {
+  void startListeners(int session) {
+    final Player player = videoPlayerController!;
     subscriptions.addAll(
       [
-        videoPlayerController!.stream.playing.listen((event) {
+        player.stream.playing.listen((event) {
+          if (session != _playbackSession) return;
           if (event) {
             playerStatus.status.value = PlayerStatus.playing;
           } else {
@@ -794,11 +948,12 @@ class PlPlayerController {
             element(event ? PlayerStatus.playing : PlayerStatus.paused);
             // }
           }
-          if (videoPlayerController!.state.position.inSeconds != 0) {
+          if (player.state.position.inSeconds != 0) {
             makeHeartBeat(positionSeconds.value, type: 'status');
           }
         }),
-        videoPlayerController!.stream.completed.listen((event) {
+        player.stream.completed.listen((event) {
+          if (session != _playbackSession) return;
           if (event) {
             print("stream completed");
             playerStatus.status.value = PlayerStatus.completed;
@@ -812,7 +967,24 @@ class PlPlayerController {
           }
           makeHeartBeat(positionSeconds.value, type: 'completed');
         }),
-        videoPlayerController!.stream.position.listen((event) {
+        player.stream.position.listen((event) {
+          if (session != _playbackSession) return;
+          final PlaybackPositionDecision decision = _positionGuard.evaluate(
+            event,
+            isPlaying: player.state.playing,
+            isBuffering: isBuffering.value,
+            isLive: videoType.value == 'live',
+          );
+          if (decision.action == PlaybackPositionAction.ignore) return;
+          if (decision.action == PlaybackPositionAction.correct) {
+            unawaited(_correctUnexpectedPosition(
+              session: session,
+              reportedPosition: event,
+              targetPosition: decision.correctionTarget!,
+              regression: decision.regression!,
+            ));
+            return;
+          }
           _position.value = event;
           updatePositionSecond();
           if (!isSliderMoving.value) {
@@ -826,19 +998,23 @@ class PlPlayerController {
           }
           makeHeartBeat(event.inSeconds);
         }),
-        videoPlayerController!.stream.duration.listen((Duration event) {
+        player.stream.duration.listen((Duration event) {
+          if (session != _playbackSession) return;
           duration.value = event;
         }),
-        videoPlayerController!.stream.buffer.listen((Duration event) {
+        player.stream.buffer.listen((Duration event) {
+          if (session != _playbackSession) return;
           _buffered.value = event;
           updateBufferedSecond();
         }),
-        videoPlayerController!.stream.buffering.listen((bool event) {
+        player.stream.buffering.listen((bool event) {
+          if (session != _playbackSession) return;
           isBuffering.value = event;
           videoPlayerServiceHandler.onStatusChange(
               playerStatus.status.value, event);
         }),
-        videoPlayerController!.stream.log.listen((event) {
+        player.stream.log.listen((event) {
+          if (session != _playbackSession) return;
           // print('videoPlayerController!.stream.log.listen');
           // print('[pp] $event');
           // if (event.level == "v") {
@@ -848,7 +1024,15 @@ class PlPlayerController {
           // }
           // SmartDialog.showToast('视频加载日志： $event');
         }),
-        videoPlayerController!.stream.error.listen((String event) {
+        player.stream.error.listen((String event) {
+          if (session != _playbackSession) return;
+          final PlayerDiagnosticSession? diagnostic = _diagnosticSession;
+          if (diagnostic != null) {
+            unawaited(diagnostic.checkpoint(
+              'native_player_error',
+              <String, Object?>{'error': event},
+            ));
+          }
           // 直播的错误提示没有参考价值，均不予显示
           if (videoType.value == 'live') return;
           if (event.startsWith("Failed to open .") ||
@@ -860,19 +1044,22 @@ class PlPlayerController {
               //tcp: ffurl_read returned 0xdfb9b0bb
               //tcp: ffurl_read returned 0xffffff99
               event.startsWith('tcp: ffurl_read returned ')) {
-            EasyThrottle.throttle('videoPlayerController!.stream.error.listen',
-                const Duration(milliseconds: 10000), () {
-              Future.delayed(const Duration(milliseconds: 3000), () async {
-                print("isBuffering.value: ${isBuffering.value}");
-                print("_buffered.value: ${_buffered.value}");
-                if (isBuffering.value && _buffered.value == Duration.zero) {
-                  SmartDialog.showToast('视频链接打开失败，重试中',
-                      displayTime: const Duration(milliseconds: 500));
-                  if (!await refreshPlayer()) {
-                    print("failed");
-                  }
+            _retryTimer?.cancel();
+            if (diagnostic != null) {
+              unawaited(diagnostic.checkpoint('network_retry_scheduled'));
+            }
+            _retryTimer = Timer(const Duration(seconds: 3), () async {
+              if (session != _playbackSession) return;
+              print("isBuffering.value: ${isBuffering.value}");
+              print("_buffered.value: ${_buffered.value}");
+              if (isBuffering.value && _buffered.value == Duration.zero) {
+                await _diagnosticSession?.checkpoint('network_retry_begin');
+                SmartDialog.showToast('视频链接打开失败，重试中',
+                    displayTime: const Duration(milliseconds: 500));
+                if (!await refreshPlayer(expectedSession: session)) {
+                  print("failed");
                 }
-              });
+              }
             });
             return;
           }
@@ -894,6 +1081,7 @@ class PlPlayerController {
         //   videoPlayerServiceHandler.onStatusChange(event, isBuffering.value);
         // }),
         onPositionChanged.listen((Duration event) {
+          if (session != _playbackSession) return;
           EasyThrottle.throttle(
               'mediaServicePosition',
               const Duration(seconds: 1),
@@ -903,11 +1091,46 @@ class PlPlayerController {
     );
   }
 
-  /// 移除事件监听
-  void removeListeners() {
-    for (final s in subscriptions) {
-      s.cancel();
+  Future<void> _correctUnexpectedPosition({
+    required int session,
+    required Duration reportedPosition,
+    required Duration targetPosition,
+    required Duration regression,
+  }) async {
+    if (_positionCorrectionInFlight || session != _playbackSession) return;
+    _positionCorrectionInFlight = true;
+    _positionGuard.expectPosition(targetPosition);
+    try {
+      await _diagnosticSession?.checkpoint(
+        'unexpected_position_regression',
+        <String, Object?>{
+          'reportedPositionMs': reportedPosition.inMilliseconds,
+          'targetPositionMs': targetPosition.inMilliseconds,
+          'regressionMs': regression.inMilliseconds,
+          'bufferedMs': _buffered.value.inMilliseconds,
+          'isBuffering': isBuffering.value,
+          'playerLog': _playerLog.value,
+        },
+      );
+      if (session != _playbackSession) return;
+      await _videoPlayerController?.seek(targetPosition);
+    } catch (err) {
+      await _diagnosticSession?.checkpoint(
+        'position_correction_error',
+        <String, Object?>{'error': err.toString()},
+      );
+      debugPrint('position correction failed: $err');
+    } finally {
+      _positionCorrectionInFlight = false;
     }
+  }
+
+  /// 移除事件监听
+  Future<void> removeListeners() async {
+    final List<StreamSubscription<dynamic>> current =
+        List<StreamSubscription<dynamic>>.from(subscriptions);
+    subscriptions.clear();
+    await Future.wait(current.map((subscription) => subscription.cancel()));
   }
 
   /// 跳转至指定位置
@@ -918,6 +1141,7 @@ class PlPlayerController {
     if (position < Duration.zero) {
       position = Duration.zero;
     }
+    _positionGuard.expectPosition(position);
     _position.value = position;
     updatePositionSecond();
     _heartDuration = position.inSeconds;
@@ -1615,6 +1839,87 @@ class PlPlayerController {
         PlDanmakuController.convertToScrollDanmaku);
   }
 
+  Future<void> releaseNativeResources({bool force = false}) async {
+    if (!force && floatingManager.containsFloating(globalId)) return;
+    ++_playbackSession;
+    _retryTimer?.cancel();
+
+    final Future<void> previousOperation = _sourceOperation;
+    final Completer<void> operationCompleter = Completer<void>();
+    _sourceOperation = operationCompleter.future;
+    try {
+      await previousOperation;
+    } catch (_) {}
+
+    final PlayerDiagnosticSession? diagnostic = _diagnosticSession;
+    try {
+      await diagnostic?.checkpoint('native_player_release_begin');
+      await _disposeNativePlayer();
+      _nativePlayerStale = false;
+      await diagnostic?.complete('native_player_released');
+      if (identical(_diagnosticSession, diagnostic)) {
+        _diagnosticSession = null;
+      }
+      videoPlayerServiceHandler.clear();
+    } catch (err, stackTrace) {
+      await diagnostic?.checkpoint(
+        'native_player_release_error',
+        <String, Object?>{'error': err.toString()},
+      );
+      Catcher2.reportCheckedError(
+        err,
+        stackTrace,
+        extraData: <String, Object?>{
+          'phase': 'native_player_release',
+          'controllerSession': _playbackSession,
+          'diagnosticSession': diagnostic?.id,
+          'bvid': _bvid,
+          'cid': _cid,
+        },
+      );
+    } finally {
+      operationCompleter.complete();
+    }
+  }
+
+  Future<void> _disposeNativePlayer() async {
+    _retryTimer?.cancel();
+    _timerForSeek?.cancel();
+    final Player? player = _videoPlayerController;
+    _videoPlayerController = null;
+    _videoController = null;
+    try {
+      await removeListeners();
+    } catch (err) {
+      debugPrint('remove player listeners failed: $err');
+    }
+    if (player != null) {
+      try {
+        final NativePlayer nativePlayer = player.platform as NativePlayer;
+        await nativePlayer.setProperty('audio-files', '');
+      } catch (err) {
+        debugPrint('clear native audio files failed: $err');
+      }
+      try {
+        await player.dispose();
+      } catch (err) {
+        debugPrint('dispose native player failed: $err');
+      }
+    }
+    _positionGuard.reset();
+    _positionCorrectionInFlight = false;
+    _refreshInFlight = false;
+    _position.value = Duration.zero;
+    _sliderPosition.value = Duration.zero;
+    _buffered.value = Duration.zero;
+    _duration.value = Duration.zero;
+    isBuffering.value = false;
+    updatePositionSecond();
+    updateSliderPositionSecond();
+    updateBufferedSecond();
+    updateDurationSecond();
+  }
+
   Future<void> dispose() async {
     // 每次减1，最后销毁
     // if (type == 'single' && playerCount.value > 1) {
@@ -1624,7 +1929,8 @@ class PlPlayerController {
     //   return;
     // }
     // _playerCount.value = 0;
-    pause();
+    await pause();
+    WidgetsBinding.instance.removeObserver(this);
     try {
       _timer?.cancel();
       _timerForVolume?.cancel();
@@ -1647,15 +1953,8 @@ class PlPlayerController {
       _dataListenerForEnterFullScreen?.cancel();
       _playerListenerForEnterPip?.cancel();
 
-      if (_videoPlayerController != null) {
-        var pp = _videoPlayerController!.platform as NativePlayer;
-        await pp.setProperty('audio-files', '');
-        removeListeners();
-        await _videoPlayerController?.dispose();
-        _videoPlayerController = null;
-      }
+      await releaseNativeResources(force: true);
       _instance = null;
-      videoPlayerServiceHandler.clear();
     } catch (err) {
       print(err);
     }

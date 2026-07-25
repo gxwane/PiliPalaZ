@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:catcher_2/catcher_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -8,6 +9,7 @@ import 'package:pilipalaz/http/video.dart';
 import 'package:pilipalaz/models/common/search_type.dart';
 import 'package:pilipalaz/models/video/play/quality.dart';
 import 'package:pilipalaz/models/video/play/url.dart';
+import 'package:pilipalaz/pages/video/playback_input.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:pilipalaz/utils/utils.dart';
@@ -50,6 +52,7 @@ class VideoDetailController extends GetxController
   RxBool isEffective = true.obs;
   // 封面图的展示
   RxBool isShowCover = true.obs;
+  RxString playbackError = ''.obs;
   // 硬解
   RxBool enableHA = true.obs;
   RxString hwdec = 'auto'.obs;
@@ -193,7 +196,7 @@ class VideoDetailController extends GetxController
     if (plPlayerController == null) return;
     isShowCover.value = false;
     defaultST = plPlayerController!.position.value;
-    plPlayerController!.removeListeners();
+    await plPlayerController!.removeListeners();
     plPlayerController!.isBuffering.value = false;
     plPlayerController!.buffered.value = Duration.zero;
 
@@ -325,12 +328,40 @@ class VideoDetailController extends GetxController
     plPlayerController!.headerControl = headerControl;
   }
 
+  Map<String, dynamic> playbackFailure(
+    String message, {
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    playbackError.value = message;
+    isShowCover.value = false;
+    if (error != null) {
+      Catcher2.reportCheckedError(
+        error,
+        stackTrace,
+        extraData: {
+          'phase': 'video_playback_initialization',
+          'bvid': bvid,
+          'cid': cid.value,
+        },
+      );
+    }
+    SmartDialog.showNotify(
+      msg: message,
+      displayTime: const Duration(seconds: 3),
+      notifyType: NotifyType.error,
+    );
+    return {'status': false, 'msg': message};
+  }
+
   // 视频链接
   Future queryVideoUrl() async {
-    var result = await VideoHttp.videoUrl(cid: cid.value, bvid: bvid);
+    playbackError.value = '';
+    try {
+      var result = await VideoHttp.videoUrl(cid: cid.value, bvid: bvid);
     if (result['status']) {
       data = result['data'];
-      if (data.acceptDesc!.isNotEmpty && data.acceptDesc!.contains('试看')) {
+      if (data.acceptDesc?.contains('试看') == true) {
         SmartDialog.showNotify(
           msg: '该视频为专属视频，仅提供试看',
           displayTime: const Duration(seconds: 3),
@@ -338,7 +369,11 @@ class VideoDetailController extends GetxController
         );
       }
       if (data.dash == null && data.durl != null) {
-        videoUrl = data.durl!.first.url!;
+        final durl = data.durl;
+        if (durl == null || durl.isEmpty || durl.first.url?.isNotEmpty != true) {
+          return playbackFailure('视频资源不完整，请稍后重试');
+        }
+        videoUrl = durl.first.url!;
         audioUrl = '';
         defaultST = Duration.zero;
         // 实际为FLV/MP4格式，但已被淘汰，这里仅做兜底处理
@@ -356,15 +391,13 @@ class VideoDetailController extends GetxController
         return result;
       }
       if (data.dash == null) {
-        SmartDialog.showNotify(
-          msg: '视频资源不存在',
-          displayTime: const Duration(seconds: 3),
-          notifyType: NotifyType.error,
-        );
-        isShowCover.value = false;
-        return result;
+        return playbackFailure('视频资源不存在');
       }
-      final List<VideoItem> allVideosList = data.dash!.video!;
+      final List<VideoItem> allVideosList =
+          data.dash!.video ?? const <VideoItem>[];
+      if (allVideosList.isEmpty) {
+        return playbackFailure('视频资源不存在');
+      }
       // print("allVideosList:${allVideosList}");
       // 当前可播放的最高质量视频
       int currentHighVideoQa = allVideosList.first.quality!.code;
@@ -373,8 +406,16 @@ class VideoDetailController extends GetxController
       int resVideoQa = currentHighVideoQa;
       if (cacheVideoQa! <= currentHighVideoQa) {
         // 如果预设的画质低于当前最高
-        final List<int> numbers =
-            data.acceptQuality!.where((e) => e <= currentHighVideoQa).toList();
+        final List<int> numbers = (data.acceptQuality ??
+                <int>[
+                  for (final video in allVideosList)
+                    if (video.quality != null) video.quality!.code,
+                ])
+            .where((e) => e <= currentHighVideoQa)
+            .toList();
+        if (numbers.isEmpty) {
+          return playbackFailure('视频画质信息不完整');
+        }
         resVideoQa = Utils.findClosestNumber(cacheVideoQa!, numbers);
       }
       currentVideoQa = VideoQualityCode.fromCode(resVideoQa)!;
@@ -384,12 +425,24 @@ class VideoDetailController extends GetxController
           allVideosList.where((e) => e.quality!.code == resVideoQa).toList();
 
       /// 优先顺序 设置中指定解码格式 -> 当前可选的首个解码格式
-      final List<FormatItem> supportFormats = data.supportFormats!;
+      final List<FormatItem> supportFormats =
+          data.supportFormats ?? const <FormatItem>[];
       // 根据画质选编码格式
-      final List supportDecodeFormats = supportFormats
-          .firstWhere((e) => e.quality == resVideoQa,
-              orElse: () => supportFormats.first)
-          .codecs!;
+      final List supportDecodeFormats = supportFormats.isNotEmpty
+          ? (supportFormats
+                  .firstWhere(
+                    (e) => e.quality == resVideoQa,
+                    orElse: () => supportFormats.first,
+                  )
+                  .codecs ??
+              <String>[])
+          : videosList
+              .map((video) => video.codecs)
+              .whereType<String>()
+              .toList();
+      if (videosList.isEmpty || supportDecodeFormats.isEmpty) {
+        return playbackFailure('视频编码信息不完整');
+      }
       // 默认从设置中取AV1
       currentDecodeFormats = VideoDecodeFormatsCode.fromString(cacheDecode)!;
       VideoDecodeFormats secondDecodeFormats =
@@ -424,6 +477,9 @@ class VideoDetailController extends GetxController
       //     ? VideoUtils.getCdnUrl(firstVideo)
       //     : (firstVideo.backupUrl ?? firstVideo.baseUrl!);
       videoUrl = VideoUtils.getCdnUrl(firstVideo);
+      if (videoUrl.isEmpty) {
+        return playbackFailure('视频链接为空，请稍后重试');
+      }
 
       /// 优先顺序 设置中指定质量 -> 当前可选的最高质量
       late AudioItem? firstAudio;
@@ -460,14 +516,18 @@ class VideoDetailController extends GetxController
         audioUrl = '';
       }
       //
-      defaultST = Duration(milliseconds: data.lastPlayTime!);
+      defaultST = normalizeHistoryPosition(
+        lastPlayTimeMs: data.lastPlayTime,
+        durationMs: data.timeLength,
+      );
       if (autoPlay.value) {
         isShowCover.value = false;
         await playerInit();
       }
     } else {
+      playbackError.value = result['msg']?.toString() ?? '视频加载失败，请重试';
+      isShowCover.value = false;
       if (result['code'] == -404) {
-        isShowCover.value = false;
         SmartDialog.showNotify(
           msg: '视频不存在或已被删除',
           displayTime: const Duration(seconds: 3),
@@ -486,7 +546,14 @@ class VideoDetailController extends GetxController
         );
       }
     }
-    return result;
+      return result;
+    } catch (error, stackTrace) {
+      return playbackFailure(
+        '视频加载失败，请重试',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   // mob端全屏状态关闭二级回复

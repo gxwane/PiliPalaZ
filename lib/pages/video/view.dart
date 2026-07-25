@@ -177,6 +177,26 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     }
   }
 
+  Future<void> retryVideoSource() async {
+    final Future<dynamic> retryFuture = videoDetailController.queryVideoUrl();
+    setState(() {
+      _futureBuilderFuture = retryFuture;
+    });
+    final dynamic result = await retryFuture;
+    if (!mounted ||
+        videoDetailController.autoPlay.value ||
+        result is! Map ||
+        result['status'] != true) {
+      return;
+    }
+    videoPlayerServiceHandler.onStatusChange(PlayerStatus.paused, false);
+    await videoDetailController.playerInit(autoplay: false);
+    if (!mounted) return;
+    plPlayerController = videoDetailController.plPlayerController;
+    plPlayerController!.addStatusLister(playerListener);
+    listenFullScreenStatus();
+  }
+
   // void autoEnterPip() {
   //   String top = Get.currentRoute;
   //   if (autoPiP && (top.startsWith('/video') || top.startsWith('/live') || floatingManager.containsFloating(globalId))) {
@@ -334,7 +354,7 @@ class _VideoDetailPageState extends State<VideoDetailPage>
         bangumiIntroController.bangumiDetail.close();
         plPlayerController!.removeStatusLister(playerListener);
         fullScreenStatusListener.cancel();
-        plPlayerController!.disable();
+        plPlayerController!.releaseNativeResources();
         // plPlayerController!.dispose();
       }
     }
@@ -485,6 +505,25 @@ class _VideoDetailPageState extends State<VideoDetailPage>
       key: videoPlayerFutureKey,
       future: _futureBuilderFuture,
       builder: (BuildContext context, AsyncSnapshot snapshot) {
+        if (snapshot.hasError ||
+            (snapshot.hasData && snapshot.data['status'] != true)) {
+          return ColoredBox(
+            color: Colors.black,
+            child: Center(
+              child: TextButton.icon(
+                onPressed: retryVideoSource,
+                icon: const Icon(Icons.refresh),
+                label: Obx(
+                  () => Text(
+                    videoDetailController.playbackError.value.isEmpty
+                        ? '视频加载失败，点击重试'
+                        : videoDetailController.playbackError.value,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }
         if (!snapshot.hasData || !snapshot.data['status']) {
           return const ColoredBox(color: Colors.transparent);
         }

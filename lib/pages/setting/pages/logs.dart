@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:pilipalaz/common/widgets/no_data.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../services/loggeer.dart';
+import '../../../services/player_diagnostics.dart';
 
 class LogsPage extends StatefulWidget {
   const LogsPage({super.key});
@@ -15,7 +16,8 @@ class LogsPage extends StatefulWidget {
 
 class _LogsPageState extends State<LogsPage> {
   late File logsPath;
-  late String fileContent;
+  String fileContent = '';
+  String playerFileContent = '';
   List logsContent = [];
 
   @override
@@ -27,7 +29,9 @@ class _LogsPageState extends State<LogsPage> {
   void getPath() async {
     logsPath = await getLogsPath();
     fileContent = await logsPath.readAsString();
-    logsContent = await parseLogs(fileContent);
+    playerFileContent = await PlayerDiagnostics.instance.read();
+    logsContent = await parseLogs('$fileContent\n$playerFileContent');
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -39,6 +43,10 @@ class _LogsPageState extends State<LogsPage> {
           .replaceAll(
             '============================== CATCHER 2 LOG ==============================',
             'PiliPalaZ错误日志\n********************',
+          )
+          .replaceAll(
+            '========================== PLAYER DIAGNOSTIC LOG ==========================',
+            '播放器诊断日志\n********************',
           )
           .replaceAll('DEVICE INFO', '设备信息')
           .replaceAll('APP INFO', '应用信息')
@@ -63,6 +71,17 @@ class _LogsPageState extends State<LogsPage> {
               }
               return "";
             }
+            if (l.startsWith("Diagnostic occurred on")) {
+              try {
+                date = DateTime.parse(
+                  l.split("Diagnostic occurred on")[1].trim(),
+                );
+              } catch (e) {
+                debugPrint(e.toString());
+                date = l.toString();
+              }
+              return "";
+            }
             return l;
           })
           .where((dynamic l) => l.replaceAll("\n", "").trim().isNotEmpty)
@@ -75,7 +94,9 @@ class _LogsPageState extends State<LogsPage> {
   }
 
   void copyLogs() async {
-    await Clipboard.setData(ClipboardData(text: fileContent));
+    await Clipboard.setData(
+      ClipboardData(text: '$fileContent\n$playerFileContent'),
+    );
     if (context.mounted) {
       ScaffoldMessenger.of(
         context,
@@ -92,11 +113,20 @@ class _LogsPageState extends State<LogsPage> {
   }
 
   void clearLogsHandle() async {
-    if (await clearLogs()) {
+    final bool catcherCleared = await clearLogs();
+    bool playerCleared = true;
+    try {
+      await PlayerDiagnostics.instance.clear();
+    } catch (_) {
+      playerCleared = false;
+    }
+    if (catcherCleared && playerCleared) {
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('已清空')));
+        fileContent = '';
+        playerFileContent = '';
         logsContent = [];
         setState(() {});
       }
