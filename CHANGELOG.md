@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.2.3] - 2026-07-25
+
 ### 新增
 
 - 首页推荐开启“保留上次内容”时，在新旧推荐之间显示“上次看到这里”分隔提示。
@@ -365,7 +367,8 @@
 - 首次公开版本，包含直播、推荐、动态、投稿、番剧和视频播放。
 - 支持播放器手势、画质/音质/解码格式选择、点赞/投币/收藏、关注与用户主页、评论、历史记录和稍后再看。
 
-[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.2.2...HEAD
+[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.2.3...HEAD
+[1.2.3]: https://github.com/gxwane/PiliPalaZ/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/gxwane/PiliPalaZ/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/gxwane/PiliPalaZ/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/gxwane/PiliPalaZ/compare/v1.1.5...v1.2.0
