@@ -1,4 +1,5 @@
 import 'package:pilipalaz/common/constants.dart';
+import 'package:pilipalaz/common/widgets/app_update_center.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -6,10 +7,8 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:pilipalaz/models/github/latest.dart';
 import 'package:pilipalaz/pages/setting/controller.dart';
 import 'package:pilipalaz/utils/storage.dart';
-import 'package:pilipalaz/utils/utils.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../utils/cache_manage.dart';
 
@@ -86,22 +85,13 @@ class _AboutPageState extends State<AboutPage> {
               ),
             ),
           ),
-          Obx(
-            () => ListTile(
-              onTap: () => _aboutController.onUpdate(),
-              title: const Text('最新版本'),
-              leading: Icon(MdiIcons.newBox),
-              trailing: Text(
-                _aboutController.isLoading.value
-                    ? '正在获取'
-                    : _aboutController.hasError.value
-                    ? '检查失败，点击重试'
-                    : _aboutController.isUpdate.value
-                    ? '有新版本  ❤️${_aboutController.remoteVersion.value}'
-                    : '当前已是最新版',
-                style: subTitleStyle,
-              ),
-            ),
+          ListTile(
+            onTap: () =>
+                AppUpdateCoordinator.instance.showManualUpdateCenter(context),
+            title: const Text('检查更新'),
+            subtitle: const Text('自行选择正式版或测试版'),
+            leading: Icon(MdiIcons.newBox),
+            trailing: Icon(Icons.arrow_forward_ios, size: 16, color: outline),
           ),
           ListTile(
             onTap: () => _aboutController.releaseNotes(),
@@ -276,11 +266,6 @@ class AboutController extends GetxController {
   Box setting = GStorage.setting;
   final SettingController settingController = Get.put(SettingController());
   RxString currentVersion = ''.obs;
-  RxString remoteVersion = ''.obs;
-  RxBool isUpdate = true.obs;
-  RxBool isLoading = true.obs;
-  RxBool hasError = false.obs;
-  LatestDataModel? data;
   RxInt count = 0.obs;
 
   @override
@@ -291,52 +276,12 @@ class AboutController extends GetxController {
 
   Future<void> initialize() async {
     await getCurrentApp();
-    await getRemoteApp();
   }
 
   // 获取当前版本
   Future<void> getCurrentApp() async {
     final currentInfo = await PackageInfo.fromPlatform();
     currentVersion.value = '${currentInfo.version}+${currentInfo.buildNumber}';
-  }
-
-  // 获取远程版本
-  Future<bool> getRemoteApp({bool showError = false}) async {
-    isLoading.value = true;
-    hasError.value = false;
-    try {
-      data = await Utils.findAppUpdate(currentVersion.value, userAgent: 'pc');
-      remoteVersion.value = data?.tagName ?? '';
-      isUpdate.value = data != null;
-      return true;
-    } catch (_) {
-      data = null;
-      remoteVersion.value = '';
-      isUpdate.value = false;
-      hasError.value = true;
-      if (showError) {
-        SmartDialog.showToast('检查更新失败，请检查网络后重试');
-      }
-      return false;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  // 跳转下载/本地更新
-  Future<void> onUpdate() async {
-    if (data != null) {
-      await Utils.matchVersion(data!);
-      return;
-    }
-    SmartDialog.showLoading(msg: '正在尝试从 GitHub 获取最新版本');
-    final succeeded = await getRemoteApp(showError: true);
-    SmartDialog.dismiss();
-    if (data != null) {
-      await Utils.matchVersion(data!);
-    } else if (succeeded) {
-      SmartDialog.showToast('当前已是最新版');
-    }
   }
 
   // 跳转github

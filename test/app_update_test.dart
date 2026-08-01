@@ -49,9 +49,9 @@ void main() {
     });
   });
 
-  group('AppUpdatePolicy.selectRelease', () {
-    test('stable builds ignore prereleases and drafts', () {
-      final selected = AppUpdatePolicy.selectRelease(
+  group('AppUpdatePolicy.selectCandidates', () {
+    test('selects stable and prerelease candidates independently', () {
+      final selected = AppUpdatePolicy.selectCandidates(
         localVersion: '1.2.0+114520',
         releases: <LatestDataModel>[
           release('v1.3.0-beta.1', prerelease: true),
@@ -60,24 +60,30 @@ void main() {
         ],
       );
 
-      expect(selected?.tagName, 'v1.2.1');
+      expect(selected.stable?.tagName, 'v1.2.1');
+      expect(selected.prerelease?.tagName, 'v1.3.0-beta.1');
     });
 
-    test('prerelease builds can advance through prereleases to stable', () {
-      final selected = AppUpdatePolicy.selectRelease(
-        localVersion: '1.3.0-beta.1+114521',
-        releases: <LatestDataModel>[
-          release('invalid', prerelease: true),
-          release('v1.3.0-rc.1', prerelease: true),
-          release('v1.3.0'),
-        ],
-      );
+    test(
+      'never selects a candidate that would downgrade the installed app',
+      () {
+        final selected = AppUpdatePolicy.selectCandidates(
+          localVersion: '1.3.0-beta.1+114521',
+          releases: <LatestDataModel>[
+            release('invalid', prerelease: true),
+            release('v1.3.0-rc.1', prerelease: true),
+            release('v1.2.9'),
+            release('v1.3.0'),
+          ],
+        );
 
-      expect(selected?.tagName, 'v1.3.0');
-    });
+        expect(selected.stable?.tagName, 'v1.3.0');
+        expect(selected.prerelease?.tagName, 'v1.3.0-rc.1');
+      },
+    );
 
-    test('returns null when no valid newer release exists', () {
-      final selected = AppUpdatePolicy.selectRelease(
+    test('returns empty candidates when no valid newer release exists', () {
+      final selected = AppUpdatePolicy.selectCandidates(
         localVersion: 'v1.2.0',
         releases: <LatestDataModel>[
           release('broken'),
@@ -86,7 +92,8 @@ void main() {
         ],
       );
 
-      expect(selected, isNull);
+      expect(selected.stable, isNull);
+      expect(selected.prerelease, isNull);
     });
   });
 
@@ -133,6 +140,58 @@ void main() {
         AppUpdatePolicy.selectAndroidAsset(<AssetItem>[
           AssetItem(name: 'PiliPalaZ-ios-unsigned-v1.3.0.ipa'),
         ], 'arm64-v8a'),
+        isNull,
+      );
+    });
+
+    test('rejects insecure URLs and unsafe filenames', () {
+      expect(
+        AppUpdatePolicy.selectAndroidAsset(<AssetItem>[
+          AssetItem(
+            name: '../PiliPalaZ-android-arm64-v8a.apk',
+            downloadUrl: 'https://example.invalid/unsafe.apk',
+          ),
+          AssetItem(
+            name: 'PiliPalaZ-android-arm64-v8a.apk',
+            downloadUrl: 'http://example.invalid/insecure.apk',
+          ),
+        ], 'arm64-v8a'),
+        isNull,
+      );
+    });
+  });
+
+  group('AppUpdatePolicy.selectChecksum', () {
+    const checksum =
+        '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
+    test('matches an exact APK filename', () {
+      expect(
+        AppUpdatePolicy.selectChecksum(
+          '$checksum  PiliPalaZ-android-arm64-v8a-v1.3.0.apk\n',
+          'PiliPalaZ-android-arm64-v8a-v1.3.0.apk',
+        ),
+        checksum,
+      );
+    });
+
+    test('supports the sha256sum binary marker and uppercase hashes', () {
+      expect(
+        AppUpdatePolicy.selectChecksum(
+          '${checksum.toUpperCase()} *PiliPalaZ-android-universal-v1.3.0.apk',
+          'PiliPalaZ-android-universal-v1.3.0.apk',
+        ),
+        checksum,
+      );
+    });
+
+    test('rejects malformed hashes and non-exact filenames', () {
+      expect(
+        AppUpdatePolicy.selectChecksum(
+          'not-a-hash  PiliPalaZ-android-arm64-v8a-v1.3.0.apk\n'
+              '$checksum  nested/PiliPalaZ-android-arm64-v8a-v1.3.0.apk',
+          'PiliPalaZ-android-arm64-v8a-v1.3.0.apk',
+        ),
         isNull,
       );
     });

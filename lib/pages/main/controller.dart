@@ -5,12 +5,12 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
+import 'package:pilipalaz/common/widgets/app_update_center.dart';
 import 'package:pilipalaz/http/common.dart';
 import 'package:pilipalaz/pages/dynamics/index.dart';
 import 'package:pilipalaz/pages/home/view.dart';
 import 'package:pilipalaz/pages/media/index.dart';
 import 'package:pilipalaz/utils/storage.dart';
-import 'package:pilipalaz/utils/utils.dart';
 import '../../models/common/dynamic_badge_mode.dart';
 import '../../models/common/nav_bar_config.dart';
 
@@ -35,23 +35,31 @@ class MainController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    if (setting.get(SettingBoxKey.autoUpdate, defaultValue: false)) {
-      Utils.checkUpdate();
-    }
+    unawaited(_initializeAppUpdates());
     hideTabBar = setting.get(SettingBoxKey.hideTabBar, defaultValue: false);
     int defaultHomePage =
         setting.get(SettingBoxKey.defaultHomePage, defaultValue: 0) as int;
-    selectedIndex = defaultNavigationBars
-        .indexWhere((item) => item['id'] == defaultHomePage);
+    selectedIndex = defaultNavigationBars.indexWhere(
+      (item) => item['id'] == defaultHomePage,
+    );
     print("selectedIndex: ${selectedIndex}");
     pageController = PageController(initialPage: selectedIndex);
     var userInfo = userInfoCache.get('userInfoCache');
     userLogin.value = userInfo != null;
-    dynamicBadgeType = DynamicBadgeMode.values[setting.get(
-        SettingBoxKey.dynamicBadgeMode,
-        defaultValue: DynamicBadgeMode.number.code)];
+    dynamicBadgeType =
+        DynamicBadgeMode.values[setting.get(
+          SettingBoxKey.dynamicBadgeMode,
+          defaultValue: DynamicBadgeMode.number.code,
+        )];
     if (dynamicBadgeType != DynamicBadgeMode.hidden) {
       getUnreadDynamic();
+    }
+  }
+
+  Future<void> _initializeAppUpdates() async {
+    await AppUpdateCoordinator.instance.initialize();
+    if (setting.get(SettingBoxKey.autoUpdate, defaultValue: false)) {
+      await AppUpdateCoordinator.instance.checkStableAutomatically();
     }
   }
 
@@ -74,20 +82,23 @@ class MainController extends GetxController {
     if (!userLogin.value) {
       return;
     }
-    int dynamicItemIndex =
-        navigationBars.indexWhere((item) => item['label'] == "动态");
+    int dynamicItemIndex = navigationBars.indexWhere(
+      (item) => item['label'] == "动态",
+    );
     var res = await CommonHttp.unReadDynamic();
     var data = res['data'];
     if (dynamicItemIndex != -1) {
-      navigationBars[dynamicItemIndex]['count'] =
-          data == null ? 0 : data.length; // 修改 count 属性为新的值
+      navigationBars[dynamicItemIndex]['count'] = data == null
+          ? 0
+          : data.length; // 修改 count 属性为新的值
     }
     navigationBars.refresh();
   }
 
   void clearUnread() async {
-    int dynamicItemIndex =
-        navigationBars.indexWhere((item) => item['label'] == "动态");
+    int dynamicItemIndex = navigationBars.indexWhere(
+      (item) => item['label'] == "动态",
+    );
     if (dynamicItemIndex != -1) {
       navigationBars[dynamicItemIndex]['count'] = 0; // 修改 count 属性为新的值
     }

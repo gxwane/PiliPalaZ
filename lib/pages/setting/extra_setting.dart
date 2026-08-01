@@ -1,13 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
+import 'package:pilipalaz/common/widgets/app_update_center.dart';
 import 'package:pilipalaz/models/common/dynamics_type.dart';
 import 'package:pilipalaz/models/common/reply_sort_type.dart';
 import 'package:pilipalaz/pages/setting/widgets/select_dialog.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-import '../../utils/utils.dart';
 import '../home/index.dart';
 import 'controller.dart';
 import 'widgets/switch_item.dart';
@@ -33,21 +35,31 @@ class _ExtraSettingState extends State<ExtraSetting> {
   void initState() {
     super.initState();
     // 默认优先显示最新评论
-    defaultReplySort =
-        setting.get(SettingBoxKey.replySortType, defaultValue: 0);
+    defaultReplySort = setting.get(
+      SettingBoxKey.replySortType,
+      defaultValue: 0,
+    );
     if (defaultReplySort == 2) {
       setting.put(SettingBoxKey.replySortType, 0);
       defaultReplySort = 0;
     }
     // 优先展示全部动态 all
-    defaultDynamicType =
-        setting.get(SettingBoxKey.defaultDynamicType, defaultValue: 0);
-    enableSystemProxy =
-        setting.get(SettingBoxKey.enableSystemProxy, defaultValue: false);
-    defaultSystemProxyHost =
-        setting.get(SettingBoxKey.systemProxyHost, defaultValue: '');
-    defaultSystemProxyPort =
-        setting.get(SettingBoxKey.systemProxyPort, defaultValue: '');
+    defaultDynamicType = setting.get(
+      SettingBoxKey.defaultDynamicType,
+      defaultValue: 0,
+    );
+    enableSystemProxy = setting.get(
+      SettingBoxKey.enableSystemProxy,
+      defaultValue: false,
+    );
+    defaultSystemProxyHost = setting.get(
+      SettingBoxKey.systemProxyHost,
+      defaultValue: '',
+    );
+    defaultSystemProxyPort = setting.get(
+      SettingBoxKey.systemProxyPort,
+      defaultValue: '',
+    );
   }
 
   // 设置代理
@@ -116,7 +128,7 @@ class _ExtraSettingState extends State<ExtraSetting> {
                 // Request.dio;
               },
               child: const Text('确认'),
-            )
+            ),
           ],
         );
       },
@@ -126,18 +138,14 @@ class _ExtraSettingState extends State<ExtraSetting> {
   @override
   Widget build(BuildContext context) {
     TextStyle titleStyle = Theme.of(context).textTheme.titleMedium!;
-    TextStyle subTitleStyle = Theme.of(context)
-        .textTheme
-        .labelMedium!
-        .copyWith(color: Theme.of(context).colorScheme.outline);
+    TextStyle subTitleStyle = Theme.of(context).textTheme.labelMedium!.copyWith(
+      color: Theme.of(context).colorScheme.outline,
+    );
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
         titleSpacing: 0,
-        title: Text(
-          '其它设置',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        title: Text('其它设置', style: Theme.of(context).textTheme.titleMedium),
       ),
       body: ListView(
         children: [
@@ -152,16 +160,18 @@ class _ExtraSettingState extends State<ExtraSetting> {
                 alignment: Alignment.centerRight,
                 scale: 0.8,
                 child: Switch(
-                    thumbIcon: WidgetStateProperty.resolveWith<Icon?>(
-                        (Set<MaterialState> states) {
-                      if (states.isNotEmpty &&
-                          states.first == MaterialState.selected) {
-                        return const Icon(Icons.done);
-                      }
-                      return null; // All other states will use the default thumbIcon.
-                    }),
-                    value: settingController.feedBackEnable.value,
-                    onChanged: (value) => settingController.onOpenFeedBack()),
+                  thumbIcon: WidgetStateProperty.resolveWith<Icon?>((
+                    Set<MaterialState> states,
+                  ) {
+                    if (states.isNotEmpty &&
+                        states.first == MaterialState.selected) {
+                      return const Icon(Icons.done);
+                    }
+                    return null; // All other states will use the default thumbIcon.
+                  }),
+                  value: settingController.feedBackEnable.value,
+                  onChanged: (value) => settingController.onOpenFeedBack(),
+                ),
               ),
             ),
           ),
@@ -237,11 +247,12 @@ class _ExtraSettingState extends State<ExtraSetting> {
                 context: context,
                 builder: (context) {
                   return SelectDialog<int>(
-                      title: '评论展示',
-                      value: defaultReplySort,
-                      values: ReplySortType.values.map((e) {
-                        return {'title': e.titles, 'value': e.index};
-                      }).toList());
+                    title: '评论展示',
+                    value: defaultReplySort,
+                    values: ReplySortType.values.map((e) {
+                      return {'title': e.titles, 'value': e.index};
+                    }).toList(),
+                  );
                 },
               );
               if (result != null) {
@@ -264,11 +275,12 @@ class _ExtraSettingState extends State<ExtraSetting> {
                 context: context,
                 builder: (context) {
                   return SelectDialog<int>(
-                      title: '动态展示',
-                      value: defaultDynamicType,
-                      values: DynamicsType.values.sublist(0, 4).map((e) {
-                        return {'title': e.labels, 'value': e.index};
-                      }).toList());
+                    title: '动态展示',
+                    value: defaultDynamicType,
+                    values: DynamicsType.values.sublist(0, 4).map((e) {
+                      return {'title': e.labels, 'value': e.index};
+                    }).toList(),
+                  );
                 },
               );
               if (result != null) {
@@ -288,8 +300,9 @@ class _ExtraSettingState extends State<ExtraSetting> {
               alignment: Alignment.centerRight,
               scale: 0.8,
               child: Switch(
-                thumbIcon: WidgetStateProperty.resolveWith<Icon?>(
-                    (Set<MaterialState> states) {
+                thumbIcon: WidgetStateProperty.resolveWith<Icon?>((
+                  Set<MaterialState> states,
+                ) {
                   if (states.isNotEmpty &&
                       states.first == MaterialState.selected) {
                     return const Icon(Icons.done);
@@ -299,7 +312,9 @@ class _ExtraSettingState extends State<ExtraSetting> {
                 value: enableSystemProxy,
                 onChanged: (val) {
                   setting.put(
-                      SettingBoxKey.enableSystemProxy, !enableSystemProxy);
+                    SettingBoxKey.enableSystemProxy,
+                    !enableSystemProxy,
+                  );
                   setState(() {
                     enableSystemProxy = !enableSystemProxy;
                   });
@@ -315,16 +330,30 @@ class _ExtraSettingState extends State<ExtraSetting> {
             defaultVal: false,
           ),
           SetSwitchItem(
-            title: '检查更新',
-            subTitle: '每次启动时检查是否需要更新',
+            title: '启动时检查正式版更新',
+            subTitle: '启动时只主动提醒新的正式版本',
             leading: const Icon(Icons.system_update_alt_outlined),
             setKey: SettingBoxKey.autoUpdate,
             defaultVal: false,
             callFn: (val) {
               if (val) {
-                Utils.checkUpdate();
+                unawaited(
+                  AppUpdateCoordinator.instance.checkStableAutomatically(),
+                );
               }
             },
+          ),
+          ListTile(
+            title: Text('检查更新', style: titleStyle),
+            subtitle: Text('自行选择正式版或测试版', style: subTitleStyle),
+            leading: const Icon(Icons.downloading_outlined),
+            trailing: Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+            onTap: () =>
+                AppUpdateCoordinator.instance.showManualUpdateCenter(context),
           ),
         ],
       ),

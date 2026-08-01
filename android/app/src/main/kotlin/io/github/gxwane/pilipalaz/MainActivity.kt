@@ -19,6 +19,11 @@ class MainActivity: FlPiPActivity() {
     override fun provideFlutterEngine(context: Context): FlutterEngine {
         return AudioServicePlugin.getFlutterEngine(context)
     }
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        AppUpdateChannel(this, flutterEngine)
+    }
 //    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
 //        super.configureFlutterEngine(flutterEngine)
 //        methodChannel = MethodChannel(flutterEngine!!.getDartExecutor()!!.getBinaryMessenger(), CHANNEL)

@@ -169,6 +169,19 @@ jobs:
           pattern: PiliPalaZ-*
           path: dist
           merge-multiple: true
+      - name: Generate Android APK checksums
+        shell: bash
+        run: |
+          shopt -s nullglob
+          apks=(dist/*.apk)
+          if [[ "${#apks[@]}" -ne 4 ]]; then
+            echo "Expected 4 Android APKs, found ${#apks[@]}" >&2
+            exit 1
+          fi
+          (
+            cd dist
+            sha256sum *.apk > SHA256SUMS
+          )
       - name: Download release notes
         uses: actions/download-artifact@v4
         with:

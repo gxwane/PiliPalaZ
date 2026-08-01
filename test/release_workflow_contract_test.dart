@@ -14,6 +14,7 @@ void main() {
       'Flutter 3.38.7',
       'Kotlin Gradle Plugin 2.2.20',
       'Gradle 8.14',
+      'Android compileSdk/targetSdk 36，minSdk 24',
       'flutter pub get --enforce-lockfile',
       'flutter test --no-pub',
       'flutter analyze --no-pub --fatal-warnings --no-fatal-infos',
@@ -45,6 +46,12 @@ void main() {
     }
   });
 
+  test('Android minimum SDK follows the Flutter 3.38 baseline', () {
+    final appGradle = File('android/app/build.gradle').readAsStringSync();
+
+    expect(appGradle, contains('minSdk = flutter.minSdkVersion'));
+  });
+
   test('validation follows the direct-main development workflow', () {
     final validation = File(
       '.github/workflows/upgrade-validation.yml',
@@ -70,9 +77,12 @@ void main() {
       'PiliPalaZ-android-x86_64-v',
       'PiliPalaZ-android-universal-v',
       'PiliPalaZ-ios-unsigned-v',
+      'SHA256SUMS',
     ]) {
       expect(release, contains(artifact), reason: '$artifact must be emitted');
     }
+    expect(release, contains('sha256sum'));
+    expect(release, contains('artifacts: dist/*'));
   });
 
   test('Android release builds regenerate release-mode plugin metadata', () {
