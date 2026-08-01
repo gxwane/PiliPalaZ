@@ -70,6 +70,7 @@ class VideoDetailController extends GetxController
   // final scaffoldKey = GlobalKey<ScaffoldState>();
   RxString bgCover = ''.obs;
   PlPlayerController? plPlayerController;
+  final PlayerResourceOwner playerResourceOwner = PlayerResourceOwner();
 
   late VideoItem firstVideo;
   late AudioItem firstAudio;
@@ -302,6 +303,7 @@ class VideoDetailController extends GetxController
             'referer': HttpString.baseUrl
           },
         ),
+        owner: playerResourceOwner,
         // 硬解
         enableHA: enableHA.value,
         hwdec: hwdec.value,
@@ -321,6 +323,7 @@ class VideoDetailController extends GetxController
         autoplay: autoplay,
       );
     } else {
+      plPlayerController!.claimNativeResources(playerResourceOwner);
       resumePlay = false;
     }
 

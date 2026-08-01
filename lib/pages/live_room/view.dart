@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:pilipalaz/services/service_locator.dart';
@@ -44,7 +45,11 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
   @override
   void dispose() {
     // floating?.dispose();
-    plPlayerController!.releaseNativeResources();
+    unawaited(
+      plPlayerController!.releaseNativeResources(
+        _liveRoomController.playerResourceOwner,
+      ),
+    );
     super.dispose();
   }
 

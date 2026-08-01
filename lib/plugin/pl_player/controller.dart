@@ -122,6 +122,8 @@ class PlPlayerController with WidgetsBindingObserver {
   bool _refreshInFlight = false;
   bool _nativePlayerStale = false;
   PlayerDiagnosticSession? _diagnosticSession;
+  final PlaybackResourceOwnership _resourceOwnership =
+      PlaybackResourceOwnership();
 
   // 记录历史记录
   String _bvid = '';
@@ -323,6 +325,39 @@ class PlPlayerController with WidgetsBindingObserver {
     if (durationSeconds.value != newSecond) {
       durationSeconds.value = newSecond;
     }
+  }
+
+  void _resetPlaybackPresentationForSource({
+    required Duration initialPosition,
+    Duration? initialDuration,
+  }) {
+    final PlaybackPresentationState current = PlaybackPresentationState(
+      position: _position.value,
+      sliderPosition: _sliderPosition.value,
+      sliderTempPosition: _sliderTempPosition.value,
+      buffered: _buffered.value,
+      duration: _duration.value,
+      isSliderMoving: _isSliderMoving.value,
+    );
+    final PlaybackPresentationState next = current.beginSource(
+      initialPosition: initialPosition,
+      initialDuration: initialDuration,
+    );
+
+    _position.value = next.position;
+    _sliderPosition.value = next.sliderPosition;
+    _sliderTempPosition.value = next.sliderTempPosition;
+    _buffered.value = next.buffered;
+    _duration.value = next.duration;
+    _isSliderMoving.value = next.isSliderMoving;
+    isBuffering.value = false;
+    _heartDuration = 0;
+    _positionGuard.reset(initialPosition: next.position);
+    _positionGuard.expectPosition(next.position);
+    updatePositionSecond();
+    updateSliderPositionSecond();
+    updateBufferedSecond();
+    updateDurationSecond();
   }
 
   void updateBufferedSecond() {
@@ -545,9 +580,18 @@ class PlPlayerController with WidgetsBindingObserver {
     return _instance!;
   }
 
+  void claimNativeResources(PlayerResourceOwner owner) {
+    _resourceOwnership.claim(owner);
+  }
+
+  bool ownsNativeResources(PlayerResourceOwner owner) {
+    return _resourceOwnership.owns(owner);
+  }
+
   // 初始化资源
   Future<void> setDataSource(
     DataSource dataSource, {
+    required PlayerResourceOwner owner,
     bool autoplay = true,
     // 默认不循环
     PlaylistMode looping = PlaylistMode.none,
@@ -569,7 +613,13 @@ class PlPlayerController with WidgetsBindingObserver {
     // 历史记录开关
     bool enableHeart = true,
   }) async {
+    _resourceOwnership.claim(owner);
     final int session = ++_playbackSession;
+    _resetPlaybackPresentationForSource(
+      initialPosition: seekTo,
+      initialDuration: duration,
+    );
+    dataStatus.status.value = DataStatus.loading;
     _retryTimer?.cancel();
     final Future<void> previousOperation = _sourceOperation;
     final Completer<void> operationCompleter = Completer<void>();
@@ -587,8 +637,6 @@ class PlPlayerController with WidgetsBindingObserver {
       _looping = looping;
       // 初始化视频倍速
       // _playbackSpeed.value = speed;
-      // 初始化数据加载状态
-      dataStatus.status.value = DataStatus.loading;
       // 初始化全屏方向
       _direction.value = direction ?? 'horizontal';
       _bvid = bvid;
@@ -691,14 +739,11 @@ class PlPlayerController with WidgetsBindingObserver {
   ) async {
     // 每次配置时先移除监听
     await removeListeners();
-    isBuffering.value = false;
-    buffered.value = Duration.zero;
-    _heartDuration = 0;
     final Duration initialPosition = seekTo ?? Duration.zero;
-    _positionGuard.reset(initialPosition: initialPosition);
-    _positionGuard.expectPosition(initialPosition);
-    _position.value = initialPosition;
-    updatePositionSecond();
+    _resetPlaybackPresentationForSource(
+      initialPosition: initialPosition,
+      initialDuration: _duration.value,
+    );
     // 初始化时清空弹幕，防止上次重叠
     danmakuController?.clear();
     int bufferSize =
@@ -1839,10 +1884,20 @@ class PlPlayerController with WidgetsBindingObserver {
         PlDanmakuController.convertToScrollDanmaku);
   }
 
-  Future<void> releaseNativeResources({bool force = false}) async {
+  Future<void> releaseNativeResources(PlayerResourceOwner owner) {
+    return _releaseNativeResources(owner: owner);
+  }
+
+  Future<void> forceReleaseNativeResources() {
+    return _releaseNativeResources(force: true);
+  }
+
+  Future<void> _releaseNativeResources({
+    PlayerResourceOwner? owner,
+    bool force = false,
+  }) async {
     if (!force && floatingManager.containsFloating(globalId)) return;
-    ++_playbackSession;
-    _retryTimer?.cancel();
+    if (!force && !_resourceOwnership.owns(owner!)) return;
 
     final Future<void> previousOperation = _sourceOperation;
     final Completer<void> operationCompleter = Completer<void>();
@@ -1854,6 +1909,13 @@ class PlPlayerController with WidgetsBindingObserver {
     final PlayerDiagnosticSession? diagnostic = _diagnosticSession;
     try {
       await diagnostic?.checkpoint('native_player_release_begin');
+      if (force) {
+        _resourceOwnership.forceClear();
+      } else if (!_resourceOwnership.release(owner!)) {
+        return;
+      }
+      ++_playbackSession;
+      _retryTimer?.cancel();
       await _disposeNativePlayer();
       _nativePlayerStale = false;
       await diagnostic?.complete('native_player_released');
@@ -1953,7 +2015,7 @@ class PlPlayerController with WidgetsBindingObserver {
       _dataListenerForEnterFullScreen?.cancel();
       _playerListenerForEnterPip?.cancel();
 
-      await releaseNativeResources(force: true);
+      await forceReleaseNativeResources();
       _instance = null;
     } catch (err) {
       print(err);

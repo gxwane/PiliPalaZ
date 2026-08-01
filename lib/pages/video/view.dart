@@ -67,11 +67,12 @@ class _VideoDetailPageState extends State<VideoDetailPage>
   // late final AppLifecycleListener _lifecycleListener;
   // bool isShowing = true;
   RxBool isFullScreen = false.obs;
-  late StreamSubscription<bool> fullScreenStatusListener;
+  StreamSubscription<bool>? fullScreenStatusListener;
   // late final MethodChannel onUserLeaveHintListener;
   // StreamSubscription<Duration>? _bufferedListener;
   late String myRouteName;
   bool isShowing = true;
+  bool _wasPlayingBeforePush = false;
   final GlobalKey relatedVideoPanelKey = GlobalKey();
   final GlobalKey videoPlayerFutureKey = GlobalKey();
   final GlobalKey videoReplyPanelKey = GlobalKey();
@@ -312,6 +313,7 @@ class _VideoDetailPageState extends State<VideoDetailPage>
   // }
 
   void listenFullScreenStatus() {
+    unawaited(fullScreenStatusListener?.cancel() ?? Future<void>.value());
     fullScreenStatusListener =
         plPlayerController!.isFullScreen.listen((bool status) {
       if (status) {
@@ -353,8 +355,12 @@ class _VideoDetailPageState extends State<VideoDetailPage>
         videoIntroController.videoDetail.close();
         bangumiIntroController.bangumiDetail.close();
         plPlayerController!.removeStatusLister(playerListener);
-        fullScreenStatusListener.cancel();
-        plPlayerController!.releaseNativeResources();
+        unawaited(fullScreenStatusListener?.cancel() ?? Future<void>.value());
+        unawaited(
+          plPlayerController!.releaseNativeResources(
+            videoDetailController.playerResourceOwner,
+          ),
+        );
         // plPlayerController!.dispose();
       }
     }
@@ -368,16 +374,23 @@ class _VideoDetailPageState extends State<VideoDetailPage>
 
   @override
   // 离开当前页面时
-  void didPushNext() async {
+  void didPushNext() {
+    final PlPlayerController? controller = plPlayerController;
+    if (controller == null) {
+      super.didPushNext();
+      return;
+    }
     // _bufferedListener?.cancel();
-    videoDetailController.defaultST = plPlayerController!.position.value;
+    _wasPlayingBeforePush =
+        controller.playerStatus.status.value == PlayerStatus.playing;
+    videoDetailController.defaultST = controller.position.value;
     if (!triggerFloatingWindowWhenLeaving() &&
         !floatingManager.containsFloating(globalId)) {
       videoIntroController.isPaused = true;
-      plPlayerController!.pause();
-      plPlayerController!.removeStatusLister(playerListener);
-      fullScreenStatusListener.cancel();
-      plPlayerController!.disable();
+      unawaited(controller.pause());
+      controller.removeStatusLister(playerListener);
+      unawaited(fullScreenStatusListener?.cancel() ?? Future<void>.value());
+      controller.disable();
     }
     // isShowing = false;
     // if (mounted) {
@@ -388,41 +401,47 @@ class _VideoDetailPageState extends State<VideoDetailPage>
 
   @override
   // 返回当前页面时
-  void didPopNext() async {
+  void didPopNext() {
+    super.didPopNext();
     // isShowing = true;
     // if (mounted) {
     //   setState(() => {});
     // }
     if (popRouteStackContinuously != "" &&
         Get.currentRoute != popRouteStackContinuously) {
-      super.didPopNext();
       return;
     }
+    unawaited(_restorePlaybackAfterPop());
+  }
+
+  Future<void> _restorePlaybackAfterPop() async {
     videoDetailController.isFirstTime = false;
     if (!videoDetailController.autoPlay.value &&
         floatingManager.containsFloating(globalId)) {
-      PlPlayerController.pauseIfExists();
+      await PlPlayerController.pauseIfExists();
     }
     floatingManager.closeFloating(globalId);
     // final bool autoplay = autoPlayEnable;
-    videoDetailController.playerInit(
-        autoplay: videoDetailController.autoPlay.value);
+    await videoDetailController.playerInit(autoplay: _wasPlayingBeforePush);
 
-    videoDetailController.autoPlay.value =
-        !videoDetailController.isShowCover.value;
-    print("autoplay:${videoDetailController.autoPlay.value}");
+    if (!mounted) return;
+    final PlPlayerController? restoredController =
+        videoDetailController.plPlayerController;
+    if (restoredController == null ||
+        !restoredController.ownsNativeResources(
+          videoDetailController.playerResourceOwner,
+        )) {
+      return;
+    }
+    plPlayerController = restoredController;
     if (videoDetailController.videoType == SearchType.video) {
-      final videoIntroController =
-          Get.find<VideoIntroController>(tag: Get.arguments['heroTag']);
       videoIntroController.videoDetail.refresh();
     } else if (videoDetailController.videoType == SearchType.media_bangumi) {
-      final bangumiIntroController =
-          Get.find<BangumiIntroController>(tag: Get.arguments['heroTag']);
       bangumiIntroController.bangumiDetail.refresh();
     }
 
     /// 未开启自动播放时，未播放跳转下一页返回/播放后跳转下一页返回
-    videoIntroController.isPaused = videoDetailController.autoPlay.value;
+    videoIntroController.isPaused = false;
     // if (autoplay) {
     //   // await Future.delayed(const Duration(milliseconds: 300));
     //   print(plPlayerController);
@@ -441,14 +460,19 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     //     plPlayerController?.play();
     //   }
     // }
-    Future.delayed(const Duration(milliseconds: 600), () {
-      AutoOrientation.fullAutoMode();
-    });
-    plPlayerController?.addStatusLister(playerListener);
-    if (plPlayerController != null) {
-      listenFullScreenStatus();
-    }
-    super.didPopNext();
+    restoredController.removeStatusLister(playerListener);
+    restoredController.addStatusLister(playerListener);
+    listenFullScreenStatus();
+    unawaited(
+      Future<void>.delayed(const Duration(milliseconds: 600), () {
+        if (mounted &&
+            restoredController.ownsNativeResources(
+              videoDetailController.playerResourceOwner,
+            )) {
+          AutoOrientation.fullAutoMode();
+        }
+      }),
+    );
   }
 
   bool triggerFloatingWindowWhenLeaving() {

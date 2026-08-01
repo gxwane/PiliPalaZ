@@ -16,6 +16,7 @@ class LiveRoomController extends GetxController {
   RxBool volumeOff = false.obs;
   PlPlayerController plPlayerController =
       PlPlayerController.getInstance(videoType: 'live');
+  final PlayerResourceOwner playerResourceOwner = PlayerResourceOwner();
   Rx<RoomInfoH5Model> roomInfoH5 = RoomInfoH5Model().obs;
   // late bool enableCDN;
 
@@ -49,6 +50,7 @@ class LiveRoomController extends GetxController {
           'referer': HttpString.baseUrl
         },
       ),
+      owner: playerResourceOwner,
       // 硬解
       enableHA: true,
       autoplay: true,
