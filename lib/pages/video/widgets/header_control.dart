@@ -31,6 +31,8 @@ import '../../danmaku_block/index.dart';
 import '../../setting/widgets/select_dialog.dart';
 import 'package:pilipalaz/pages/video/introduction/detail/index.dart';
 
+import 'player_header_action_row.dart';
+
 class HeaderControl extends StatefulWidget implements PreferredSizeWidget {
   const HeaderControl({
     this.controller,
@@ -1600,80 +1602,77 @@ class _HeaderControlState extends State<HeaderControl> {
         titleSpacing: 10,
         toolbarHeight: isEquivalentFullScreen ? 100 : null,
         title: Column(mainAxisAlignment: MainAxisAlignment.start, children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              SizedBox(
-                width: 42,
-                height: 38,
-                child: IconButton(
-                  tooltip: '上一页',
-                  icon: const FaIcon(
-                    FontAwesomeIcons.arrowLeft,
-                    size: 15,
-                    color: Colors.white,
-                  ),
-                  onPressed: () {
-                    if (widget.controller!.isFullScreen.value) {
-                      widget.controller!.triggerFullScreen(status: false);
-                    } else if (MediaQuery.of(context).orientation ==
-                            Orientation.landscape &&
-                        !horizontalScreen) {
-                      verticalScreenForTwoSeconds();
-                    } else {
-                      Get.back();
-                    }
-                  },
+          PlayerHeaderActionRow(
+            backButton: SizedBox(
+              width: 42,
+              height: 38,
+              child: IconButton(
+                tooltip: '上一页',
+                icon: const FaIcon(
+                  FontAwesomeIcons.arrowLeft,
+                  size: 15,
+                  color: Colors.white,
                 ),
+                onPressed: () {
+                  if (widget.controller!.isFullScreen.value) {
+                    widget.controller!.triggerFullScreen(status: false);
+                  } else if (MediaQuery.of(context).orientation ==
+                          Orientation.landscape &&
+                      !horizontalScreen) {
+                    verticalScreenForTwoSeconds();
+                  } else {
+                    Get.back();
+                  }
+                },
               ),
-              SizedBox(
-                width: 42,
-                height: 38,
-                child: IconButton(
-                  tooltip: '返回主页',
-                  icon: const FaIcon(
-                    FontAwesomeIcons.house,
-                    size: 15,
-                    color: Colors.white,
-                  ),
-                  onPressed: () async {
-                    // 销毁播放器实例
-                    // await widget.controller!.dispose();
-                    if (mounted) {
-                      popRouteStackContinuously = Get.currentRoute;
-                      Get.until((route) => route.isFirst);
-                      popRouteStackContinuously = "";
-                    }
-                  },
+            ),
+            homeButton: SizedBox(
+              width: 42,
+              height: 38,
+              child: IconButton(
+                tooltip: '返回主页',
+                icon: const FaIcon(
+                  FontAwesomeIcons.house,
+                  size: 15,
+                  color: Colors.white,
                 ),
+                onPressed: () async {
+                  // 销毁播放器实例
+                  // await widget.controller!.dispose();
+                  if (mounted) {
+                    popRouteStackContinuously = Get.currentRoute;
+                    Get.until((route) => route.isFirst);
+                    popRouteStackContinuously = "";
+                  }
+                },
               ),
-              const SizedBox(width: 10),
-              if ((videoIntroController.videoDetail.value.title != null) &&
-                  isEquivalentFullScreen)
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        videoIntroController.videoDetail.value.title!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                      if (videoIntroController.isShowOnlineTotal)
-                        Text(
-                          '${videoIntroController.total.value}人正在看',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
+            ),
+            isEquivalentFullScreen: isEquivalentFullScreen,
+            expandedTitle:
+                videoIntroController.videoDetail.value.title == null
+                    ? null
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            videoIntroController.videoDetail.value.title!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
-                        )
-                    ],
-                  ),
-                ),
+                          if (videoIntroController.isShowOnlineTotal)
+                            Text(
+                              '${videoIntroController.total.value}人正在看',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                              ),
+                            )
+                        ],
+                      ),
               // ComBtn(
               //   icon: const Icon(
               //     FontAwesomeIcons.cropSimple,
@@ -1682,30 +1681,27 @@ class _HeaderControlState extends State<HeaderControl> {
               //   ),
               //   fuc: () => _.screenshot(),
               // ),
-              if (!isEquivalentFullScreen) ...[
-                const SizedBox(width: 42),
-                const SizedBox(width: 42),
-                shootDanmakuButton(),
-                danmakuSwitcher(),
-                pipButton(),
-              ],
-              SizedBox(
-                width: 42,
-                height: 38,
-                child: IconButton(
-                  tooltip: "更多设置",
-                  style: ButtonStyle(
-                    padding: WidgetStateProperty.all(EdgeInsets.zero),
-                  ),
-                  onPressed: () => showSettingSheet(),
-                  icon: const Icon(
-                    Icons.more_vert_outlined,
-                    size: 19,
-                    color: Colors.white,
-                  ),
+            compactActions: [
+              shootDanmakuButton(),
+              danmakuSwitcher(),
+              pipButton(),
+            ],
+            moreButton: SizedBox(
+              width: 42,
+              height: 38,
+              child: IconButton(
+                tooltip: "更多设置",
+                style: ButtonStyle(
+                  padding: WidgetStateProperty.all(EdgeInsets.zero),
+                ),
+                onPressed: () => showSettingSheet(),
+                icon: const Icon(
+                  Icons.more_vert_outlined,
+                  size: 19,
+                  color: Colors.white,
                 ),
               ),
-            ],
+            ),
           ),
           SizedBox(
               height:

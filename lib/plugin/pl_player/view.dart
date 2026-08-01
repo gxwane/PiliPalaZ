@@ -24,7 +24,6 @@ import 'package:saver_gallery/saver_gallery.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 
 import '../../common/widgets/audio_video_progress_bar.dart';
-import '../../models/video_detail_res.dart';
 import 'package:pilipalaz/pages/video/introduction/bangumi/controller.dart';
 import '../../common/widgets/list_sheet.dart';
 import '../../services/service_locator.dart';
@@ -291,15 +290,258 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     super.dispose();
   }
 
+  bool get _isSeason =>
+      videoIntroController?.videoDetail.value.ugcSeason != null;
+
+  bool get _isPage =>
+      videoIntroController?.videoDetail.value.pages != null &&
+      videoIntroController!.videoDetail.value.pages!.length > 1;
+
+  bool get _isBangumi => bangumiIntroController?.bangumiDetail.value != null;
+
+  bool get _hasEpisodes => _isSeason || _isPage || _isBangumi;
+
+  void _playPrevious() {
+    bool? result;
+    if (videoIntroController != null) {
+      result = videoIntroController!.prevPlay();
+    } else if (bangumiIntroController != null) {
+      result = bangumiIntroController!.prevPlay();
+    }
+    if (result == false) {
+      SmartDialog.showToast('已经是第一集了');
+    }
+  }
+
+  void _playNext() {
+    bool? result;
+    if (videoIntroController != null) {
+      result = videoIntroController!.nextPlay();
+    } else if (bangumiIntroController != null) {
+      result = bangumiIntroController!.nextPlay();
+    }
+    if (result == false) {
+      SmartDialog.showToast('已经是最后一集了');
+    }
+  }
+
+  void _showEpisodeList() {
+    final episodes = <dynamic>[];
+    Function? changeCallback;
+    if (_isPage) {
+      episodes.addAll(videoIntroController!.videoDetail.value.pages!);
+      changeCallback = videoIntroController!.changeSeasonOrbangu;
+    } else if (_isSeason) {
+      final sections =
+          videoIntroController!.videoDetail.value.ugcSeason!.sections!;
+      for (final section in sections) {
+        episodes.addAll(section.episodes!);
+      }
+      changeCallback = videoIntroController!.changeSeasonOrbangu;
+    } else if (_isBangumi) {
+      episodes.addAll(bangumiIntroController!.bangumiDetail.value.episodes!);
+      changeCallback = bangumiIntroController!.changeSeasonOrbangu;
+    }
+    if (changeCallback == null) {
+      return;
+    }
+    ListSheet(
+      episodes: episodes,
+      bvid: widget.controller.bvid,
+      aid: IdUtils.bv2av(widget.controller.bvid),
+      currentCid: widget.controller.cid,
+      changeFucCall: changeCallback,
+      context: context,
+    ).buildShowBottomSheet();
+  }
+
+  void _selectSubtitle(int value) {
+    switch (value) {
+      case -1:
+        widget.controller.setSubtitleFontSize();
+        break;
+      case -2:
+        widget.controller.setSubtitleBottomPadding();
+        break;
+      default:
+        widget.controller.setSubtitle(value);
+    }
+  }
+
+  void _closeOverflowThen(BuildContext sheetContext, VoidCallback action) {
+    Navigator.of(sheetContext).pop();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        action();
+      }
+    });
+  }
+
+  Widget _buildOverflowControl(
+    BuildContext sheetContext,
+    BottomControlType type,
+  ) {
+    final playerController = widget.controller;
+    switch (type) {
+      case BottomControlType.pre:
+        return ListTile(
+          leading: const Icon(Icons.skip_previous),
+          title: const Text('上一集'),
+          onTap: () => _closeOverflowThen(sheetContext, _playPrevious),
+        );
+      case BottomControlType.next:
+        return ListTile(
+          leading: const Icon(Icons.skip_next),
+          title: const Text('下一集'),
+          onTap: () => _closeOverflowThen(sheetContext, _playNext),
+        );
+      case BottomControlType.episode:
+        return ListTile(
+          leading: const Icon(Icons.list),
+          title: const Text('选集'),
+          onTap: () => _closeOverflowThen(sheetContext, _showEpisodeList),
+        );
+      case BottomControlType.fit:
+        return Obx(
+          () => ListTile(
+            leading: const Icon(Icons.aspect_ratio),
+            title: const Text('画面比例'),
+            subtitle: Text(playerController.videoFitDEsc.value),
+            onTap: () => _closeOverflowThen(
+              sheetContext,
+              playerController.toggleVideoFit,
+            ),
+          ),
+        );
+      case BottomControlType.speed:
+        return Obx(
+          () => ExpansionTile(
+            leading: const Icon(Icons.speed),
+            title: const Text('播放速度'),
+            subtitle: Text('${playerController.playbackSpeed}X'),
+            children: playerController.speedsList.map((speed) {
+              return ListTile(
+                contentPadding: const EdgeInsets.only(left: 72, right: 24),
+                title: Text('${speed}X'),
+                trailing: playerController.playbackSpeed == speed
+                    ? const Icon(Icons.check)
+                    : null,
+                onTap: () => _closeOverflowThen(
+                  sheetContext,
+                  () => playerController.setPlaybackSpeed(speed),
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      case BottomControlType.subtitle:
+        return Obx(() {
+          final subtitleIndex = playerController.vttSubtitlesIndex.value;
+          final subtitles = playerController.vttSubtitles;
+          final selectedTitle =
+              subtitleIndex >= 0 && subtitleIndex < subtitles.length
+              ? subtitles[subtitleIndex]['title']
+              : null;
+          return ExpansionTile(
+            leading: const Icon(Icons.closed_caption),
+            title: const Text('字幕'),
+            subtitle: selectedTitle == null ? null : Text(selectedTitle),
+            children: [
+              ListTile(
+                contentPadding: const EdgeInsets.only(left: 72, right: 24),
+                title: const Text('设置字号'),
+                onTap: () => _closeOverflowThen(
+                  sheetContext,
+                  playerController.setSubtitleFontSize,
+                ),
+              ),
+              ListTile(
+                contentPadding: const EdgeInsets.only(left: 72, right: 24),
+                title: const Text('设置底边距'),
+                onTap: () => _closeOverflowThen(
+                  sheetContext,
+                  playerController.setSubtitleBottomPadding,
+                ),
+              ),
+              ...subtitles.asMap().entries.map((entry) {
+                return ListTile(
+                  contentPadding: const EdgeInsets.only(left: 72, right: 24),
+                  title: Text('${entry.value['title']}'),
+                  trailing: subtitleIndex == entry.key
+                      ? const Icon(Icons.check)
+                      : null,
+                  onTap: () => _closeOverflowThen(
+                    sheetContext,
+                    () => playerController.setSubtitle(entry.key),
+                  ),
+                );
+              }),
+            ],
+          );
+        });
+      case BottomControlType.playOrPause:
+      case BottomControlType.fullscreen:
+      case BottomControlType.space:
+      case BottomControlType.spaceButton:
+        return const SizedBox.shrink();
+    }
+  }
+
+  void _showBottomControlOverflow(List<BottomControlType> hiddenControls) {
+    if (hiddenControls.isEmpty) {
+      return;
+    }
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.7,
+          ),
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(24, 0, 24, 8),
+                child: Text(
+                  '更多播放控制',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+              ),
+              ...hiddenControls.map(
+                (type) => _buildOverflowControl(sheetContext, type),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomControlOverflowButton(
+    List<BottomControlType> hiddenControls,
+  ) {
+    return SizedBox(
+      width: bottomControlItemExtent,
+      height: 38,
+      child: IconButton(
+        tooltip: '更多播放控制',
+        onPressed: () => _showBottomControlOverflow(hiddenControls),
+        icon: const Icon(Icons.more_horiz, color: Colors.white, size: 25),
+      ),
+    );
+  }
+
+
   // 动态构建底部控制条
-  List<Widget> buildBottomControl() {
+  List<BottomControlItem> buildBottomControl() {
     final PlPlayerController playerController = widget.controller;
-    bool isSeason = videoIntroController?.videoDetail.value.ugcSeason != null;
-    bool isPage = videoIntroController?.videoDetail.value.pages != null &&
-        videoIntroController!.videoDetail.value.pages!.length > 1;
-    bool isBangumi = bangumiIntroController?.bangumiDetail.value != null;
-    bool anySeason = isSeason || isPage || isBangumi;
-    bool isEquivalentFullScreen = playerController.isFullScreen.value ||
+    final anySeason = _hasEpisodes;
+    bool isEquivalentFullScreen =
+        playerController.isFullScreen.value ||
         !playerController.horizontalScreen &&
             MediaQuery.of(context).orientation == Orientation.landscape;
     Map<BottomControlType, Widget> videoProgressWidgets = {
@@ -315,17 +557,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             size: 22,
             color: Colors.white,
           ),
-          fuc: () {
-            bool? res;
-            if (videoIntroController != null) {
-              res = videoIntroController!.prevPlay();
-            } else if (bangumiIntroController != null) {
-              res = bangumiIntroController!.prevPlay();
-            }
-            if (res == false) {
-              SmartDialog.showToast('已经是第一集了');
-            }
-          },
+          fuc: _playPrevious,
         ),
       ),
 
@@ -346,17 +578,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             size: 22,
             color: Colors.white,
           ),
-          fuc: () {
-            bool? res;
-            if (videoIntroController != null) {
-              res = videoIntroController!.nextPlay();
-            } else if (bangumiIntroController != null) {
-              res = bangumiIntroController!.nextPlay();
-            }
-            if (res == false) {
-              SmartDialog.showToast('已经是最后一集了');
-            }
-          },
+          fuc: _playNext,
         ),
       ),
 
@@ -410,38 +632,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             size: 22,
             color: Colors.white,
           ),
-          fuc: () {
-            int currentCid = widget.controller.cid;
-            String bvid = widget.controller.bvid;
-            final List episodes = [];
-            late Function changeFucCall;
-            if (isPage) {
-              final List<Part> pages =
-              videoIntroController!.videoDetail.value.pages!;
-              episodes.addAll(pages);
-              changeFucCall = videoIntroController!.changeSeasonOrbangu;
-            } else if (isSeason) {
-              final List<SectionItem> sections =
-                  videoIntroController!.videoDetail.value.ugcSeason!.sections!;
-              for (int i = 0; i < sections.length; i++) {
-                final List<EpisodeItem> episodesList = sections[i].episodes!;
-                episodes.addAll(episodesList);
-              }
-              changeFucCall = videoIntroController!.changeSeasonOrbangu;
-            } else if (isBangumi) {
-              episodes.addAll(
-                  bangumiIntroController!.bangumiDetail.value.episodes!);
-              changeFucCall = bangumiIntroController!.changeSeasonOrbangu;
-            }
-            ListSheet(
-              episodes: episodes,
-              bvid: bvid,
-              aid: IdUtils.bv2av(bvid),
-              currentCid: currentCid,
-              changeFucCall: changeFucCall,
-              context: context,
-            ).buildShowBottomSheet();
-          },
+          fuc: _showEpisodeList,
         ),
       ),
 
@@ -451,9 +642,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         height: 38,
         child: TextButton(
           onPressed: () => playerController.toggleVideoFit(),
-          style: ButtonStyle(
-            padding: WidgetStateProperty.all(EdgeInsets.zero),
-          ),
+          style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
           child: Obx(
             () => Text(
               playerController.videoFitDEsc.value,
@@ -465,63 +654,61 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
       /// 字幕
       BottomControlType.subtitle: Obx(
-        () => playerController.vttSubtitles.isEmpty
-            ? const SizedBox(width: 42, height: 38)
-            : SizedBox(
-                width: 42,
-                height: 38,
-                child: PopupMenuButton<int>(
-                  onSelected: (int value) {
-                    switch (value) {
-                      case -1:
-                        playerController.setSubtitleFontSize();
-                        break;
-                      case -2:
-                        playerController.setSubtitleBottomPadding();
-                        break;
-                      default:
-                        playerController.setSubtitle(value);
-                    }
-                  },
-                  initialValue:
-                      playerController.vttSubtitles.length < playerController.vttSubtitlesIndex.value
-                          ? 0
-                          : playerController.vttSubtitlesIndex.value,
-                  color: Colors.black.withOpacity(0.8),
-                  itemBuilder: (BuildContext context) {
-                    return [
-                          const PopupMenuItem<int>(
-                              value: -1,
-                              child: Text("设置字号",
-                                  style: TextStyle(color: Colors.white))),
-                          const PopupMenuItem<int>(
-                              value: -2,
-                              child: Text("设置底边距",
-                                  style: TextStyle(color: Colors.white))),
-                        ] +
-                        playerController.vttSubtitles.asMap().entries.map((entry) {
-                          return PopupMenuItem<int>(
-                              value: entry.key,
-                              child: Text("${entry.value['title']}",
-                                  style: const TextStyle(color: Colors.white)));
-                        }).toList();
-                  },
-                  child: Container(
-                    width: 42,
-                    height: 38,
-                    alignment: Alignment.center,
-                    child: Icon(
-                      (playerController.vttSubtitlesIndex.value == 0 ||
-                              playerController.vttSubtitles.length < playerController.vttSubtitlesIndex.value)
-                          ? Icons.closed_caption_off
-                          : Icons.closed_caption,
-                      size: 25,
-                      color: Colors.white,
-                      semanticLabel: '字幕',
+        () => SizedBox(
+          width: 42,
+          height: 38,
+          child: PopupMenuButton<int>(
+            onSelected: _selectSubtitle,
+            initialValue:
+                playerController.vttSubtitles.length <
+                    playerController.vttSubtitlesIndex.value
+                ? 0
+                : playerController.vttSubtitlesIndex.value,
+            color: Colors.black.withOpacity(0.8),
+            itemBuilder: (BuildContext context) {
+              return [
+                    const PopupMenuItem<int>(
+                      value: -1,
+                      child: Text(
+                        "设置字号",
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
-                  ),
-                ),
+                    const PopupMenuItem<int>(
+                      value: -2,
+                      child: Text(
+                        "设置底边距",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ] +
+                  playerController.vttSubtitles.asMap().entries.map((entry) {
+                    return PopupMenuItem<int>(
+                      value: entry.key,
+                      child: Text(
+                        "${entry.value['title']}",
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    );
+                  }).toList();
+            },
+            child: Container(
+              width: 42,
+              height: 38,
+              alignment: Alignment.center,
+              child: Icon(
+                (playerController.vttSubtitlesIndex.value == 0 ||
+                        playerController.vttSubtitles.length <
+                            playerController.vttSubtitlesIndex.value)
+                    ? Icons.closed_caption_off
+                    : Icons.closed_caption,
+                size: 25,
+                color: Colors.white,
+                semanticLabel: '字幕',
               ),
+            ),
+          ),
+        ),
       ),
 
       /// 播放速度
@@ -552,9 +739,13 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             width: 42,
             height: 38,
             alignment: Alignment.center,
-            child: Obx(() => Text("${playerController.playbackSpeed}X",
+            child: Obx(
+              () => Text(
+                "${playerController.playbackSpeed}X",
                 style: const TextStyle(color: Colors.white, fontSize: 13),
-                semanticsLabel: "${playerController.playbackSpeed}倍速")),
+                semanticsLabel: "${playerController.playbackSpeed}倍速",
+              ),
+            ),
           ),
         ),
       ),
@@ -563,38 +754,42 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       BottomControlType.fullscreen: SizedBox(
         width: 42,
         height: 38,
-        child: Obx(() => ComBtn(
-              icon: Icon(
-                playerController.isFullScreen.value ? Icons.fullscreen_exit : Icons.fullscreen,
-                semanticLabel: playerController.isFullScreen.value ? '退出全屏' : '全屏',
-                size: 25,
-                color: Colors.white,
-              ),
-              fuc: () => playerController.triggerFullScreen(status: !playerController.isFullScreen.value),
-            )),
+        child: Obx(
+          () => ComBtn(
+            icon: Icon(
+              playerController.isFullScreen.value
+                  ? Icons.fullscreen_exit
+                  : Icons.fullscreen,
+              semanticLabel: playerController.isFullScreen.value
+                  ? '退出全屏'
+                  : '全屏',
+              size: 25,
+              color: Colors.white,
+            ),
+            fuc: () => playerController.triggerFullScreen(
+              status: !playerController.isFullScreen.value,
+            ),
+          ),
+        ),
       ),
     };
-    final List<Widget> list = [];
-    var userSpecifyItem = widget.bottomList ??
-        [
-          BottomControlType.playOrPause,
-          // BottomControlType.time,
-          if (anySeason) BottomControlType.pre,
-          if (anySeason) BottomControlType.next,
-          for (var i = 0; i < 12; i++) BottomControlType.space,
-          if (!anySeason)
-            for (var i = 0; i < 3; i++) BottomControlType.spaceButton,
-          // if (!isEquivalentFullScreen) BottomControlType.spaceButton,
-          BottomControlType.subtitle,
-          if (anySeason) BottomControlType.episode,
-          if (isEquivalentFullScreen) BottomControlType.fit,
-          BottomControlType.speed,
-          BottomControlType.fullscreen,
-        ];
-    for (var i = 0; i < userSpecifyItem.length; i++) {
-      list.add(videoProgressWidgets[userSpecifyItem[i]]!);
-    }
-    return list;
+    final hasSubtitles = playerController.vttSubtitles.isNotEmpty;
+    final userSpecifyItems =
+        (widget.bottomList ??
+                buildDefaultBottomControlTypes(
+                  hasEpisodes: anySeason,
+                  isEquivalentFullScreen: isEquivalentFullScreen,
+                  hasSubtitles: hasSubtitles,
+                ))
+            .where(
+              (type) => type != BottomControlType.subtitle || hasSubtitles,
+            );
+    return userSpecifyItems
+        .map(
+          (type) =>
+              BottomControlItem(type: type, child: videoProgressWidgets[type]!),
+        )
+        .toList();
   }
 
   @override
@@ -1107,7 +1302,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                   child: widget.bottomControl ??
                       BottomControl(
                         controller: widget.controller,
-                        buildBottomControl: buildBottomControl(),
+                        controls: buildBottomControl(),
+                        overflowButtonBuilder: (_, hiddenControls) =>
+                            _buildBottomControlOverflowButton(hiddenControls),
                       ),
                 ),
               ),
