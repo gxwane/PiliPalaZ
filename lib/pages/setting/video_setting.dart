@@ -258,9 +258,10 @@ class _VideoSettingState extends State<VideoSetting> {
               defaultVal: false,
             ),
           const SetSwitchItem(
-            title: '扩大缓冲区',
+            title: '始终扩大缓冲区',
             leading: Icon(Icons.storage_outlined),
-            subTitle: '默认缓冲区为视频4MB/直播16MB，开启后为32MB/64MB，加载时间变长',
+            subTitle:
+                '普通网络默认视频4MB/直播16MB；Android VPN下自动使用32MB/64MB，开启后所有网络始终扩大（下次加载生效）',
             setKey: SettingBoxKey.expandBuffer,
             defaultVal: false,
           ),

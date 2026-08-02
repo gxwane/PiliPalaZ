@@ -6,6 +6,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:catcher_2/catcher_2.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:easy_debounce/easy_throttle.dart';
 import 'package:fl_pip/fl_pip.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +28,7 @@ import 'package:pilipalaz/http/video.dart';
 import 'package:pilipalaz/pages/mine/controller.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
+import 'package:pilipalaz/plugin/pl_player/player_buffer_policy.dart';
 import 'package:pilipalaz/plugin/pl_player/playback_position_guard.dart';
 import 'package:pilipalaz/services/player_diagnostics.dart';
 import 'package:pilipalaz/services/service_locator.dart';
@@ -727,6 +729,21 @@ class PlPlayerController with WidgetsBindingObserver {
     }
   }
 
+  Future<bool> _detectActiveAndroidVpn() async {
+    if (!Platform.isAndroid) return false;
+    try {
+      final List<ConnectivityResult> results =
+          await Connectivity().checkConnectivity();
+      return hasActiveVpn(results);
+    } catch (err) {
+      await _diagnosticSession?.checkpoint(
+        'vpn_detection_error',
+        <String, Object?>{'error': err.toString()},
+      );
+      return false;
+    }
+  }
+
   // 配置播放器
   Future<Player> _createVideoController(
     DataSource dataSource,
@@ -746,15 +763,22 @@ class PlPlayerController with WidgetsBindingObserver {
     );
     // 初始化时清空弹幕，防止上次重叠
     danmakuController?.clear();
-    int bufferSize =
-        setting.get(SettingBoxKey.expandBuffer, defaultValue: false)
-            ? (videoType.value == 'live' ? 64 * 1024 * 1024 : 32 * 1024 * 1024)
-            : (videoType.value == 'live' ? 16 * 1024 * 1024 : 4 * 1024 * 1024);
+    final bool forceExpanded =
+        setting.get(SettingBoxKey.expandBuffer, defaultValue: false);
+    final bool vpnActive = await _detectActiveAndroidVpn();
+    final PlayerBufferPolicy bufferPolicy = resolvePlayerBufferPolicy(
+      isLive: videoType.value == 'live',
+      forceExpanded: forceExpanded,
+      vpnActive: vpnActive,
+    );
+    final int bufferSize = bufferPolicy.bufferSize;
     await _diagnosticSession?.checkpoint(
       'native_player_prepare',
       <String, Object?>{
         'reuse': _videoPlayerController != null,
         'bufferSize': bufferSize,
+        'bufferReason': bufferPolicy.reason.name,
+        'vpnActive': vpnActive,
         'initialPositionMs': initialPosition.inMilliseconds,
       },
     );
@@ -766,8 +790,10 @@ class PlPlayerController with WidgetsBindingObserver {
               logLevel: MPVLogLevel.v),
         );
     await _diagnosticSession?.checkpoint('native_player_ready');
-    var pp = player.platform as NativePlayer;
+    final NativePlayer pp = player.platform as NativePlayer;
     await _diagnosticSession?.checkpoint('native_properties_begin');
+    await pp.setProperty('demuxer-max-bytes', bufferSize.toString());
+    await pp.setProperty('demuxer-max-back-bytes', bufferSize.toString());
     // 解除倍速限制
     await pp.setProperty("af", "scaletempo2=max-speed=8");
     //  音量不一致
