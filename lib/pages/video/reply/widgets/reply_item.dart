@@ -12,6 +12,7 @@ import 'package:pilipalaz/models/video/reply/item.dart';
 import 'package:pilipalaz/pages/preview/index.dart';
 import 'package:pilipalaz/pages/video/index.dart';
 import 'package:pilipalaz/pages/video/reply_new/index.dart';
+import 'package:pilipalaz/pages/video/reply/widgets/reply_preview_layout.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:pilipalaz/utils/url_utils.dart';
@@ -313,14 +314,14 @@ class ReplyItem extends StatelessWidget {
           child: Semantics(
               label: replyItem?.content?.message ?? "",
               // excludeSemantics: true,
-              child: Text.rich(
+              child: ReplyPreviewText(
+                message: replyItem?.content?.message ?? '',
+                shouldCollapse:
+                    replyItem!.content!.isText! && replyLevel == '1',
                 style: TextStyle(
                     height: 1.75,
                     fontSize: Theme.of(context).textTheme.bodyMedium!.fontSize),
-                maxLines:
-                    replyItem!.content!.isText! && replyLevel == '1' ? 6 : 999,
-                overflow: TextOverflow.ellipsis,
-                TextSpan(
+                text: TextSpan(
                   children: [
                     if (replyItem!.isTop!) ...[
                       const WidgetSpan(
