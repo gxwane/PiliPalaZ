@@ -23,12 +23,18 @@ Future<VideoPlayerServiceHandler> initAudioService() async {
 class VideoPlayerServiceHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   // static final List<MediaItem> _item = [];
   static int _mediaItemIdCounter = 0;
-  
-  Box setting = GStorage.setting;
+
+  final Box<dynamic> setting;
+  final Future<void> Function() _releasePlayer;
   bool enableBackgroundPlay = true;
   // PlPlayerController player = PlPlayerController.getInstance();
 
-  VideoPlayerServiceHandler() {
+  VideoPlayerServiceHandler({
+    Box<dynamic>? settingBox,
+    Future<void> Function()? releasePlayer,
+  })  : setting = settingBox ?? GStorage.setting,
+        _releasePlayer =
+            releasePlayer ?? PlPlayerController.disposeIfExists {
     revalidateSetting();
   }
 
@@ -196,6 +202,19 @@ class VideoPlayerServiceHandler extends BaseAudioHandler with QueueHandler, Seek
   //     clear();
   //   }
   // }
+
+  @override
+  Future<void> stop() async {
+    try {
+      await _releasePlayer();
+    } finally {
+      clearImpl();
+      await super.stop();
+    }
+  }
+
+  @override
+  Future<void> onTaskRemoved() => stop();
 
   void clearImpl() {
     playbackState.add(PlaybackState(

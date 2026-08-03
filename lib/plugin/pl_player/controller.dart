@@ -391,6 +391,12 @@ class PlPlayerController with WidgetsBindingObserver {
     }
   }
 
+  static Future<void> disposeIfExists() async {
+    final PlPlayerController? controller = _instance;
+    if (controller == null) return;
+    await controller.dispose();
+  }
+
   static Future<void> seekToIfExists(Duration position, {type = 'seek'}) async {
     await _instance?.seekTo(position, type: type);
   }
