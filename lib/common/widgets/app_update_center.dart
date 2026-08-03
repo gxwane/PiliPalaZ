@@ -13,6 +13,8 @@ import 'package:pilipalaz/utils/app_update.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'release_notes_view.dart';
+
 class AppUpdateCoordinator with WidgetsBindingObserver {
   AppUpdateCoordinator._();
 
@@ -379,9 +381,11 @@ class StableUpdateDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('🎉 发现正式版更新'),
-      content: SizedBox(
-        width: 480,
-        height: 280,
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 480,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.65,
+        ),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,8 +394,10 @@ class StableUpdateDialog extends StatelessWidget {
                 release.tagName ?? '',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              const SizedBox(height: 8),
-              Text(release.body),
+              if (release.body.isNotEmpty || release.bodyHtml.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                ReleaseNotesView(release: release),
+              ],
             ],
           ),
         ),
@@ -530,7 +536,13 @@ class _UpdateCenterDialogState extends State<UpdateCenterDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('检查更新'),
-      content: SizedBox(width: 560, child: _buildContent(context)),
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 560,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.65,
+        ),
+        child: _buildContent(context),
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -627,13 +639,9 @@ class _UpdateCenterDialogState extends State<UpdateCenterDialog> {
               ),
               if (release.createdAt?.isNotEmpty == true)
                 Text('发布时间：${release.createdAt!.split('T').first}'),
-              if (release.body.isNotEmpty) ...[
+              if (release.body.isNotEmpty || release.bodyHtml.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                Text(
-                  release.body,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                ReleaseNotesView(release: release),
               ],
               Align(
                 alignment: Alignment.centerRight,

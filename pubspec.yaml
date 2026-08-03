@@ -137,6 +137,8 @@ dependencies:
     path: packages/fl_pip
   # html解析
   html: ^0.15.6
+  # Markdown 解析
+  markdown: ^7.3.1
   # html渲染
   flutter_html: ^3.0.0
   # 极验

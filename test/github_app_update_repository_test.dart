@@ -108,6 +108,7 @@ void main() {
             'tag_name': 'v1.3.0-beta.3',
             'html_url':
                 'https://github.com/gxwane/PiliPalaZ/releases/tag/v1.3.0-beta.3',
+            'body': '## 修复\n\n- 保留 **Markdown** 格式',
             'prerelease': true,
             'draft': false,
             'assets': <Object?>[],
@@ -121,6 +122,8 @@ void main() {
       final releases = await repository.fetchReleases();
 
       expect(releases.single.tagName, 'v1.3.0-beta.3');
+      expect(releases.single.body, '## 修复\n\n- 保留 **Markdown** 格式');
+      expect(releases.single.bodyHtml, isEmpty);
       expect(adapter.requests, hasLength(1));
       expect(
         adapter.requests.single.headers[Headers.acceptHeader],
@@ -158,6 +161,7 @@ void main() {
         expect(prerelease.prerelease, isTrue);
         expect(prerelease.createdAt, '2026-08-03T13:41:36Z');
         expect(prerelease.body, contains('VPN 更新检查'));
+        expect(prerelease.bodyHtml, '<h3>修复</h3><ul><li>VPN 更新检查</li></ul>');
         expect(
           prerelease.assets.map((asset) => asset.name),
           containsAll(<String>[

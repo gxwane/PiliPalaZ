@@ -167,6 +167,7 @@ class GitHubAppUpdateReleaseRepository implements AppUpdateReleaseRepository {
         createdAt: entry.querySelector('updated')?.text.trim(),
         assets: _releaseAssets(tag),
         body: body,
+        bodyHtml: encodedBody.trim(),
         prerelease: version.isPreRelease,
       );
     }

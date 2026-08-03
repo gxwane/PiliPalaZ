@@ -6,6 +6,7 @@ class LatestDataModel {
     this.createdAt,
     this.assets = const <AssetItem>[],
     this.body = '',
+    this.bodyHtml = '',
     this.prerelease = false,
     this.draft = false,
   });
@@ -16,6 +17,7 @@ class LatestDataModel {
   final String? createdAt;
   final List<AssetItem> assets;
   final String body;
+  final String bodyHtml;
   final bool prerelease;
   final bool draft;
 
