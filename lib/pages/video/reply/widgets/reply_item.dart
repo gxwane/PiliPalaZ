@@ -13,6 +13,8 @@ import 'package:pilipalaz/pages/preview/index.dart';
 import 'package:pilipalaz/pages/video/index.dart';
 import 'package:pilipalaz/pages/video/reply_new/index.dart';
 import 'package:pilipalaz/pages/video/reply/widgets/reply_preview_layout.dart';
+import 'package:pilipalaz/plugin/pl_player/index.dart';
+import 'package:pilipalaz/plugin/pl_player/playback_modal_guard.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:pilipalaz/utils/url_utils.dart';
@@ -610,6 +612,69 @@ class ReplyItemRow extends StatelessWidget {
   }
 }
 
+Future<void> _showReplyImagePreview(
+  BuildContext context, {
+  required bool isVideoPage,
+  required int initialPage,
+  required List<String> imgList,
+}) async {
+  Future<void> showPreview() async {
+    if (!context.mounted) return;
+    await showDialog<void>(
+      useSafeArea: false,
+      context: context,
+      builder: (BuildContext context) {
+        return ImagePreview(initialPage: initialPage, imgList: imgList);
+      },
+    );
+  }
+
+  if (!isVideoPage) {
+    await showPreview();
+    return;
+  }
+
+  late final VideoDetailController videoController;
+  try {
+    final Object? heroTag = Get.arguments?['heroTag'];
+    if (heroTag == null) {
+      await showPreview();
+      return;
+    }
+    videoController =
+        Get.find<VideoDetailController>(tag: heroTag.toString());
+  } catch (_) {
+    await showPreview();
+    return;
+  }
+
+  final PlPlayerController? player = videoController.plPlayerController;
+  final PlayerResourceOwner owner = videoController.playerResourceOwner;
+  if (player == null || !player.ownsNativeResources(owner)) {
+    await showPreview();
+    return;
+  }
+
+  final String bvid = player.bvid;
+  final int cid = player.cid;
+  final bool wasPlaying =
+      player.playerStatus.status.value == PlayerStatus.playing;
+
+  await runPlaybackAwareModal<void>(
+    wasPlaying: wasPlaying,
+    pause: player.pause,
+    showModal: showPreview,
+    canResume: () =>
+        context.mounted &&
+        identical(videoController.plPlayerController, player) &&
+        player.ownsNativeResources(owner) &&
+        player.bvid == bvid &&
+        player.cid == cid &&
+        player.playerStatus.status.value == PlayerStatus.paused,
+    resume: player.play,
+  );
+}
+
 InlineSpan buildContent(
     BuildContext context, replyItem, replyReply, fReplyItem) {
   final String routePath = Get.currentRoute;
@@ -969,13 +1034,12 @@ InlineSpan buildContent(
               } catch (_) {}
 
               return GestureDetector(
-                onTap: () {
-                  showDialog(
-                    useSafeArea: false,
-                    context: context,
-                    builder: (BuildContext context) {
-                      return ImagePreview(initialPage: 0, imgList: picList);
-                    },
+                onTap: () async {
+                  await _showReplyImagePreview(
+                    context,
+                    isVideoPage: isVideoPage,
+                    initialPage: 0,
+                    imgList: picList,
                   );
                 },
                 child: Container(
@@ -1016,13 +1080,12 @@ InlineSpan buildContent(
           LayoutBuilder(
             builder: (context, BoxConstraints box) {
               return GestureDetector(
-                onTap: () {
-                  showDialog(
-                    useSafeArea: false,
-                    context: context,
-                    builder: (context) {
-                      return ImagePreview(initialPage: i, imgList: picList);
-                    },
+                onTap: () async {
+                  await _showReplyImagePreview(
+                    context,
+                    isVideoPage: isVideoPage,
+                    initialPage: i,
+                    imgList: picList,
                   );
                 },
                 child: NetworkImgLayer(
