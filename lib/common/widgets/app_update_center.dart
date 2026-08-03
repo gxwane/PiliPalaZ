@@ -472,6 +472,10 @@ class _UpdateCenterDialogState extends State<UpdateCenterDialog> {
       }
       setState(() => _candidates = candidates);
       await _refreshDownload();
+    } on AppUpdateException catch (error) {
+      if (mounted) {
+        setState(() => _error = error.message);
+      }
     } catch (_) {
       if (mounted) {
         setState(() => _error = '检查更新失败，请检查网络后重试');

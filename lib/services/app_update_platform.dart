@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:pilipalaz/services/app_update_service.dart';
+import 'package:pilipalaz/services/github_app_update_repository.dart';
 
 AppUpdateService? _appUpdateService;
 

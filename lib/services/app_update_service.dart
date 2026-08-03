@@ -1,7 +1,5 @@
-import 'package:dio/dio.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/common/constants.dart';
-import 'package:pilipalaz/http/init.dart';
 import 'package:pilipalaz/models/github/latest.dart';
 import 'package:pilipalaz/utils/app_update.dart';
 import 'package:pilipalaz/utils/storage.dart';
@@ -152,62 +150,6 @@ abstract class AppUpdateReleaseRepository {
   Future<LatestDataModel?> fetchLatestStable();
 
   Future<String> fetchText(String url);
-}
-
-class GitHubAppUpdateReleaseRepository implements AppUpdateReleaseRepository {
-  @override
-  Future<List<LatestDataModel>> fetchReleases() async {
-    final response = await Request().get(
-      '${ProjectLinks.releasesApi}?per_page=30',
-      extra: const <String, dynamic>{'ua': 'mob'},
-    );
-    final data = response.data;
-    if (data is! List) {
-      throw const AppUpdateException(
-        AppUpdateErrorCode.invalidResponse,
-        'GitHub Releases 返回了无效数据',
-      );
-    }
-    return data
-        .whereType<Map<String, dynamic>>()
-        .map(LatestDataModel.fromJson)
-        .toList(growable: false);
-  }
-
-  @override
-  Future<LatestDataModel?> fetchLatestStable() async {
-    final response = await Request().get(
-      ProjectLinks.latestReleaseApi,
-      extra: const <String, dynamic>{'ua': 'mob'},
-    );
-    final data = response.data;
-    if (data is! Map<String, dynamic> || data['tag_name'] is! String) {
-      throw const AppUpdateException(
-        AppUpdateErrorCode.invalidResponse,
-        'GitHub Release 返回了无效数据',
-      );
-    }
-    return LatestDataModel.fromJson(data);
-  }
-
-  @override
-  Future<String> fetchText(String url) async {
-    final response = await Request().get(
-      url,
-      extra: const <String, dynamic>{
-        'ua': 'mob',
-        'resType': ResponseType.plain,
-      },
-    );
-    final data = response.data;
-    if (data is! String) {
-      throw const AppUpdateException(
-        AppUpdateErrorCode.checksumUnavailable,
-        '无法获取安装包校验清单',
-      );
-    }
-    return data;
-  }
 }
 
 abstract class AppUpdateTaskStore {
