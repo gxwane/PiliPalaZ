@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.3.0-beta.3] - 2026-08-03
+
 ### 优化
 
 - 优化 Android VPN 环境下的视频与直播缓冲策略，减少 Clash 等 VPNService 软件开启时的播放卡顿。
