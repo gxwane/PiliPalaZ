@@ -140,6 +140,36 @@ void main() {
     expect(renderedText, isNot(contains('有其它想法请补充')));
   });
 
+  testWidgets('renders a literal ellipsis when the first hidden line is empty', (
+    WidgetTester tester,
+  ) async {
+    const String message = 'one\ntwo\nthree\nfour\nfive\nsix\n\nhidden';
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Center(
+          child: SizedBox(
+            width: 1000,
+            child: ReplyPreviewText(
+              message: message,
+              text: TextSpan(text: message),
+              style: style,
+              shouldCollapse: true,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final RichText richText = tester.widget<RichText>(
+      find.descendant(
+        of: find.byType(ReplyPreviewText),
+        matching: find.byType(RichText),
+      ),
+    );
+    final String renderedText = richText.text.toPlainText();
+    expect(renderedText, endsWith('six…'));
+  });
+
   testWidgets('keeps the native overflow path for a non-empty boundary', (
     WidgetTester tester,
   ) async {

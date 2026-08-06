@@ -114,7 +114,8 @@ ReplyPreviewLayout resolveReplyPreviewLayout({
     effectiveMaxLines--;
   }
 
-  if (effectiveMaxLines == maxLines ||
+  if ((effectiveMaxLines == maxLines &&
+          lineMetrics[maxLines].width > _emptyLineWidthTolerance) ||
       lineMetrics[effectiveMaxLines - 1].width <= _emptyLineWidthTolerance) {
     textPainter.dispose();
     return ReplyPreviewLayout(maxLines: effectiveMaxLines);
