@@ -1,25 +1,60 @@
+import 'package:characters/characters.dart' as character;
 import 'package:flutter/widgets.dart';
 
 const double _emptyLineWidthTolerance = 0.01;
 
 @immutable
 class ReplyPreviewLayout {
-  const ReplyPreviewLayout({required this.maxLines, this.truncationOffset});
+  const ReplyPreviewLayout({
+    required this.text,
+    required this.maxLines,
+    required this.isTruncated,
+  });
 
-  final int maxLines;
-  final int? truncationOffset;
+  final InlineSpan text;
+  final int? maxLines;
+  final bool isTruncated;
+}
+
+class ReplyPreviewWidgetSpan extends WidgetSpan {
+  factory ReplyPreviewWidgetSpan({
+    required Widget child,
+    required Size size,
+    PlaceholderAlignment alignment = PlaceholderAlignment.bottom,
+    TextBaseline? baseline,
+    double? baselineOffset,
+  }) {
+    return ReplyPreviewWidgetSpan._(
+      child: SizedBox(width: size.width, height: size.height, child: child),
+      dimensions: PlaceholderDimensions(
+        size: size,
+        alignment: alignment,
+        baseline: baseline,
+        baselineOffset: baselineOffset,
+      ),
+      alignment: alignment,
+      baseline: baseline,
+    );
+  }
+
+  const ReplyPreviewWidgetSpan._({
+    required super.child,
+    required this.dimensions,
+    super.alignment,
+    super.baseline,
+  });
+
+  final PlaceholderDimensions dimensions;
 }
 
 class ReplyPreviewText extends StatelessWidget {
   const ReplyPreviewText({
-    required this.message,
     required this.text,
     required this.style,
     required this.shouldCollapse,
     super.key,
   });
 
-  final String message;
   final InlineSpan text;
   final TextStyle style;
   final bool shouldCollapse;
@@ -28,63 +63,43 @@ class ReplyPreviewText extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final ReplyPreviewLayout layout =
-            shouldCollapse &&
-                constraints.hasBoundedWidth &&
-                constraints.maxWidth > 0
-            ? resolveReplyPreviewLayout(
-                message: message,
-                style: style,
-                maxWidth: constraints.maxWidth,
-                textDirection: Directionality.of(context),
-                textScaler: MediaQuery.textScalerOf(context),
-                locale: Localizations.maybeLocaleOf(context),
-              )
-            : shouldCollapse
-            ? const ReplyPreviewLayout(maxLines: 6)
-            : const ReplyPreviewLayout(maxLines: 999);
+        if (!shouldCollapse) {
+          return Text.rich(text, style: style);
+        }
 
-        final InlineSpan displayText = layout.truncationOffset == null
-            ? text
-            : _truncateInlineSpanWithEllipsis(
-                text: text,
-                message: message,
-                messageOffset: layout.truncationOffset!,
-              );
+        if (constraints.maxWidth <= 0) {
+          return Text.rich(
+            text,
+            style: style,
+            maxLines: 6,
+            overflow: TextOverflow.clip,
+          );
+        }
+
+        final ReplyPreviewLayout layout = resolveReplyPreviewLayout(
+          text: text,
+          style: style,
+          maxWidth: constraints.hasBoundedWidth
+              ? constraints.maxWidth
+              : double.infinity,
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+          locale: Localizations.maybeLocaleOf(context),
+        );
 
         return Text.rich(
-          displayText,
+          layout.text,
           style: style,
           maxLines: layout.maxLines,
-          overflow: TextOverflow.ellipsis,
+          overflow: TextOverflow.clip,
         );
       },
     );
   }
 }
 
-int resolveReplyPreviewMaxLines({
-  required String message,
-  required TextStyle style,
-  required double maxWidth,
-  required TextDirection textDirection,
-  TextScaler textScaler = TextScaler.noScaling,
-  Locale? locale,
-  int maxLines = 6,
-}) {
-  return resolveReplyPreviewLayout(
-    message: message,
-    style: style,
-    maxWidth: maxWidth,
-    textDirection: textDirection,
-    textScaler: textScaler,
-    locale: locale,
-    maxLines: maxLines,
-  ).maxLines;
-}
-
 ReplyPreviewLayout resolveReplyPreviewLayout({
-  required String message,
+  required InlineSpan text,
   required TextStyle style,
   required double maxWidth,
   required TextDirection textDirection,
@@ -95,8 +110,20 @@ ReplyPreviewLayout resolveReplyPreviewLayout({
   assert(maxWidth > 0);
   assert(maxLines > 0);
 
-  final TextPainter textPainter = TextPainter(
-    text: TextSpan(text: message, style: style),
+  final _PlaceholderCollection placeholders = _collectPlaceholders(text);
+  assert(
+    placeholders.isSupported,
+    'Collapsible reply previews require ReplyPreviewWidgetSpan for every '
+    'inline widget.',
+  );
+  if (!placeholders.isSupported) {
+    return ReplyPreviewLayout(text: text, maxLines: null, isTruncated: false);
+  }
+
+  final TextPainter textPainter = _createTextPainter(
+    text: text,
+    style: style,
+    placeholderDimensions: placeholders.dimensions,
     textDirection: textDirection,
     textScaler: textScaler,
     locale: locale,
@@ -105,20 +132,17 @@ ReplyPreviewLayout resolveReplyPreviewLayout({
 
   if (lineMetrics.length <= maxLines) {
     textPainter.dispose();
-    return ReplyPreviewLayout(maxLines: maxLines);
+    return ReplyPreviewLayout(
+      text: text,
+      maxLines: maxLines,
+      isTruncated: false,
+    );
   }
 
   int effectiveMaxLines = maxLines;
   while (effectiveMaxLines > 1 &&
       lineMetrics[effectiveMaxLines - 1].width <= _emptyLineWidthTolerance) {
     effectiveMaxLines--;
-  }
-
-  if ((effectiveMaxLines == maxLines &&
-          lineMetrics[maxLines].width > _emptyLineWidthTolerance) ||
-      lineMetrics[effectiveMaxLines - 1].width <= _emptyLineWidthTolerance) {
-    textPainter.dispose();
-    return ReplyPreviewLayout(maxLines: effectiveMaxLines);
   }
 
   final LineMetrics lastVisibleLine = lineMetrics[effectiveMaxLines - 1];
@@ -131,13 +155,19 @@ ReplyPreviewLayout resolveReplyPreviewLayout({
   final TextRange lineRange = textPainter.getLineBoundary(linePosition);
   textPainter.dispose();
 
-  int truncationOffset = lineRange.end;
-  while (truncationOffset > lineRange.start &&
-      _isLineBreak(message.codeUnitAt(truncationOffset - 1))) {
-    truncationOffset--;
+  final String plainText = text.toPlainText(
+    includeSemanticsLabels: false,
+    includePlaceholders: true,
+  );
+  int initialOffset = lineRange.end;
+  while (initialOffset > lineRange.start &&
+      _isLineBreak(plainText.codeUnitAt(initialOffset - 1))) {
+    initialOffset--;
   }
-  final int? fittedOffset = _fitEllipsisOnLastLine(
-    message: message,
+
+  final InlineSpan displayText = _fitInlineSpanWithEllipsis(
+    text: text,
+    plainText: plainText,
     style: style,
     maxWidth: maxWidth,
     textDirection: textDirection,
@@ -145,19 +175,21 @@ ReplyPreviewLayout resolveReplyPreviewLayout({
     locale: locale,
     maxLines: effectiveMaxLines,
     minimumOffset: lineRange.start,
-    initialOffset: truncationOffset,
+    initialOffset: initialOffset,
   );
 
   return ReplyPreviewLayout(
+    text: displayText,
     maxLines: effectiveMaxLines,
-    truncationOffset: fittedOffset,
+    isTruncated: true,
   );
 }
 
 bool _isLineBreak(int codeUnit) => codeUnit == 0x0A || codeUnit == 0x0D;
 
-int? _fitEllipsisOnLastLine({
-  required String message,
+InlineSpan _fitInlineSpanWithEllipsis({
+  required InlineSpan text,
+  required String plainText,
   required TextStyle style,
   required double maxWidth,
   required TextDirection textDirection,
@@ -167,10 +199,23 @@ int? _fitEllipsisOnLastLine({
   required int minimumOffset,
   required int initialOffset,
 }) {
-  int offset = initialOffset;
-  while (offset >= minimumOffset) {
-    final TextPainter candidatePainter = TextPainter(
-      text: TextSpan(text: '${message.substring(0, offset)}…', style: style),
+  for (final int offset in _graphemeOffsetsDescending(
+    plainText,
+    minimumOffset,
+    initialOffset,
+  )) {
+    final (InlineSpan? visibleText, _) = _takeInlineSpan(text, offset);
+    final InlineSpan candidate = TextSpan(
+      children: <InlineSpan>[
+        ?visibleText,
+        const TextSpan(text: '…'),
+      ],
+    );
+    final _PlaceholderCollection placeholders = _collectPlaceholders(candidate);
+    final TextPainter candidatePainter = _createTextPainter(
+      text: candidate,
+      style: style,
+      placeholderDimensions: placeholders.dimensions,
       textDirection: textDirection,
       textScaler: textScaler,
       locale: locale,
@@ -178,55 +223,87 @@ int? _fitEllipsisOnLastLine({
     final bool fits = candidatePainter.computeLineMetrics().length <= maxLines;
     candidatePainter.dispose();
     if (fits) {
-      return offset;
+      return candidate;
     }
-    if (offset == minimumOffset) {
-      break;
-    }
-    offset = _previousCodePointOffset(message, offset);
   }
-  return null;
+
+  return const TextSpan(text: '…');
 }
 
-int _previousCodePointOffset(String value, int offset) {
-  int previousOffset = offset - 1;
-  if (previousOffset > 0 &&
-      _isLowSurrogate(value.codeUnitAt(previousOffset)) &&
-      _isHighSurrogate(value.codeUnitAt(previousOffset - 1))) {
-    previousOffset--;
+Iterable<int> _graphemeOffsetsDescending(
+  String value,
+  int minimumOffset,
+  int initialOffset,
+) sync* {
+  final List<int> offsets = <int>[minimumOffset];
+  int offset = minimumOffset;
+  for (final String grapheme in character.Characters(
+    value.substring(minimumOffset, initialOffset),
+  )) {
+    offset += grapheme.length;
+    offsets.add(offset);
   }
-  return previousOffset;
+  for (final int candidate in offsets.reversed) {
+    yield candidate;
+  }
 }
 
-bool _isHighSurrogate(int codeUnit) => codeUnit >= 0xD800 && codeUnit <= 0xDBFF;
-
-bool _isLowSurrogate(int codeUnit) => codeUnit >= 0xDC00 && codeUnit <= 0xDFFF;
-
-InlineSpan _truncateInlineSpanWithEllipsis({
+TextPainter _createTextPainter({
   required InlineSpan text,
-  required String message,
-  required int messageOffset,
+  required TextStyle style,
+  required List<PlaceholderDimensions> placeholderDimensions,
+  required TextDirection textDirection,
+  required TextScaler textScaler,
+  required Locale? locale,
 }) {
-  final String plainText = text.toPlainText(includeSemanticsLabels: false);
-  final String visiblePrefix = message.substring(0, messageOffset);
-  final int messageStart = plainText.indexOf(visiblePrefix);
-  if (messageStart < 0) {
-    return text;
+  final TextPainter painter = TextPainter(
+    text: TextSpan(style: style, children: <InlineSpan>[text]),
+    textDirection: textDirection,
+    textScaler: textScaler,
+    locale: locale,
+  );
+  painter.setPlaceholderDimensions(placeholderDimensions);
+  return painter;
+}
+
+_PlaceholderCollection _collectPlaceholders(InlineSpan span) {
+  final List<PlaceholderDimensions> dimensions = <PlaceholderDimensions>[];
+  bool isSupported = true;
+
+  void visit(InlineSpan current) {
+    if (current is ReplyPreviewWidgetSpan) {
+      dimensions.add(current.dimensions);
+      return;
+    }
+    if (current is PlaceholderSpan) {
+      isSupported = false;
+      return;
+    }
+    if (current is TextSpan) {
+      for (final InlineSpan child in current.children ?? const <InlineSpan>[]) {
+        visit(child);
+      }
+      return;
+    }
+    isSupported = false;
   }
 
-  final (InlineSpan? span, _) = _takeInlineSpan(
-    text,
-    messageStart + visiblePrefix.length,
+  visit(span);
+  return _PlaceholderCollection(
+    dimensions: dimensions,
+    isSupported: isSupported,
   );
-  if (span == null) {
-    return text;
-  }
-  return TextSpan(
-    children: <InlineSpan>[
-      span,
-      const TextSpan(text: '…'),
-    ],
-  );
+}
+
+@immutable
+class _PlaceholderCollection {
+  const _PlaceholderCollection({
+    required this.dimensions,
+    required this.isSupported,
+  });
+
+  final List<PlaceholderDimensions> dimensions;
+  final bool isSupported;
 }
 
 (InlineSpan?, int) _takeInlineSpan(InlineSpan span, int maxLength) {
@@ -234,7 +311,9 @@ InlineSpan _truncateInlineSpanWithEllipsis({
     return (null, 0);
   }
 
-  final int fullLength = span.toPlainText(includeSemanticsLabels: false).length;
+  final int fullLength = span
+      .toPlainText(includeSemanticsLabels: false, includePlaceholders: true)
+      .length;
   if (fullLength <= maxLength) {
     return (span, fullLength);
   }

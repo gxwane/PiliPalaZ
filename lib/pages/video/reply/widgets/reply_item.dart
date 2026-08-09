@@ -317,7 +317,6 @@ class ReplyItem extends StatelessWidget {
               label: replyItem?.content?.message ?? "",
               // excludeSemantics: true,
               child: ReplyPreviewText(
-                message: replyItem?.content?.message ?? '',
                 shouldCollapse:
                     replyItem!.content!.isText! && replyLevel == '1',
                 style: TextStyle(
@@ -326,9 +325,10 @@ class ReplyItem extends StatelessWidget {
                 text: TextSpan(
                   children: [
                     if (replyItem!.isTop!) ...[
-                      const WidgetSpan(
+                      ReplyPreviewWidgetSpan(
                         alignment: PlaceholderAlignment.middle,
-                        child: PBadge(
+                        size: _measureTopBadge(context),
+                        child: const PBadge(
                           text: 'TOP',
                           size: 'small',
                           stack: 'normal',
@@ -675,6 +675,30 @@ Future<void> _showReplyImagePreview(
   );
 }
 
+Size _measureTopBadge(BuildContext context) {
+  const TextStyle badgeStyle = TextStyle(
+    height: 1,
+    fontSize: 9,
+    fontWeight: FontWeight.bold,
+  );
+  const StrutStyle badgeStrutStyle = StrutStyle(
+    leading: 0,
+    height: 1,
+    fontSize: 9,
+    fontWeight: FontWeight.bold,
+  );
+  final TextPainter painter = TextPainter(
+    text: const TextSpan(text: 'TOP', style: badgeStyle),
+    textDirection: Directionality.of(context),
+    textScaler: MediaQuery.textScalerOf(context),
+    locale: Localizations.maybeLocaleOf(context),
+    strutStyle: badgeStrutStyle,
+  )..layout();
+  final Size size = Size(painter.width + 8, painter.height + 4);
+  painter.dispose();
+  return size;
+}
+
 InlineSpan buildContent(
     BuildContext context, replyItem, replyReply, fReplyItem) {
   final String routePath = Get.currentRoute;
@@ -762,7 +786,8 @@ InlineSpan buildContent(
       if (content.emote.containsKey(matchStr)) {
         // 处理表情
         final int size = content.emote[matchStr]['meta']['size'];
-        spanChildren.add(WidgetSpan(
+        spanChildren.add(ReplyPreviewWidgetSpan(
+          size: Size.square(size * 20.0),
           child: ExcludeSemantics(
               child: NetworkImgLayer(
             src: content.emote[matchStr]['url'],
@@ -836,10 +861,13 @@ InlineSpan buildContent(
           spanChildren.addAll(
             [
               if (content.jumpUrl[matchStr]?['prefix_icon'] != null) ...[
-                WidgetSpan(
+                ReplyPreviewWidgetSpan(
+                  size: const Size.square(19),
                   child: Image.network(
                     content.jumpUrl[matchStr]['prefix_icon'],
+                    width: 19,
                     height: 19,
+                    fit: BoxFit.contain,
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 )
@@ -980,10 +1008,13 @@ InlineSpan buildContent(
         spanChildren.addAll(
           [
             if (content.jumpUrl[patternStr]?['prefix_icon'] != null) ...[
-              WidgetSpan(
+              ReplyPreviewWidgetSpan(
+                size: const Size.square(19),
                 child: Image.network(
                   content.jumpUrl[patternStr]['prefix_icon'],
+                  width: 19,
                   height: 19,
+                  fit: BoxFit.contain,
                   color: Theme.of(context).colorScheme.primary,
                 ),
               )

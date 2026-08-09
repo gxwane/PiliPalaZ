@@ -79,6 +79,7 @@ dependencies:
   # 下滑关闭
   dismissible_page: ^1.0.2
   # 加密
+  characters: ^1.4.0
   crypto: ^3.0.7
   encrypt: ^5.0.3
 
