@@ -11,19 +11,19 @@
 PiliPalaZ 面向 Android 与 iOS，提供视频浏览、播放、互动和个人内容管理等常用功能，并持续适配较新的 Flutter 与移动平台工具链。
 
 <div align="center">
-  <img src="assets/screenshots/510shots_so.png" width="32%" alt="PiliPalaZ 首页">
-  <img src="assets/screenshots/174shots_so.png" width="32%" alt="PiliPalaZ 视频页">
-  <img src="assets/screenshots/850shots_so.png" width="32%" alt="PiliPalaZ 设置页">
-  <br>
-  <img src="assets/screenshots/main_screen.png" width="96%" alt="PiliPalaZ 横屏界面">
+  <img src="assets/screenshots/main_screen.png" width="96%" alt="PiliPalaZ 首页、动态与番剧界面">
 </div>
 
 ## 主要功能
 
 - 内容发现：推荐、热门、直播、番剧、动态，以及多类型搜索和筛选。
 - 视频播放：画质与音质选择、弹幕、字幕、倍速、播放记忆、手势控制、画中画和横屏适配。
-- 互动与个人内容：点赞、投币、收藏、评论、关注、黑名单、稍后再看、观看记录和站内消息。
-- 使用体验：亮色/暗色主题、动态取色、高刷新率、游客模式、无痕模式和多项播放器偏好设置。
+- 互动管理：点赞、投币、收藏、评论、关注、黑名单、稍后再看、观看记录和站内消息。
+- 使用体验：亮色/暗色主题、动态取色、高刷新率、游客模式、无痕模式和丰富的播放偏好。
+
+<div align="center">
+  <img src="assets/screenshots/feature_screen.png" width="96%" alt="PiliPalaZ 搜索、视频播放与设置界面">
+</div>
 
 ## 下载
 
