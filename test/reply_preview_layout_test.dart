@@ -81,6 +81,24 @@ void main() {
       expect(layout.text.toPlainText(), 'one\ntwo\nthree\nfour\nfive\nsix…');
     });
 
+    test('truncates ordinary auto-wrapped text without spaces', () {
+      final String message = List<String>.filled(
+        8,
+        '这是一段没有空格的普通评论用于验证自动换行省略号',
+      ).join();
+      final ReplyPreviewLayout layout = resolveReplyPreviewLayout(
+        text: TextSpan(text: message),
+        style: style,
+        maxWidth: 180,
+        textDirection: TextDirection.ltr,
+        maxLines: 3,
+      );
+
+      expect(layout.maxLines, 3);
+      expect(layout.isTruncated, isTrue);
+      expect(layout.text.toPlainText(), endsWith('…'));
+    });
+
     test('keeps short comments unchanged', () {
       const TextSpan text = TextSpan(text: 'one\ntwo');
       final ReplyPreviewLayout layout = resolveReplyPreviewLayout(
@@ -193,7 +211,7 @@ void main() {
 
     final RichText richText = tester.widget<RichText>(_richTextFinder);
     expect(richText.maxLines, 5);
-    expect(richText.overflow, TextOverflow.clip);
+    expect(richText.overflow, TextOverflow.ellipsis);
     expect(richText.text.toPlainText(), endsWith('close…'));
     expect(richText.text.toPlainText(), isNot(contains('有其它想法请补充')));
     expect(_renderParagraph(tester).didExceedMaxLines, isFalse);

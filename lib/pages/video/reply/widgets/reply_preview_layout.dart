@@ -91,7 +91,7 @@ class ReplyPreviewText extends StatelessWidget {
           layout.text,
           style: style,
           maxLines: layout.maxLines,
-          overflow: TextOverflow.clip,
+          overflow: TextOverflow.ellipsis,
         );
       },
     );
