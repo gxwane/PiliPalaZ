@@ -1,6 +1,9 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pilipalaz/pages/video/reply/widgets/reply_preview_layout.dart';
 
@@ -13,6 +16,12 @@ void main() {
       '4. 反例数学界已经想的差不多了，ai就是给出了个close\n'
       '\n'
       '有其它想法请补充[doge]';
+
+  setUpAll(() async {
+    final FontLoader loader = FontLoader('Jura-Bold')
+      ..addFont(rootBundle.load('assets/fonts/Jura-Bold.ttf'));
+    await loader.load();
+  });
 
   group('resolveReplyPreviewLayout', () {
     test('handles the reported mixed-language comment', () {
@@ -355,6 +364,131 @@ void main() {
     expect(richText.text.toPlainText(), message);
     expect(_renderParagraph(tester).didExceedMaxLines, isFalse);
   });
+
+  testWidgets(
+    'paints the renderer ellipsis fallback when inherited rich text wraps differently',
+    (WidgetTester tester) async {
+      const double width = 160;
+      const TextStyle previewStyle = TextStyle(
+        fontFamily: 'Jura-Bold',
+        fontSize: 14,
+        height: 1,
+      );
+      const TextSpan text = TextSpan(
+        children: <InlineSpan>[
+          TextSpan(
+            text: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          TextSpan(text: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'),
+        ],
+      );
+      final ReplyPreviewLayout predictedLayout = resolveReplyPreviewLayout(
+        text: text,
+        style: previewStyle,
+        maxWidth: width,
+        textDirection: TextDirection.ltr,
+      );
+      expect(predictedLayout.isTruncated, isFalse);
+      expect(predictedLayout.text, same(text));
+
+      const Key productionKey = ValueKey<String>('production-preview');
+      const Key clipControlKey = ValueKey<String>('clip-control-preview');
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: DefaultTextStyle(
+            style: TextStyle(
+              color: Colors.black,
+              fontFamily: 'Jura-Bold',
+              fontSize: 14,
+              height: 1,
+              letterSpacing: 14,
+            ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  RepaintBoundary(
+                    key: productionKey,
+                    child: ColoredBox(
+                      color: Colors.white,
+                      child: SizedBox(
+                        width: width,
+                        child: ReplyPreviewText(
+                          text: text,
+                          style: previewStyle,
+                          shouldCollapse: true,
+                        ),
+                      ),
+                    ),
+                  ),
+                  RepaintBoundary(
+                    key: clipControlKey,
+                    child: ColoredBox(
+                      color: Colors.white,
+                      child: SizedBox(
+                        width: width,
+                        child: _ClipReplyPreviewText(
+                          text: text,
+                          style: previewStyle,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final Finder productionText = find.descendant(
+        of: find.byKey(productionKey),
+        matching: find.byType(RichText),
+      );
+      final Finder clipControlText = find.descendant(
+        of: find.byKey(clipControlKey),
+        matching: find.byType(RichText),
+      );
+      final RenderParagraph productionParagraph = tester
+          .renderObject<RenderParagraph>(productionText);
+      final RenderParagraph clipControlParagraph = tester
+          .renderObject<RenderParagraph>(clipControlText);
+      expect(productionParagraph.didExceedMaxLines, isTrue);
+      expect(clipControlParagraph.didExceedMaxLines, isTrue);
+
+      final _CapturedImage productionImage = await _captureImage(
+        tester,
+        productionKey,
+      );
+      final _CapturedImage clipControlImage = await _captureImage(
+        tester,
+        clipControlKey,
+      );
+      expect(productionImage.width, clipControlImage.width);
+      expect(productionImage.height, clipControlImage.height);
+      expect(_countNonWhitePixels(productionImage), greaterThan(0));
+      expect(_countNonWhitePixels(clipControlImage), greaterThan(0));
+
+      final int lastLineStart = productionImage.height * 5 ~/ 6;
+      expect(
+        _countDifferentPixels(
+          productionImage,
+          clipControlImage,
+          endRow: lastLineStart,
+        ),
+        0,
+      );
+      expect(
+        _countDifferentPixels(
+          productionImage,
+          clipControlImage,
+          startRow: lastLineStart,
+        ),
+        greaterThan(0),
+      );
+    },
+  );
 }
 
 Finder get _richTextFinder => find.descendant(
@@ -385,6 +519,101 @@ Future<void> _pumpPreview(
       ),
     ),
   );
+}
+
+class _ClipReplyPreviewText extends StatelessWidget {
+  const _ClipReplyPreviewText({required this.text, required this.style});
+
+  final InlineSpan text;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final ReplyPreviewLayout layout = resolveReplyPreviewLayout(
+          text: text,
+          style: style,
+          maxWidth: constraints.maxWidth,
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+          locale: Localizations.maybeLocaleOf(context),
+        );
+        return Text.rich(
+          layout.text,
+          style: style,
+          maxLines: layout.maxLines,
+          overflow: TextOverflow.clip,
+        );
+      },
+    );
+  }
+}
+
+class _CapturedImage {
+  const _CapturedImage({
+    required this.width,
+    required this.height,
+    required this.pixels,
+  });
+
+  final int width;
+  final int height;
+  final Uint8List pixels;
+}
+
+Future<_CapturedImage> _captureImage(WidgetTester tester, Key key) async {
+  final RenderRepaintBoundary boundary = tester.renderObject(find.byKey(key));
+  return (await tester.runAsync<_CapturedImage>(() async {
+    final ui.Image image = await boundary.toImage(pixelRatio: 1);
+    final ByteData? byteData = await image.toByteData(
+      format: ui.ImageByteFormat.rawRgba,
+    );
+    final _CapturedImage captured = _CapturedImage(
+      width: image.width,
+      height: image.height,
+      pixels: Uint8List.fromList(byteData!.buffer.asUint8List()),
+    );
+    image.dispose();
+    return captured;
+  }))!;
+}
+
+int _countDifferentPixels(
+  _CapturedImage first,
+  _CapturedImage second, {
+  int startRow = 0,
+  int? endRow,
+}) {
+  assert(first.width == second.width);
+  assert(first.height == second.height);
+  final int lastRow = endRow ?? first.height;
+  int count = 0;
+  for (int y = startRow; y < lastRow; y++) {
+    for (int x = 0; x < first.width; x++) {
+      final int offset = (y * first.width + x) * 4;
+      if (first.pixels[offset] != second.pixels[offset] ||
+          first.pixels[offset + 1] != second.pixels[offset + 1] ||
+          first.pixels[offset + 2] != second.pixels[offset + 2] ||
+          first.pixels[offset + 3] != second.pixels[offset + 3]) {
+        count++;
+      }
+    }
+  }
+  return count;
+}
+
+int _countNonWhitePixels(_CapturedImage image) {
+  int count = 0;
+  for (int offset = 0; offset < image.pixels.length; offset += 4) {
+    if (image.pixels[offset] != 0xFF ||
+        image.pixels[offset + 1] != 0xFF ||
+        image.pixels[offset + 2] != 0xFF ||
+        image.pixels[offset + 3] != 0xFF) {
+      count++;
+    }
+  }
+  return count;
 }
 
 bool _containsTextStyle(InlineSpan span, TextStyle style) {
