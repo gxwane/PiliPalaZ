@@ -2,13 +2,16 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:device_info_plus/device_info_plus.dart';
-import 'package:auto_orientation_v2/auto_orientation_v2.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../../../utils/storage.dart';
 
 Timer? screenTimer;
+const MethodChannel _orientationChannel = MethodChannel(
+  'io.github.gxwane.pilipalaz/orientation',
+);
+
 void stopScreenTimer() {
   screenTimer?.cancel();
   screenTimer = null;
@@ -20,13 +23,17 @@ Future<void> landScape() async {
   try {
     if (kIsWeb) {
       await document.documentElement?.requestFullscreen();
-    } else if (Platform.isAndroid || Platform.isIOS) {
-      await AutoOrientation.landscapeAutoMode(forceSensor: true);
+    } else if (Platform.isAndroid) {
+      await _orientationChannel.invokeMethod<void>('setLandscapeSensor');
+    } else if (Platform.isIOS) {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
     } else if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-      await const MethodChannel('com.alexmercerind/media_kit_video')
-          .invokeMethod(
-        'Utils.EnterNativeFullscreen',
-      );
+      await const MethodChannel(
+        'com.alexmercerind/media_kit_video',
+      ).invokeMethod('Utils.EnterNativeFullscreen');
     }
   } catch (exception, stacktrace) {
     debugPrint(exception.toString());
@@ -36,9 +43,7 @@ Future<void> landScape() async {
 
 //竖屏
 Future<void> verticalScreenForTwoSeconds() async {
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   screenTimer = Timer(const Duration(seconds: 2), () {
     autoScreen();
     screenTimer = null;
@@ -47,15 +52,15 @@ Future<void> verticalScreenForTwoSeconds() async {
 
 //竖屏
 Future<void> verticalScreen() async {
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-  ]);
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 }
 
 //全向
 Future<void> autoScreen() async {
-  if (!GStorage.setting
-      .get(SettingBoxKey.allowRotateScreen, defaultValue: true)) {
+  if (!GStorage.setting.get(
+    SettingBoxKey.allowRotateScreen,
+    defaultValue: true,
+  )) {
     return;
   }
   await SystemChrome.setPreferredOrientations([
@@ -66,14 +71,25 @@ Future<void> autoScreen() async {
   ]);
 }
 
+Future<void> fullAutoScreen() async {
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+}
+
 Future<void> fullAutoModeForceSensor() async {
-  await AutoOrientation.fullAutoMode(forceSensor: true);
+  if (!kIsWeb && Platform.isAndroid) {
+    await _orientationChannel.invokeMethod<void>('setFullSensor');
+    return;
+  }
+  await fullAutoScreen();
 }
 
 Future<void> hideStatusBar() async {
-  await SystemChrome.setEnabledSystemUIMode(
-    SystemUiMode.immersiveSticky,
-  );
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 }
 
 //退出全屏显示
@@ -93,10 +109,9 @@ Future<void> showStatusBar() async {
         overlays: SystemUiOverlay.values,
       );
     } else if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-      await const MethodChannel('com.alexmercerind/media_kit_video')
-          .invokeMethod(
-        'Utils.ExitNativeFullscreen',
-      );
+      await const MethodChannel(
+        'com.alexmercerind/media_kit_video',
+      ).invokeMethod('Utils.ExitNativeFullscreen');
     }
   } catch (exception, stacktrace) {
     debugPrint(exception.toString());

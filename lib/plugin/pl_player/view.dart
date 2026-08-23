@@ -118,7 +118,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   // 双击播放、暂停
   void onDoubleTapMiddle() {
     final PlPlayerController playerController = widget.controller;
-    playerController.videoPlayerController!.playOrPause();
+    unawaited(playerController.togglePlay());
   }
 
   void doubleTapFuc(String type) {

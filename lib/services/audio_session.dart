@@ -1,21 +1,24 @@
 import 'package:audio_session/audio_session.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
+import 'package:pilipalaz/plugin/pl_player/playback_commands.dart';
 
-class AudioSessionHandler {
-  late AudioSession session;
+class AudioSessionHandler implements PlaybackAudioSession {
+  late final Future<AudioSession> _sessionFuture;
   bool _playInterrupted = false;
 
-  setActive(bool active) {
-    session.setActive(active);
+  @override
+  Future<bool> setActive(bool active) async {
+    final session = await _sessionFuture;
+    return session.setActive(active);
   }
 
   AudioSessionHandler() {
-    initSession();
+    _sessionFuture = _initSession();
   }
 
-  Future<void> initSession() async {
-    session = await AudioSession.instance;
-    session.configure(const AudioSessionConfiguration.music());
+  Future<AudioSession> _initSession() async {
+    final session = await AudioSession.instance;
+    await session.configure(const AudioSessionConfiguration.music());
 
     session.interruptionEventStream.listen((event) {
       final playerStatus = PlPlayerController.getPlayerStatusIfExists();
@@ -66,5 +69,7 @@ class AudioSessionHandler {
       //   player.pause();
       // }
     });
+
+    return session;
   }
 }

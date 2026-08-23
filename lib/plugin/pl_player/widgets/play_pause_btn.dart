@@ -67,7 +67,7 @@ class PlayOrPauseButtonState extends State<PlayOrPauseButton>
       width: 42,
       height: 38,
       child: InkWell(
-        onTap: player.playOrPause,
+        onTap: widget.controller!.togglePlay,
         // iconSize: widget.iconSize ?? _theme(context).buttonBarButtonSize,
         // color: widget.iconColor ?? _theme(context).buttonBarButtonColor,
         child: Center(

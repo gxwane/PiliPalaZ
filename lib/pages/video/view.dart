@@ -4,7 +4,6 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:pilipalaz/services/service_locator.dart';
-import 'package:auto_orientation_v2/auto_orientation_v2.dart';
 import 'package:fl_pip/fl_pip.dart';
 // import 'package:fl_pip/fl_pip.dart';
 import 'package:flutter/services.dart';
@@ -346,7 +345,7 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     // videoDetailController.floating?.dispose();
     videoDetailController.cid.close();
     if (!horizontalScreen) {
-      AutoOrientation.portraitUpMode();
+      unawaited(verticalScreen());
     }
     shutdownTimerService.handleWaitingFinished();
     // _bufferedListener?.cancel();
@@ -469,7 +468,7 @@ class _VideoDetailPageState extends State<VideoDetailPage>
             restoredController.ownsNativeResources(
               videoDetailController.playerResourceOwner,
             )) {
-          AutoOrientation.fullAutoMode();
+          unawaited(fullAutoScreen());
         }
       }),
     );

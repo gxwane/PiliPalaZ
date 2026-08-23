@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'dart:io';
 
-import 'package:auto_orientation_v2/auto_orientation_v2.dart';
 import 'package:flex_seed_scheme/flex_seed_scheme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -82,10 +82,10 @@ class _StyleSettingState extends State<StyleSetting> {
               defaultVal: false,
               callFn: (value) {
                 if (value) {
-                  autoScreen();
+                  unawaited(autoScreen());
                   SmartDialog.showToast('已开启横屏适配');
                 } else {
-                  AutoOrientation.portraitUpMode();
+                  unawaited(verticalScreen());
                   SmartDialog.showToast('已关闭横屏适配');
                 }
                 PlPlayerController.updateSettingsIfExist();

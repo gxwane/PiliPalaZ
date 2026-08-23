@@ -29,6 +29,7 @@ import 'package:pilipalaz/pages/mine/controller.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
 import 'package:pilipalaz/plugin/pl_player/player_buffer_policy.dart';
+import 'package:pilipalaz/plugin/pl_player/playback_commands.dart';
 import 'package:pilipalaz/plugin/pl_player/playback_position_guard.dart';
 import 'package:pilipalaz/services/player_diagnostics.dart';
 import 'package:pilipalaz/services/service_locator.dart';
@@ -51,6 +52,7 @@ Box onlineCache = GStorage.onlineCache;
 class PlPlayerController with WidgetsBindingObserver {
   static Player? _videoPlayerController;
   VideoController? _videoController;
+  PlaybackCommandCoordinator? _playbackCommands;
 
   // 添加一个私有静态变量来保存实例
   static PlPlayerController? _instance;
@@ -694,6 +696,7 @@ class PlPlayerController with WidgetsBindingObserver {
       _videoPlayerController = await _createVideoController(
           dataSource, _looping, enableHA, hwdec, width, height, seekTo);
       if (session != _playbackSession) return;
+      _attachPlaybackCommands(_videoPlayerController!);
       // 获取视频时长 00:00
       _duration.value = duration ?? _videoPlayerController!.state.duration;
       updateDurationSecond();
@@ -1300,20 +1303,13 @@ class PlPlayerController with WidgetsBindingObserver {
     // }
     // if (_playerCount.value == 0) return;
     // if (playerStatus.status.value == PlayerStatus.disabled) return;
-    // 播放时自动隐藏控制条
-    controls = !hideControls;
-    // repeat为true，将从头播放
-    if (repeat) {
-      // await seekTo(Duration.zero);
-      await seekTo(Duration.zero, type: "slider");
-    }
+    final PlaybackCommandCoordinator? commands = _playbackCommands;
+    if (commands == null) return;
 
-    await _videoPlayerController?.play();
-
-    playerStatus.status.value = PlayerStatus.playing;
-    // screenManager.setOverlays(false);
-
-    audioSessionHandler.setActive(true);
+    await commands.play(
+      hideControls: hideControls,
+      restart: repeat || playerStatus.completed,
+    );
 
     // Future.delayed(const Duration(milliseconds: 100), () {
     //   getCurrentVolume();
@@ -1322,13 +1318,7 @@ class PlPlayerController with WidgetsBindingObserver {
 
   /// 暂停播放
   Future<void> pause({bool notify = true, bool isInterrupt = false}) async {
-    await _videoPlayerController?.pause();
-    playerStatus.status.value = PlayerStatus.paused;
-
-    // 主动暂停时让出音频焦点
-    if (!isInterrupt) {
-      audioSessionHandler.setActive(false);
-    }
+    await _playbackCommands?.pause(isInterrupt: isInterrupt);
   }
 
   // 感觉用这个管理状态也不是很好用
@@ -1347,12 +1337,7 @@ class PlPlayerController with WidgetsBindingObserver {
 
   /// 更改播放状态
   Future<void> togglePlay() async {
-    feedBack();
-    if (playerStatus.playing) {
-      pause();
-    } else {
-      play();
-    }
+    await _playbackCommands?.toggle(restart: playerStatus.completed);
   }
 
   /// 隐藏控制条
@@ -1813,7 +1798,7 @@ class PlPlayerController with WidgetsBindingObserver {
         return;
       }
       if (mode == FullScreenMode.gravity) {
-        fullAutoModeForceSensor();
+        await fullAutoModeForceSensor();
         return;
       }
       if (mode == FullScreenMode.vertical ||
@@ -1982,6 +1967,7 @@ class PlPlayerController with WidgetsBindingObserver {
     final Player? player = _videoPlayerController;
     _videoPlayerController = null;
     _videoController = null;
+    _playbackCommands = null;
     try {
       await removeListeners();
     } catch (err) {
@@ -2012,6 +1998,18 @@ class PlPlayerController with WidgetsBindingObserver {
     updateSliderPositionSecond();
     updateBufferedSecond();
     updateDurationSecond();
+  }
+
+  void _attachPlaybackCommands(Player player) {
+    _playbackCommands = PlaybackCommandCoordinator(
+      engine: MediaKitPlaybackEngine(player),
+      audioSession: audioSessionHandler,
+      onControlsVisibilityChanged: (bool visible) {
+        controls = visible;
+      },
+      onFeedback: feedBack,
+      restartFromBeginning: () => seekTo(Duration.zero, type: 'slider'),
+    );
   }
 
   Future<void> dispose() async {

@@ -23,6 +23,7 @@ class MainActivity: FlPiPActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         AppUpdateChannel(this, flutterEngine)
+        OrientationChannel(this, flutterEngine)
     }
 //    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
 //        super.configureFlutterEngine(flutterEngine)
