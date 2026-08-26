@@ -4,15 +4,16 @@ import 'package:easy_debounce/easy_throttle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:get/get.dart';
-import 'package:nil/nil.dart';
-import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
+import 'package:pilipalaz/models/bangumi/list.dart';
+import 'package:pilipalaz/models/common/pgc_type.dart';
 import 'package:pilipalaz/pages/home/index.dart';
 import 'package:pilipalaz/pages/main/index.dart';
+import 'package:pilipalaz/services/pgc_playback_coordinator.dart';
 
-import '../../utils/grid.dart';
 import 'controller.dart';
 import 'widgets/bangumi_card_v.dart';
+import 'widgets/pgc_center_sections.dart';
 
 class BangumiPage extends StatefulWidget {
   const BangumiPage({super.key});
@@ -24,9 +25,10 @@ class BangumiPage extends StatefulWidget {
 class _BangumiPageState extends State<BangumiPage>
     with AutomaticKeepAliveClientMixin {
   final BangumiController _bangumiController = Get.put(BangumiController());
-  late Future? _futureBuilderFuture;
-  late Future? _futureBuilderFutureFollow;
-  late ScrollController scrollController;
+  late Future<dynamic> _catalogFuture;
+  late Future<dynamic> _followFuture;
+  late final ScrollController scrollController;
+  late final VoidCallback _scrollListener;
 
   @override
   bool get wantKeepAlive => true;
@@ -35,214 +37,245 @@ class _BangumiPageState extends State<BangumiPage>
   void initState() {
     super.initState();
     scrollController = _bangumiController.scrollController;
-    StreamController<bool> mainStream =
-        Get.find<MainController>().bottomBarStream;
-    StreamController<bool> searchBarStream =
-        Get.find<HomeController>().searchBarStream;
-    _futureBuilderFuture = _bangumiController.queryBangumiListFeed();
-    _futureBuilderFutureFollow = _bangumiController.queryBangumiFollow();
-    scrollController.addListener(
-      () async {
-        if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 200) {
-          EasyThrottle.throttle('my-throttler', const Duration(seconds: 1), () {
-            _bangumiController.isLoadingMore = true;
-            _bangumiController.onLoad();
-          });
-        }
+    _catalogFuture = _bangumiController.queryBangumiListFeed();
+    _followFuture = _bangumiController.queryBangumiFollow();
+    _scrollListener = _handleScroll;
+    scrollController.addListener(_scrollListener);
+  }
 
-        final ScrollDirection direction =
-            scrollController.position.userScrollDirection;
-        if (direction == ScrollDirection.forward) {
-          mainStream.add(true);
-          searchBarStream.add(true);
-        } else if (direction == ScrollDirection.reverse) {
-          mainStream.add(false);
-          searchBarStream.add(false);
-        }
-      },
-    );
+  void _handleScroll() {
+    if (scrollController.position.pixels >=
+        scrollController.position.maxScrollExtent - 200) {
+      EasyThrottle.throttle(
+        'pgc-load-more',
+        const Duration(seconds: 1),
+        _bangumiController.onLoad,
+      );
+    }
+
+    final StreamController<bool> mainStream =
+        Get.find<MainController>().bottomBarStream;
+    final StreamController<bool> searchBarStream =
+        Get.find<HomeController>().searchBarStream;
+    final ScrollDirection direction =
+        scrollController.position.userScrollDirection;
+    if (direction == ScrollDirection.forward) {
+      mainStream.add(true);
+      searchBarStream.add(true);
+    } else if (direction == ScrollDirection.reverse) {
+      mainStream.add(false);
+      searchBarStream.add(false);
+    }
   }
 
   @override
   void dispose() {
-    scrollController.removeListener(() {});
+    scrollController.removeListener(_scrollListener);
     super.dispose();
+  }
+
+  Future<void> _refresh() async {
+    final Future<dynamic> catalogFuture = _bangumiController
+        .queryBangumiListFeed();
+    final Future<dynamic> followFuture = _bangumiController
+        .queryBangumiFollow();
+    setState(() {
+      _catalogFuture = catalogFuture;
+      _followFuture = followFuture;
+    });
+    await Future.wait<dynamic>(<Future<dynamic>>[catalogFuture, followFuture]);
+  }
+
+  Future<void> _selectCatalog(PgcCatalogType value) async {
+    if (_bangumiController.catalogType.value == value) return;
+    final PgcFollowGroup previousGroup =
+        _bangumiController.catalogType.value.followGroup;
+    await _bangumiController.selectCatalog(value);
+    if (!mounted) return;
+
+    final Future<dynamic> catalogFuture = _bangumiController
+        .queryBangumiListFeed();
+    final bool followGroupChanged = previousGroup != value.followGroup;
+    final Future<dynamic>? followFuture = followGroupChanged
+        ? _bangumiController.queryBangumiFollow()
+        : null;
+    setState(() {
+      _catalogFuture = catalogFuture;
+      if (followFuture != null) _followFuture = followFuture;
+    });
+  }
+
+  Future<void> _selectOrder(PgcCatalogOrder value) async {
+    if (_bangumiController.catalogOrder.value == value) return;
+    await _bangumiController.selectOrder(value);
+    if (!mounted) return;
+    setState(() {
+      _catalogFuture = _bangumiController.queryBangumiListFeed();
+    });
+  }
+
+  void _retryFollow() {
+    setState(() {
+      _followFuture = _bangumiController.queryBangumiFollow();
+    });
+  }
+
+  void _retryCatalog() {
+    setState(() {
+      _catalogFuture = _bangumiController.queryBangumiListFeed();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return RefreshIndicator(
-      displacement: 10.0,
-      edgeOffset: 10.0,
-      onRefresh: () async {
-        await _bangumiController.queryBangumiListFeed();
-        return _bangumiController.queryBangumiFollow();
-      },
-      child: CustomScrollView(
-        cacheExtent: 3500,
-        controller: _bangumiController.scrollController,
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverToBoxAdapter(
-            child: Obx(
-              () => Visibility(
-                visible: _bangumiController.userLogin.value,
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(
-                          top: StyleString.safeSpace, bottom: 10, left: 16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '最近追番',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          IconButton(
-                            tooltip: '刷新',
-                            onPressed: () {
-                              setState(() {
-                                _futureBuilderFutureFollow =
-                                    _bangumiController.queryBangumiFollow();
-                              });
-                            },
-                            icon: const Icon(
-                              Icons.refresh,
-                              size: 20,
-                            ),
-                          ),
-                        ],
-                      ),
+    return Column(
+      children: <Widget>[
+        Obx(
+          () => PgcCategoryBar(
+            selectedType: _bangumiController.catalogType.value,
+            onSelected: _selectCatalog,
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            displacement: 10,
+            edgeOffset: 10,
+            onRefresh: _refresh,
+            child: CustomScrollView(
+              cacheExtent: 3500,
+              controller: scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: <Widget>[
+                SliverToBoxAdapter(child: _buildContinueSection()),
+                SliverToBoxAdapter(
+                  child: Obx(
+                    () => PgcCatalogSectionHeader(
+                      title: '${_bangumiController.catalogType.value.label}精选',
+                      selectedOrder: _bangumiController.catalogOrder.value,
+                      followGroup:
+                          _bangumiController.catalogType.value.followGroup,
+                      onOrderSelected: _selectOrder,
                     ),
-                    SizedBox(
-                      height: Grid.maxRowWidth * 1,
-                      child: FutureBuilder(
-                        future: _futureBuilderFutureFollow,
-                        builder:
-                            (BuildContext context, AsyncSnapshot snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.done) {
-                            if (snapshot.data == null) {
-                              return const SizedBox();
-                            }
-                            Map data = snapshot.data as Map;
-                            List list = _bangumiController.bangumiFollowList;
-                            if (data['status']) {
-                              return Obx(
-                                () => list.isNotEmpty
-                                    ? ListView.builder(
-                                        scrollDirection: Axis.horizontal,
-                                        itemCount: list.length,
-                                        itemBuilder: (context, index) {
-                                          return Container(
-                                            width: Grid.maxRowWidth / 2,
-                                            height: Grid.maxRowWidth * 1,
-                                            margin: EdgeInsets.only(
-                                                left: StyleString.safeSpace,
-                                                right: index ==
-                                                        _bangumiController
-                                                                .bangumiFollowList
-                                                                .length -
-                                                            1
-                                                    ? StyleString.safeSpace
-                                                    : 0),
-                                            child: BangumiCardV(
-                                              bangumiItem: _bangumiController
-                                                  .bangumiFollowList[index],
-                                            ),
-                                          );
-                                        },
-                                      )
-                                    : const SizedBox(
-                                        child: Center(
-                                          child: Text('还没有追番'),
-                                        ),
-                                      ),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: pgcPageHorizontalPadding,
+                  ),
+                  sliver: FutureBuilder<dynamic>(
+                    future: _catalogFuture,
+                    builder:
+                        (
+                          BuildContext context,
+                          AsyncSnapshot<dynamic> snapshot,
+                        ) {
+                          final List<BangumiListItemModel> items =
+                              _bangumiController.bangumiList.toList(
+                                growable: false,
                               );
-                            } else {
-                              return nil;
-                            }
-                          } else {
-                            return nil;
+                          final bool waiting =
+                              snapshot.connectionState != ConnectionState.done;
+                          final Map<dynamic, dynamic>? result =
+                              snapshot.data is Map
+                              ? snapshot.data as Map<dynamic, dynamic>
+                              : null;
+                          if (!waiting && result?['status'] != true) {
+                            return HttpError(
+                              errMsg: result?['msg']?.toString(),
+                              fn: _retryCatalog,
+                            );
                           }
+                          return _contentGrid(items, refreshing: waiting);
                         },
-                      ),
-                    ),
-                  ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContinueSection() {
+    return Obx(() {
+      if (!_bangumiController.userLogin.value) {
+        return const SizedBox.shrink();
+      }
+      final PgcCatalogType catalogType = _bangumiController.catalogType.value;
+      return FutureBuilder<dynamic>(
+        future: _followFuture,
+        builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+          final List<BangumiListItemModel> items = _bangumiController
+              .bangumiFollowList
+              .toList(growable: false);
+          final bool waiting = snapshot.connectionState != ConnectionState.done;
+          final Map<dynamic, dynamic>? result = snapshot.data is Map
+              ? snapshot.data as Map<dynamic, dynamic>
+              : null;
+          String? errorMessage;
+          if (!waiting && result?['status'] != true) {
+            errorMessage = result?['msg']?.toString() ?? '请求异常';
+          }
+          return PgcContinueSection(
+            title: catalogType.continueSectionLabel,
+            scopeLabel: catalogType.followGroup.continueScopeLabel,
+            items: items,
+            loading: waiting,
+            errorMessage: errorMessage,
+            onRetry: _retryFollow,
+            onTap: (BangumiListItemModel item) {
+              PgcPlaybackCoordinator.open(
+                seasonId: item.seasonId,
+                pic: item.cover,
+              );
+            },
+          );
+        },
+      );
+    });
+  }
+
+  Widget _contentGrid(
+    List<BangumiListItemModel> items, {
+    required bool refreshing,
+  }) {
+    final bool showSkeleton = items.isEmpty;
+    const double crossAxisSpacing = 10;
+    const double posterAspectRatio = 0.65;
+    final double viewportWidth = MediaQuery.sizeOf(context).width;
+    final int crossAxisCount = pgcPosterColumnCount(viewportWidth);
+    final double gridWidth = viewportWidth - pgcPageHorizontalPadding * 2;
+    final double posterWidth =
+        (gridWidth - crossAxisSpacing * (crossAxisCount - 1)) / crossAxisCount;
+    return SliverGrid(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: crossAxisSpacing,
+        mainAxisExtent:
+            posterWidth / posterAspectRatio +
+            MediaQuery.textScalerOf(context).scale(54),
+      ),
+      delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
+        if (showSkeleton) return const PgcPosterSkeleton();
+        return AnimatedOpacity(
+          opacity: refreshing ? 0.45 : 1,
+          duration: const Duration(milliseconds: 180),
+          child: IgnorePointer(
+            ignoring: refreshing,
+            child: Obx(
+              () => BangumiCardV(
+                bangumiItem: items[index],
+                vipEntitlement: _bangumiController.vipEntitlementFor(
+                  items[index],
                 ),
               ),
             ),
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 10, bottom: 10, left: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '推荐',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
-                StyleString.safeSpace, 0, StyleString.safeSpace, 0),
-            sliver: FutureBuilder(
-              future: _futureBuilderFuture,
-              builder: (BuildContext context, AsyncSnapshot snapshot) {
-                if (snapshot.connectionState == ConnectionState.done) {
-                  Map data = snapshot.data as Map;
-                  if (data['status']) {
-                    return Obx(() => contentGrid(
-                        _bangumiController, _bangumiController.bangumiList));
-                  } else {
-                    return HttpError(
-                      errMsg: data['msg'],
-                      fn: () {
-                        setState(() {
-                          _futureBuilderFuture =
-                              _bangumiController.queryBangumiListFeed();
-                        });
-                      },
-                    );
-                  }
-                } else {
-                  return contentGrid(_bangumiController, []);
-                }
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget contentGrid(ctr, bangumiList) {
-    return SliverGrid(
-      gridDelegate: SliverGridDelegateWithExtentAndRatio(
-        // 行间距
-        mainAxisSpacing: StyleString.cardSpace - 2,
-        // 列间距
-        crossAxisSpacing: StyleString.cardSpace,
-        // 最大宽度
-        maxCrossAxisExtent: Grid.maxRowWidth / 3 * 2,
-        childAspectRatio: 0.65,
-        mainAxisExtent: MediaQuery.textScalerOf(context).scale(60),
-      ),
-      delegate: SliverChildBuilderDelegate(
-        (BuildContext context, int index) {
-          return bangumiList!.isNotEmpty
-              ? BangumiCardV(bangumiItem: bangumiList[index])
-              : nil;
-        },
-        childCount: bangumiList!.isNotEmpty ? bangumiList!.length : 10,
-      ),
+        );
+      }, childCount: showSkeleton ? 9 : items.length),
     );
   }
 }

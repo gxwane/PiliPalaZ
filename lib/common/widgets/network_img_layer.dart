@@ -1,12 +1,8 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
 import 'package:pilipalaz/utils/extension.dart';
 import 'package:pilipalaz/utils/global_data.dart';
-import '../../utils/storage.dart';
 import '../constants.dart';
-
-Box<dynamic> setting = GStorage.setting;
 
 class NetworkImgLayer extends StatelessWidget {
   const NetworkImgLayer({
@@ -67,12 +63,11 @@ class NetworkImgLayer extends StatelessWidget {
           type == 'avatar'
               ? 50
               : type == 'emote'
-                  ? 0
-                  : StyleString.imgRadius.x,
+              ? 0
+              : StyleString.imgRadius.x,
         ),
         child: CachedNetworkImage(
-          imageUrl:
-              '$srcUrl@${quality ?? defaultImgQuality}q.webp',
+          imageUrl: '$srcUrl@${quality ?? defaultImgQuality}q.webp',
           width: width,
           height: ignoreHeight == null || ignoreHeight == false ? height : null,
           memCacheWidth: memCacheWidth,
@@ -89,10 +84,7 @@ class NetworkImgLayer extends StatelessWidget {
       );
     }
     if (semanticsLabel != null) {
-      return Semantics(
-        label: semanticsLabel,
-        child: res,
-      );
+      return Semantics(label: semanticsLabel, child: res);
     }
     return res;
   }
@@ -104,11 +96,13 @@ class NetworkImgLayer extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.onInverseSurface.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(type == 'avatar'
-            ? 50
-            : type == 'emote'
-                ? 0
-                : StyleString.imgRadius.x),
+        borderRadius: BorderRadius.circular(
+          type == 'avatar'
+              ? 50
+              : type == 'emote'
+              ? 0
+              : StyleString.imgRadius.x,
+        ),
       ),
       child: type == 'bg'
           ? const SizedBox()

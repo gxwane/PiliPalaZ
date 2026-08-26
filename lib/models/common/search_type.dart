@@ -5,7 +5,7 @@ enum SearchType {
   // 番剧：media_bangumi,
   media_bangumi,
   // 影视：media_ft
-  // media_ft,
+  media_ft,
   // 直播间及主播：live
   // live,
   // 直播间：live_room
@@ -23,9 +23,22 @@ enum SearchType {
 }
 
 extension SearchTypeExtension on SearchType {
-  String get type =>
-      ['video', 'media_bangumi', 'live_room', 'bili_user', 'article'][index];
-  String get label => ['视频', '番剧', '直播间', '用户', '专栏'][index];
+  String get type => switch (this) {
+    SearchType.video => 'video',
+    SearchType.media_bangumi => 'media_bangumi',
+    SearchType.media_ft => 'media_ft',
+    SearchType.live_room => 'live_room',
+    SearchType.bili_user => 'bili_user',
+    SearchType.article => 'article',
+  };
+  String get label => switch (this) {
+    SearchType.video => '视频',
+    SearchType.media_bangumi => '番剧',
+    SearchType.media_ft => '影视',
+    SearchType.live_room => '直播间',
+    SearchType.bili_user => '用户',
+    SearchType.article => '专栏',
+  };
 }
 
 // 搜索类型为视频、专栏及相簿时

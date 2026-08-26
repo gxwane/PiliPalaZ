@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/search.dart';
-import 'package:pilipalaz/models/common/search_type.dart';
 import 'package:pilipalaz/pages/video/reply_reply/view.dart';
+import 'package:pilipalaz/services/pgc_playback_coordinator.dart';
 import 'id_utils.dart';
 import 'url_utils.dart';
 import 'utils.dart';
@@ -35,7 +35,9 @@ class PiliScheme {
       print(value);
       if (host == 'root') {
         Navigator.popUntil(
-            Get.context!, (Route<dynamic> route) => route.isFirst);
+          Get.context!,
+          (Route<dynamic> route) => route.isFirst,
+        );
       } else if (host == 'space') {
         final String mid = path.split('/').last;
         Get.toNamed<dynamic>(
@@ -90,8 +92,10 @@ class PiliScheme {
         }
       } else if (host == 'live') {
         final String roomId = path.split('/').last;
-        Get.toNamed<dynamic>('/liveRoom?roomid=$roomId',
-            arguments: <String, String?>{'liveItem': null, 'heroTag': roomId});
+        Get.toNamed<dynamic>(
+          '/liveRoom?roomid=$roomId',
+          arguments: <String, String?>{'liveItem': null, 'heroTag': roomId},
+        );
       } else if (host == 'bangumi') {
         if (path.startsWith('/season')) {
           final String seasonId = path.split('/').last;
@@ -119,7 +123,7 @@ class PiliScheme {
             'url': 'www.bilibili.com/read/cv$id',
             'title': '',
             'id': 'cv$id',
-            'dynamicType': 'read'
+            'dynamicType': 'read',
           },
         );
       } else if (host == 'comment' && path.startsWith("/detail/")) {
@@ -152,11 +156,12 @@ class PiliScheme {
               ],
             ),
             body: VideoReplyReplyPanel(
-                oid: oid,
-                rpid: RpID,
-                source: 'routePush',
-                replyType: ReplyType.dynamics,
-                firstFloor: null),
+              oid: oid,
+              rpid: RpID,
+              source: 'routePush',
+              replyType: ReplyType.dynamics,
+              firstFloor: null,
+            ),
           ),
         );
       } else if (host == 'following' && path.startsWith("/detail/")) {
@@ -193,11 +198,12 @@ class PiliScheme {
                 ],
               ),
               body: VideoReplyReplyPanel(
-                  oid: int.tryParse(path.split('/').last),
-                  rpid: int.tryParse(value.queryParameters['comment_root_id']!),
-                  source: 'routePush',
-                  replyType: ReplyType.dynamics,
-                  firstFloor: null),
+                oid: int.tryParse(path.split('/').last),
+                rpid: int.tryParse(value.queryParameters['comment_root_id']!),
+                source: 'routePush',
+                replyType: ReplyType.dynamics,
+                firstFloor: null,
+              ),
             ),
           );
         } else {
@@ -235,11 +241,10 @@ class PiliScheme {
       final int cid = await SearchHttp.ab2c(bvid: bvidVal, aid: aidVal);
       SmartDialog.dismiss();
       final String heroTag = Utils.makeHeroTag(aid);
-      Get.toNamed<dynamic>('/video?bvid=$bvid&cid=$cid',
-          arguments: <String, String?>{
-            'pic': null,
-            'heroTag': heroTag,
-          });
+      Get.toNamed<dynamic>(
+        '/video?bvid=$bvid&cid=$cid',
+        arguments: <String, String?>{'pic': null, 'heroTag': heroTag},
+      );
     } catch (e) {
       SmartDialog.dismiss();
       SmartDialog.showToast('video获取失败: $e');
@@ -249,30 +254,10 @@ class PiliScheme {
   // 番剧跳转
   static Future<void> bangumiPush(int? seasonId, int? epId) async {
     print('seasonId: $seasonId, epId: $epId');
-    SmartDialog.showLoading<dynamic>(msg: '获取中...');
     try {
-      var result = await SearchHttp.bangumiInfo(seasonId: seasonId, epId: epId);
-      if (result['status']) {
-        var bangumiDetail = result['data'];
-        final int cid = bangumiDetail.episodes!.first.cid;
-        final String bvid = IdUtils.av2bv(bangumiDetail.episodes!.first.aid);
-        final String heroTag = Utils.makeHeroTag(cid);
-        var epId = bangumiDetail.episodes!.first.id;
-        SmartDialog.dismiss().then(
-          (e) => Get.toNamed(
-            '/video?bvid=$bvid&cid=$cid&epId=$epId',
-            arguments: <String, dynamic>{
-              'pic': bangumiDetail.cover,
-              'heroTag': heroTag,
-              'videoType': SearchType.media_bangumi,
-            },
-          ),
-        );
-      } else {
-        SmartDialog.showToast(result['msg']);
-      }
+      await PgcPlaybackCoordinator.open(seasonId: seasonId, epId: epId);
     } catch (e) {
-      SmartDialog.showToast('番剧获取失败：$e');
+      SmartDialog.showToast('影视内容获取失败：$e');
     }
   }
 
@@ -304,8 +289,9 @@ class PiliScheme {
       final String lastPathSegment = pathSegment.split('/').last;
       final RegExp avRegex = RegExp(r'^[aA][vV]\d+', caseSensitive: false);
       if (avRegex.hasMatch(lastPathSegment)) {
-        final Map<String, dynamic> map =
-            IdUtils.matchAvorBv(input: lastPathSegment);
+        final Map<String, dynamic> map = IdUtils.matchAvorBv(
+          input: lastPathSegment,
+        );
         if (map.containsKey('AV')) {
           videoPush(map['AV']! as int, null);
         } else if (map.containsKey('BV')) {
@@ -318,11 +304,7 @@ class PiliScheme {
       } else if (lastPathSegment.startsWith('ss')) {
         handleSeasonPath(lastPathSegment, redirectUrl);
       } else if (lastPathSegment.startsWith('BV')) {
-        UrlUtils.matchUrlPush(
-          lastPathSegment,
-          '',
-          redirectUrl,
-        );
+        UrlUtils.matchUrlPush(lastPathSegment, '', redirectUrl);
       } else {
         Get.toNamed(
           '/webview',
@@ -369,17 +351,22 @@ class PiliScheme {
           } else {
             id = 'cv${matchNum(path).first}';
           }
-          Get.toNamed('/htmlRender', parameters: {
-            'url': value.toString(),
-            'title': '',
-            'id': id,
-            'dynamicType': 'read'
-          });
+          Get.toNamed(
+            '/htmlRender',
+            parameters: {
+              'url': value.toString(),
+              'title': '',
+              'id': id,
+              'dynamicType': 'read',
+            },
+          );
           break;
         case 'space':
           print('个人空间');
-          Get.toNamed('/member?mid=${matchNum(path).first}',
-              arguments: {'face': ''});
+          Get.toNamed(
+            '/member?mid=${matchNum(path).first}',
+            arguments: {'face': ''},
+          );
           break;
         case 'medialist':
           print('播放列表');
@@ -392,7 +379,7 @@ class PiliScheme {
               'url': 'https://www.bilibili.com/list/${pathPart[3]}',
               'type': 'url',
               'pageTitle': '',
-              'uaType': 'pc'
+              'uaType': 'pc',
             },
           );
           break;
@@ -409,7 +396,7 @@ class PiliScheme {
               parameters: {
                 'url': value.toString(),
                 'type': 'url',
-                'pageTitle': ''
+                'pageTitle': '',
               },
             );
           }

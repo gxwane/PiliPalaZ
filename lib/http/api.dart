@@ -105,7 +105,8 @@ class Api {
   // https://app.bilibili.com/x/v2/view/like/triple
   // access_key	str	APP 登录 Token	APP 方式必要
   // aid	num	稿件 avid	必要
-  static const String oneThree = '${HttpString.appBaseUrl}/x/v2/view/like/triple';
+  static const String oneThree =
+      '${HttpString.appBaseUrl}/x/v2/view/like/triple';
 
   // 获取指定用户创建的所有收藏夹信息
   // 该接口也能查询目标内容id存在于那些收藏夹中
@@ -234,6 +235,9 @@ class Api {
   // 番剧/剧集明细
   static const String bangumiInfo = '/pgc/view/web/season';
 
+  // 当前账号的番剧/影视追踪状态
+  static const String pgcFollowStatus = '/pgc/view/web/season/user/status';
+
   // 全部关注的up
   // vmid 用户id pn 页码 ps 每页个数，最大50 order: desc
   // order_type 排序规则 最近访问传空，最常访问传 attention
@@ -334,12 +338,14 @@ class Api {
   // season_type=1&
   // pagesize=20&
   // type=1
-  static const String bangumiList =
-      '/pgc/season/index/result?st=1&order=3&season_version=-1&spoken_language_type=-1&area=-1&is_finish=-1&copyright=-1&season_status=-1&season_month=-1&year=-1&style_id=-1&sort=0&season_type=1&pagesize=20&type=1';
+  static const String pgcCatalog = '/pgc/season/index/result';
+
+  static const String bangumiList = pgcCatalog;
 
   // 我的订阅
-  static const String bangumiFollow =
-      '/x/space/bangumi/follow/list?type=1&follow_status=0&pn=1&ps=15&ts=1691544359969';
+  static const String pgcFollow = '/x/space/bangumi/follow/list';
+
+  static const String bangumiFollow = pgcFollow;
 
   // 黑名单
   static const String blackLst = '/x/relation/blacks';

@@ -18,7 +18,7 @@ PiliPalaZ 是使用 Flutter 开发的哔哩哔哩非官方第三方客户端。�
 - Gradle 8.14
 - Android compileSdk/targetSdk 36，minSdk 24
 
-`android/build.gradle` 中使用 `new File()` 设置 `buildDir` 是为了解决 Windows 跨盘符构建问题，不要改回相对路径字符串。Windows 本地环境若出现 Pub Cache 与项目跨盘符的 `different roots` 错误，应将 `PUB_CACHE` 指向与项目同盘的本地目录；具体绝对路径属于个人环境配置，不应写入仓库或 GitHub Actions。
+`android/build.gradle` 中使用 `new File()` 设置 `buildDir` 是为了解决 Windows 跨盘符构建问题，不要改回相对路径字符串。Windows 不要求 Pub Cache 与项目同盘；仅当 Kotlin 增量编译因 `different roots` 导致构建失败或频繁回退时，才将本地 `PUB_CACHE` 调整到项目所在盘符。具体绝对路径属于个人环境配置，不应写入仓库或 GitHub Actions。
 
 ## 依赖与文件边界
 

@@ -6,7 +6,9 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/constants.dart';
 import 'package:pilipalaz/http/video.dart';
+import 'package:pilipalaz/http/pgc.dart';
 import 'package:pilipalaz/models/common/search_type.dart';
+import 'package:pilipalaz/models/common/video_source_type.dart';
 import 'package:pilipalaz/models/video/play/quality.dart';
 import 'package:pilipalaz/models/video/play/url.dart';
 import 'package:pilipalaz/pages/video/playback_input.dart';
@@ -31,6 +33,12 @@ class VideoDetailController extends GetxController
   Map videoItem = {};
   // 视频类型 默认投稿视频
   SearchType videoType = Get.arguments['videoType'] ?? SearchType.video;
+  late final VideoSourceType sourceType =
+      Get.arguments['sourceType'] ??
+      (videoType == SearchType.video
+          ? VideoSourceType.archive
+          : VideoSourceType.pgc);
+  int? epId = int.tryParse(Get.parameters['epId'] ?? '');
 
   /// tabs相关配置
   int tabInitialIndex = 0;
@@ -112,11 +120,17 @@ class VideoDetailController extends GetxController
         }
       }
     }
-    bool defaultShowComment =
-        setting.get(SettingBoxKey.defaultShowComment, defaultValue: false);
+    bool defaultShowComment = setting.get(
+      SettingBoxKey.defaultShowComment,
+      defaultValue: false,
+    );
     tabCtr = TabController(
-        length: 2, vsync: this, initialIndex: defaultShowComment ? 1 : 0);
-    autoPlay.value = resumePlay ||
+      length: 2,
+      vsync: this,
+      initialIndex: defaultShowComment ? 1 : 0,
+    );
+    autoPlay.value =
+        resumePlay ||
         setting.get(SettingBoxKey.autoPlayEnable, defaultValue: true);
     if (autoPlay.value) {
       isShowCover.value = false;
@@ -128,20 +142,20 @@ class VideoDetailController extends GetxController
       );
     }
     if (videoItem['pic']?.isEmpty != false) {
-      VideoHttp.videoIntro(bvid: bvid).then(
-        (value) {
-          if (value['status']) {
-            videoItem['pic'] = value['data'].pic;
-            isShowCover.refresh();
-          } else {
-            SmartDialog.showToast("视频封面获取失败：${value['msg']}");
-          }
-        },
-      );
+      VideoHttp.videoIntro(bvid: bvid).then((value) {
+        if (value['status']) {
+          videoItem['pic'] = value['data'].pic;
+          isShowCover.refresh();
+        } else {
+          SmartDialog.showToast("视频封面获取失败：${value['msg']}");
+        }
+      });
     }
     enableHA.value = setting.get(SettingBoxKey.enableHA, defaultValue: true);
-    hwdec.value = setting.get(SettingBoxKey.hardwareDecoding,
-        defaultValue: 'auto'); //Platform.isAndroid ? 'auto-safe' : 'auto');
+    hwdec.value = setting.get(
+      SettingBoxKey.hardwareDecoding,
+      defaultValue: 'auto',
+    ); //Platform.isAndroid ? 'auto-safe' : 'auto');
     if (userInfo == null ||
         localCache.get(LocalCacheKey.historyPause) == true) {
       enableHeart = false;
@@ -152,15 +166,23 @@ class VideoDetailController extends GetxController
     // enableCDN = setting.get(SettingBoxKey.enableCDN, defaultValue: true);
 
     // 预设的画质
-    cacheVideoQa = setting.get(SettingBoxKey.defaultVideoQa,
-        defaultValue: VideoQuality.values.last.code);
+    cacheVideoQa = setting.get(
+      SettingBoxKey.defaultVideoQa,
+      defaultValue: VideoQuality.values.last.code,
+    );
     // 预设的解码格式
-    cacheDecode = setting.get(SettingBoxKey.defaultDecode,
-        defaultValue: VideoDecodeFormats.values.last.code);
-    cacheSecondDecode = setting.get(SettingBoxKey.secondDecode,
-        defaultValue: VideoDecodeFormats.values[1].code);
-    cacheAudioQa = setting.get(SettingBoxKey.defaultAudioQa,
-        defaultValue: AudioQuality.hiRes.code);
+    cacheDecode = setting.get(
+      SettingBoxKey.defaultDecode,
+      defaultValue: VideoDecodeFormats.values.last.code,
+    );
+    cacheSecondDecode = setting.get(
+      SettingBoxKey.secondDecode,
+      defaultValue: VideoDecodeFormats.values[1].code,
+    );
+    cacheAudioQa = setting.get(
+      SettingBoxKey.defaultAudioQa,
+      defaultValue: AudioQuality.hiRes.code,
+    );
     if (Get.parameters['bvid'] != null && Get.parameters['bvid']!.isNotEmpty) {
       oid.value = IdUtils.bv2av(Get.parameters['bvid']!);
     } else {
@@ -202,14 +224,17 @@ class VideoDetailController extends GetxController
     plPlayerController!.buffered.value = Duration.zero;
 
     /// 根据currentVideoQa和currentDecodeFormats 重新设置videoUrl
-    List<VideoItem> videoList =
-        data.dash!.video!.where((i) => i.id == currentVideoQa.code).toList();
+    List<VideoItem> videoList = data.dash!.video!
+        .where((i) => i.id == currentVideoQa.code)
+        .toList();
 
     final List supportDecodeFormats = videoList.map((e) => e.codecs!).toList();
-    VideoDecodeFormats defaultDecodeFormats =
-        VideoDecodeFormatsCode.fromString(cacheDecode)!;
-    VideoDecodeFormats secondDecodeFormats =
-        VideoDecodeFormatsCode.fromString(cacheSecondDecode)!;
+    VideoDecodeFormats defaultDecodeFormats = VideoDecodeFormatsCode.fromString(
+      cacheDecode,
+    )!;
+    VideoDecodeFormats secondDecodeFormats = VideoDecodeFormatsCode.fromString(
+      cacheSecondDecode,
+    )!;
     try {
       // 当前视频没有对应格式返回第一个
       int flag = 0;
@@ -228,12 +253,14 @@ class VideoDetailController extends GetxController
       if (flag == 1) {
         //currentDecodeFormats
         firstVideo = videoList.firstWhere(
-            (i) => i.codecs!.startsWith(currentDecodeFormats.code),
-            orElse: () => videoList.first);
+          (i) => i.codecs!.startsWith(currentDecodeFormats.code),
+          orElse: () => videoList.first,
+        );
       } else {
         if (currentVideoQa == VideoQuality.dolbyVision) {
-          currentDecodeFormats =
-              VideoDecodeFormatsCode.fromString(videoList.first.codecs!)!;
+          currentDecodeFormats = VideoDecodeFormatsCode.fromString(
+            videoList.first.codecs!,
+          )!;
           firstVideo = videoList.first;
         } else if (flag == 2) {
           //defaultDecodeFormats
@@ -250,8 +277,9 @@ class VideoDetailController extends GetxController
             orElse: () => videoList.first,
           );
         } else if (flag == 0) {
-          currentDecodeFormats =
-              VideoDecodeFormatsCode.fromString(supportDecodeFormats.first)!;
+          currentDecodeFormats = VideoDecodeFormatsCode.fromString(
+            supportDecodeFormats.first,
+          )!;
           firstVideo = videoList.first;
         }
       }
@@ -300,7 +328,7 @@ class VideoDetailController extends GetxController
           httpHeaders: {
             'user-agent':
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
-            'referer': HttpString.baseUrl
+            'referer': HttpString.baseUrl,
           },
         ),
         owner: playerResourceOwner,
@@ -314,8 +342,8 @@ class VideoDetailController extends GetxController
         // 宽>高 水平 否则 垂直
         direction: firstVideo.width != null && firstVideo.height != null
             ? ((firstVideo.width! - firstVideo.height!) > 0
-                ? 'horizontal'
-                : 'vertical')
+                  ? 'horizontal'
+                  : 'vertical')
             : null,
         bvid: bvid,
         cid: cid.value,
@@ -361,194 +389,236 @@ class VideoDetailController extends GetxController
   Future queryVideoUrl() async {
     playbackError.value = '';
     try {
-      var result = await VideoHttp.videoUrl(cid: cid.value, bvid: bvid);
-    if (result['status']) {
-      data = result['data'];
-      if (data.acceptDesc?.contains('试看') == true) {
-        SmartDialog.showNotify(
-          msg: '该视频为专属视频，仅提供试看',
-          displayTime: const Duration(seconds: 3),
-          notifyType: NotifyType.warning,
-        );
+      if (sourceType.isPgc && epId == null) {
+        return playbackFailure('缺少影视剧集 ep_id，无法加载播放地址');
       }
-      if (data.dash == null && data.durl != null) {
-        final durl = data.durl;
-        if (durl == null || durl.isEmpty || durl.first.url?.isNotEmpty != true) {
-          return playbackFailure('视频资源不完整，请稍后重试');
+      var result = sourceType.isPgc
+          ? await PgcHttp.playUrl(epId: epId!, cid: cid.value)
+          : await VideoHttp.videoUrl(cid: cid.value, bvid: bvid);
+      if (result['status']) {
+        data = result['data'];
+        if (data.isDrm) {
+          return playbackFailure(
+            PgcPlaybackRestriction.messageFor(isDrm: true),
+          );
         }
-        videoUrl = durl.first.url!;
-        audioUrl = '';
-        defaultST = Duration.zero;
-        // 实际为FLV/MP4格式，但已被淘汰，这里仅做兜底处理
-        firstVideo = VideoItem(
+        if (data.isPreview || data.acceptDesc?.contains('试看') == true) {
+          SmartDialog.showNotify(
+            msg: '当前影视内容仅提供试看，试看结束后可前往官方客户端',
+            displayTime: const Duration(seconds: 3),
+            notifyType: NotifyType.warning,
+          );
+        }
+        if (sourceType.isPgc &&
+            data.dash == null &&
+            data.durl?.isNotEmpty != true) {
+          return playbackFailure(
+            PgcPlaybackRestriction.messageFor(
+              errorCode: data.errorCode,
+              isDrm: data.isDrm,
+              message: data.message,
+            ),
+          );
+        }
+        if (data.dash == null && data.durl != null) {
+          final durl = data.durl;
+          if (durl == null ||
+              durl.isEmpty ||
+              durl.first.url?.isNotEmpty != true) {
+            return playbackFailure('视频资源不完整，请稍后重试');
+          }
+          videoUrl = durl.first.url!;
+          audioUrl = '';
+          defaultST = Duration.zero;
+          // 实际为FLV/MP4格式，但已被淘汰，这里仅做兜底处理
+          firstVideo = VideoItem(
             id: data.quality!,
             baseUrl: videoUrl,
             codecs: 'avc1',
-            quality: VideoQualityCode.fromCode(data.quality!)!);
-        currentDecodeFormats = VideoDecodeFormatsCode.fromString('avc1')!;
-        currentVideoQa = VideoQualityCode.fromCode(data.quality!)!;
+            quality: VideoQualityCode.fromCode(data.quality!)!,
+          );
+          currentDecodeFormats = VideoDecodeFormatsCode.fromString('avc1')!;
+          currentVideoQa = VideoQualityCode.fromCode(data.quality!)!;
+          if (autoPlay.value) {
+            isShowCover.value = false;
+            await playerInit(duration: data.playableDuration);
+          }
+          return result;
+        }
+        if (data.dash == null) {
+          return playbackFailure('视频资源不存在');
+        }
+        final List<VideoItem> allVideosList =
+            data.dash!.video ?? const <VideoItem>[];
+        if (allVideosList.isEmpty) {
+          return playbackFailure('视频资源不存在');
+        }
+        // print("allVideosList:${allVideosList}");
+        // 当前可播放的最高质量视频
+        int currentHighVideoQa = allVideosList.first.quality!.code;
+        // 预设的画质为null，则当前可用的最高质量
+        cacheVideoQa ??= currentHighVideoQa;
+        int resVideoQa = currentHighVideoQa;
+        if (cacheVideoQa! <= currentHighVideoQa) {
+          // 如果预设的画质低于当前最高
+          final List<int> numbers =
+              (data.acceptQuality ??
+                      <int>[
+                        for (final video in allVideosList)
+                          if (video.quality != null) video.quality!.code,
+                      ])
+                  .where((e) => e <= currentHighVideoQa)
+                  .toList();
+          if (numbers.isEmpty) {
+            return playbackFailure('视频画质信息不完整');
+          }
+          resVideoQa = Utils.findClosestNumber(cacheVideoQa!, numbers);
+        }
+        currentVideoQa = VideoQualityCode.fromCode(resVideoQa)!;
+
+        /// 取出符合当前画质的videoList
+        final List<VideoItem> videosList = allVideosList
+            .where((e) => e.quality!.code == resVideoQa)
+            .toList();
+
+        /// 优先顺序 设置中指定解码格式 -> 当前可选的首个解码格式
+        final List<FormatItem> supportFormats =
+            data.supportFormats ?? const <FormatItem>[];
+        // 根据画质选编码格式
+        final List supportDecodeFormats = supportFormats.isNotEmpty
+            ? (supportFormats
+                      .firstWhere(
+                        (e) => e.quality == resVideoQa,
+                        orElse: () => supportFormats.first,
+                      )
+                      .codecs ??
+                  <String>[])
+            : videosList
+                  .map((video) => video.codecs)
+                  .whereType<String>()
+                  .toList();
+        if (videosList.isEmpty || supportDecodeFormats.isEmpty) {
+          return playbackFailure('视频编码信息不完整');
+        }
+        // 默认从设置中取AV1
+        currentDecodeFormats = VideoDecodeFormatsCode.fromString(cacheDecode)!;
+        VideoDecodeFormats secondDecodeFormats =
+            VideoDecodeFormatsCode.fromString(cacheSecondDecode)!;
+        // 当前视频没有对应格式返回第一个
+        int flag = 0;
+        for (var i in supportDecodeFormats) {
+          if (i.startsWith(currentDecodeFormats.code)) {
+            flag = 1;
+            break;
+          } else if (i.startsWith(secondDecodeFormats.code)) {
+            flag = 2;
+          }
+        }
+        if (flag == 2) {
+          currentDecodeFormats = secondDecodeFormats;
+        } else if (flag == 0) {
+          currentDecodeFormats = VideoDecodeFormatsCode.fromString(
+            supportDecodeFormats.first,
+          )!;
+        }
+
+        /// 取出符合当前解码格式的videoItem
+        firstVideo = videosList.firstWhere(
+          (e) => e.codecs!.startsWith(currentDecodeFormats.code),
+          orElse: () => videosList.first,
+        );
+        // List<Video> selectedVideos = videosList.where(
+        //       (e) => e.codecs!.startsWith(currentDecodeFormats.code),
+        // ).toList();
+
+        // videoUrl = enableCDN
+        //     ? VideoUtils.getCdnUrl(firstVideo)
+        //     : (firstVideo.backupUrl ?? firstVideo.baseUrl!);
+        videoUrl = VideoUtils.getCdnUrl(firstVideo);
+        if (videoUrl.isEmpty) {
+          return playbackFailure('视频链接为空，请稍后重试');
+        }
+
+        /// 优先顺序 设置中指定质量 -> 当前可选的最高质量
+        late AudioItem? firstAudio;
+        final List<AudioItem> audiosList = data.dash!.audio ?? <AudioItem>[];
+        if (data.dash!.dolby?.audio != null &&
+            data.dash!.dolby!.audio!.isNotEmpty) {
+          // 杜比
+          audiosList.insert(0, data.dash!.dolby!.audio!.first);
+        }
+
+        if (data.dash!.flac?.audio != null) {
+          // 无损
+          audiosList.insert(0, data.dash!.flac!.audio!);
+        }
+
+        if (audiosList.isNotEmpty) {
+          final List<int> numbers = audiosList.map((map) => map.id!).toList();
+          int closestNumber = Utils.findClosestNumber(cacheAudioQa, numbers);
+          if (!numbers.contains(cacheAudioQa) &&
+              numbers.any((e) => e > cacheAudioQa)) {
+            closestNumber = 30280;
+          }
+          firstAudio = audiosList.firstWhere(
+            (e) => e.id == closestNumber,
+            orElse: () => audiosList.first,
+          );
+          // audioUrl = enableCDN
+          //     ? VideoUtils.getCdnUrl(firstAudio)
+          //     : (firstAudio.backupUrl ?? firstAudio.baseUrl!);
+          audioUrl = VideoUtils.getCdnUrl(firstAudio);
+          if (firstAudio.id != null) {
+            currentAudioQa = AudioQualityCode.fromCode(firstAudio.id!)!;
+          }
+        } else {
+          firstAudio = AudioItem();
+          audioUrl = '';
+        }
+        //
+        defaultST = normalizeHistoryPosition(
+          lastPlayTimeMs: data.lastPlayTime,
+          durationMs: data.timeLength,
+        );
         if (autoPlay.value) {
           isShowCover.value = false;
           await playerInit();
         }
-        return result;
-      }
-      if (data.dash == null) {
-        return playbackFailure('视频资源不存在');
-      }
-      final List<VideoItem> allVideosList =
-          data.dash!.video ?? const <VideoItem>[];
-      if (allVideosList.isEmpty) {
-        return playbackFailure('视频资源不存在');
-      }
-      // print("allVideosList:${allVideosList}");
-      // 当前可播放的最高质量视频
-      int currentHighVideoQa = allVideosList.first.quality!.code;
-      // 预设的画质为null，则当前可用的最高质量
-      cacheVideoQa ??= currentHighVideoQa;
-      int resVideoQa = currentHighVideoQa;
-      if (cacheVideoQa! <= currentHighVideoQa) {
-        // 如果预设的画质低于当前最高
-        final List<int> numbers = (data.acceptQuality ??
-                <int>[
-                  for (final video in allVideosList)
-                    if (video.quality != null) video.quality!.code,
-                ])
-            .where((e) => e <= currentHighVideoQa)
-            .toList();
-        if (numbers.isEmpty) {
-          return playbackFailure('视频画质信息不完整');
-        }
-        resVideoQa = Utils.findClosestNumber(cacheVideoQa!, numbers);
-      }
-      currentVideoQa = VideoQualityCode.fromCode(resVideoQa)!;
-
-      /// 取出符合当前画质的videoList
-      final List<VideoItem> videosList =
-          allVideosList.where((e) => e.quality!.code == resVideoQa).toList();
-
-      /// 优先顺序 设置中指定解码格式 -> 当前可选的首个解码格式
-      final List<FormatItem> supportFormats =
-          data.supportFormats ?? const <FormatItem>[];
-      // 根据画质选编码格式
-      final List supportDecodeFormats = supportFormats.isNotEmpty
-          ? (supportFormats
-                  .firstWhere(
-                    (e) => e.quality == resVideoQa,
-                    orElse: () => supportFormats.first,
-                  )
-                  .codecs ??
-              <String>[])
-          : videosList
-              .map((video) => video.codecs)
-              .whereType<String>()
-              .toList();
-      if (videosList.isEmpty || supportDecodeFormats.isEmpty) {
-        return playbackFailure('视频编码信息不完整');
-      }
-      // 默认从设置中取AV1
-      currentDecodeFormats = VideoDecodeFormatsCode.fromString(cacheDecode)!;
-      VideoDecodeFormats secondDecodeFormats =
-          VideoDecodeFormatsCode.fromString(cacheSecondDecode)!;
-      // 当前视频没有对应格式返回第一个
-      int flag = 0;
-      for (var i in supportDecodeFormats) {
-        if (i.startsWith(currentDecodeFormats.code)) {
-          flag = 1;
-          break;
-        } else if (i.startsWith(secondDecodeFormats.code)) {
-          flag = 2;
-        }
-      }
-      if (flag == 2) {
-        currentDecodeFormats = secondDecodeFormats;
-      } else if (flag == 0) {
-        currentDecodeFormats =
-            VideoDecodeFormatsCode.fromString(supportDecodeFormats.first)!;
-      }
-
-      /// 取出符合当前解码格式的videoItem
-      firstVideo = videosList.firstWhere(
-          (e) => e.codecs!.startsWith(currentDecodeFormats.code),
-          orElse: () => videosList.first);
-      // List<Video> selectedVideos = videosList.where(
-      //       (e) => e.codecs!.startsWith(currentDecodeFormats.code),
-      // ).toList();
-
-
-      // videoUrl = enableCDN
-      //     ? VideoUtils.getCdnUrl(firstVideo)
-      //     : (firstVideo.backupUrl ?? firstVideo.baseUrl!);
-      videoUrl = VideoUtils.getCdnUrl(firstVideo);
-      if (videoUrl.isEmpty) {
-        return playbackFailure('视频链接为空，请稍后重试');
-      }
-
-      /// 优先顺序 设置中指定质量 -> 当前可选的最高质量
-      late AudioItem? firstAudio;
-      final List<AudioItem> audiosList = data.dash!.audio ?? <AudioItem>[];
-      if (data.dash!.dolby?.audio != null &&
-          data.dash!.dolby!.audio!.isNotEmpty) {
-        // 杜比
-        audiosList.insert(0, data.dash!.dolby!.audio!.first);
-      }
-
-      if (data.dash!.flac?.audio != null) {
-        // 无损
-        audiosList.insert(0, data.dash!.flac!.audio!);
-      }
-
-      if (audiosList.isNotEmpty) {
-        final List<int> numbers = audiosList.map((map) => map.id!).toList();
-        int closestNumber = Utils.findClosestNumber(cacheAudioQa, numbers);
-        if (!numbers.contains(cacheAudioQa) &&
-            numbers.any((e) => e > cacheAudioQa)) {
-          closestNumber = 30280;
-        }
-        firstAudio = audiosList.firstWhere((e) => e.id == closestNumber,
-            orElse: () => audiosList.first);
-        // audioUrl = enableCDN
-        //     ? VideoUtils.getCdnUrl(firstAudio)
-        //     : (firstAudio.backupUrl ?? firstAudio.baseUrl!);
-        audioUrl = VideoUtils.getCdnUrl(firstAudio);
-        if (firstAudio.id != null) {
-          currentAudioQa = AudioQualityCode.fromCode(firstAudio.id!)!;
-        }
       } else {
-        firstAudio = AudioItem();
-        audioUrl = '';
-      }
-      //
-      defaultST = normalizeHistoryPosition(
-        lastPlayTimeMs: data.lastPlayTime,
-        durationMs: data.timeLength,
-      );
-      if (autoPlay.value) {
+        final String resultMessage = result['msg']?.toString() ?? '';
+        playbackError.value = sourceType.isPgc
+            ? PgcPlaybackRestriction.messageFor(
+                errorCode: result['code'],
+                message: resultMessage,
+              )
+            : (resultMessage.isEmpty ? '视频加载失败，请重试' : resultMessage);
         isShowCover.value = false;
-        await playerInit();
-      }
-    } else {
-      playbackError.value = result['msg']?.toString() ?? '视频加载失败，请重试';
-      isShowCover.value = false;
-      if (result['code'] == -404) {
-        SmartDialog.showNotify(
-          msg: '视频不存在或已被删除',
-          displayTime: const Duration(seconds: 3),
-          notifyType: NotifyType.error,
-        );
-      } else if (result['code'] == 87008) {
-        SmartDialog.showNotify(
+        if (sourceType.isPgc) {
+          SmartDialog.showNotify(
+            msg: playbackError.value,
+            displayTime: const Duration(seconds: 4),
+            notifyType: NotifyType.warning,
+          );
+        } else if (result['code'] == -404) {
+          SmartDialog.showNotify(
+            msg: '视频不存在或已被删除',
+            displayTime: const Duration(seconds: 3),
+            notifyType: NotifyType.error,
+          );
+        } else if (result['code'] == 87008) {
+          SmartDialog.showNotify(
             msg: "当前视频可能是专属视频，可能需包月充电观看(${result['msg']})",
             displayTime: const Duration(seconds: 3),
-            notifyType: NotifyType.warning);
-      } else {
-        SmartDialog.showNotify(
-          msg: '错误（${result['code']}）：${result['msg']}',
-          displayTime: const Duration(seconds: 3),
-          notifyType: NotifyType.warning,
-        );
+            notifyType: NotifyType.warning,
+          );
+        } else {
+          SmartDialog.showNotify(
+            msg: '错误（${result['code']}）：${result['msg']}',
+            displayTime: const Duration(seconds: 3),
+            notifyType: NotifyType.warning,
+          );
+        }
       }
-    }
       return result;
     } catch (error, stackTrace) {
       return playbackFailure(

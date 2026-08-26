@@ -19,6 +19,9 @@ class PlayUrlModel {
     // this.highFormat,
     this.lastPlayTime,
     this.lastPlayCid,
+    this.isPreview = false,
+    this.errorCode,
+    this.isDrm = false,
   });
 
   String? from;
@@ -39,6 +42,17 @@ class PlayUrlModel {
   // String? highFormat;
   int? lastPlayTime;
   int? lastPlayCid;
+  bool isPreview = false;
+  int? errorCode;
+  bool isDrm = false;
+
+  Duration? get playableDuration {
+    if (durl?.isNotEmpty == true && durl!.first.length != null) {
+      return Duration(milliseconds: durl!.first.length!);
+    }
+    if (timeLength != null) return Duration(milliseconds: timeLength!);
+    return null;
+  }
 
   PlayUrlModel.fromJson(Map<String, dynamic> json) {
     from = json['from'];
@@ -49,7 +63,8 @@ class PlayUrlModel {
     timeLength = json['timelength'];
     acceptFormat = json['accept_format'];
     acceptDesc = json['accept_description'];
-    acceptQuality = json['accept_quality'].map<int>((e) => e as int).toList();
+    acceptQuality =
+        json['accept_quality']?.map<int>((e) => e as int).toList() ?? <int>[];
     videoCodecid = json['video_codecid'];
     seekParam = json['seek_param'];
     seekType = json['seek_type'];
@@ -57,11 +72,14 @@ class PlayUrlModel {
     durl = json['durl']?.map<Durl>((e) => Durl.fromJson(e)).toList();
     supportFormats = json['support_formats'] != null
         ? json['support_formats']
-            .map<FormatItem>((e) => FormatItem.fromJson(e))
-            .toList()
+              .map<FormatItem>((e) => FormatItem.fromJson(e))
+              .toList()
         : [];
     lastPlayTime = json['last_play_time'];
     lastPlayCid = json['last_play_cid'];
+    isPreview = json['is_preview'] == true || json['is_preview'] == 1;
+    errorCode = json['error_code'];
+    isDrm = json['is_drm'] == true || json['is_drm'] == 1;
   }
 }
 
@@ -84,8 +102,10 @@ class Dash {
 
   Dash.fromJson(Map<String, dynamic> json) {
     duration = json['duration'];
-    minBufferTime = json['minBufferTime'];
-    video = json['video'].map<VideoItem>((e) => VideoItem.fromJson(e)).toList();
+    minBufferTime = json['minBufferTime'] ?? json['min_buffer_time'];
+    video =
+        json['video']?.map<VideoItem>((e) => VideoItem.fromJson(e)).toList() ??
+        <VideoItem>[];
     audio = json['audio'] != null
         ? json['audio'].map<AudioItem>((e) => AudioItem.fromJson(e)).toList()
         : [];
@@ -163,18 +183,18 @@ class VideoItem {
 
   VideoItem.fromJson(Map<String, dynamic> json) {
     id = json['id'];
-    baseUrl = json['baseUrl'];
-    backupUrl =
-        json['backupUrl'] != null ? json['backupUrl'].toList().first : '';
-    bandWidth = json['bandWidth'];
+    baseUrl = json['baseUrl'] ?? json['base_url'];
+    final dynamic backups = json['backupUrl'] ?? json['backup_url'];
+    backupUrl = backups != null && backups.isNotEmpty ? backups.first : '';
+    bandWidth = json['bandWidth'] ?? json['bandwidth'];
     mimeType = json['mime_type'];
     codecs = json['codecs'];
     width = json['width'];
     height = json['height'];
-    frameRate = json['frameRate'];
+    frameRate = json['frameRate'] ?? json['frame_rate'];
     sar = json['sar'];
-    startWithSap = json['startWithSap'];
-    segmentBase = json['segmentBase'];
+    startWithSap = json['startWithSap'] ?? json['start_with_sap'];
+    segmentBase = json['segmentBase'] ?? json['segment_base'];
     codecid = json['codecid'];
     quality = VideoQuality.values.firstWhere((i) => i.code == json['id']);
   }
@@ -234,21 +254,42 @@ class AudioItem {
 
   AudioItem.fromJson(Map<String, dynamic> json) {
     id = json['id'];
-    baseUrl = json['baseUrl'];
-    backupUrl =
-        json['backupUrl'] != null ? json['backupUrl'].toList().first : '';
-    bandWidth = json['bandWidth'];
+    baseUrl = json['baseUrl'] ?? json['base_url'];
+    final dynamic backups = json['backupUrl'] ?? json['backup_url'];
+    backupUrl = backups != null && backups.isNotEmpty ? backups.first : '';
+    bandWidth = json['bandWidth'] ?? json['bandwidth'];
     mimeType = json['mime_type'];
     codecs = json['codecs'];
     width = json['width'];
     height = json['height'];
-    frameRate = json['frameRate'];
+    frameRate = json['frameRate'] ?? json['frame_rate'];
     sar = json['sar'];
-    startWithSap = json['startWithSap'];
-    segmentBase = json['segmentBase'];
+    startWithSap = json['startWithSap'] ?? json['start_with_sap'];
+    segmentBase = json['segmentBase'] ?? json['segment_base'];
     codecid = json['codecid'];
-    quality =
-        AudioQuality.values.firstWhere((i) => i.code == json['id']).description;
+    quality = AudioQuality.values
+        .firstWhere((i) => i.code == json['id'])
+        .description;
+  }
+}
+
+class PgcPlaybackRestriction {
+  static String messageFor({
+    int? errorCode,
+    bool isDrm = false,
+    String? message,
+  }) {
+    if (isDrm) {
+      return '当前内容受 DRM 保护，暂不支持在本客户端播放';
+    }
+    if (errorCode == -10403) {
+      return '当前内容需要大会员或购买后观看，请前往哔哩哔哩官方客户端';
+    }
+    if (message?.contains('地区') == true || message?.contains('区域') == true) {
+      return '当前地区无法播放此内容';
+    }
+    final String detail = message?.trim() ?? '';
+    return detail.isEmpty ? '影视内容暂不可播放' : '影视内容暂不可播放：$detail';
   }
 }
 
@@ -277,10 +318,7 @@ class FormatItem {
 }
 
 class Dolby {
-  Dolby({
-    this.type,
-    this.audio,
-  });
+  Dolby({this.type, this.audio});
 
   // 1：普通杜比音效 2：全景杜比音效
   int? type;

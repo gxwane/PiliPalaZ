@@ -4,9 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/widgets/stat/danmu.dart';
 import 'package:pilipalaz/common/widgets/stat/view.dart';
-import 'package:pilipalaz/http/search.dart';
 import 'package:pilipalaz/http/video.dart';
-import 'package:pilipalaz/models/common/search_type.dart';
+import 'package:pilipalaz/services/pgc_playback_coordinator.dart';
 import 'package:pilipalaz/utils/id_utils.dart';
 import 'package:pilipalaz/utils/utils.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
@@ -32,18 +31,20 @@ class FavVideoCardH extends StatelessWidget {
     String heroTag = Utils.makeHeroTag(id);
     return InkWell(
       onTap: () async {
-        // int? seasonId;
+        if (videoItem.ogv != null) {
+          await PgcPlaybackCoordinator.open(
+            seasonId: videoItem.ogv['season_id'],
+            epId: int.tryParse(videoItem.epId?.toString() ?? ''),
+            pic: videoItem.pic,
+            heroTag: heroTag,
+          );
+          return;
+        }
         String? epId;
-        if (videoItem.ogv != null &&
-            (videoItem.ogv['type_name'] == '番剧' ||
-                videoItem.ogv['type_name'] == '国创')) {
-          videoItem.cid = await SearchHttp.ab2c(bvid: bvid);
-          // seasonId = videoItem.ogv['season_id'];
-          epId = videoItem.epId;
-        } else if (videoItem.page == 0 || videoItem.page > 1) {
+        if (videoItem.page == 0 || videoItem.page > 1) {
           var result = await VideoHttp.videoIntro(bvid: bvid);
           if (result['status']) {
-            epId = result['data'].epId;
+            epId = result['data'].epId?.toString();
           } else {
             SmartDialog.showToast(result['msg']);
           }
@@ -57,12 +58,11 @@ class FavVideoCardH extends StatelessWidget {
         // if (seasonId != null) {
         //   parameters['seasonId'] = seasonId.toString();
         // }
-        Get.toNamed('/video', parameters: parameters, arguments: {
-          'videoItem': videoItem,
-          'heroTag': heroTag,
-          'videoType':
-              epId != null ? SearchType.media_bangumi : SearchType.video,
-        });
+        Get.toNamed(
+          '/video',
+          parameters: parameters,
+          arguments: {'videoItem': videoItem, 'heroTag': heroTag},
+        );
       },
       child: LayoutBuilder(
         builder: (context, boxConstraints) {
@@ -114,7 +114,7 @@ class FavVideoCardH extends StatelessWidget {
                   videoItem: videoItem,
                   callFn: callFn,
                   searchType: searchType,
-                )
+                ),
               ],
             ),
           );
@@ -159,8 +159,9 @@ class VideoContent extends StatelessWidget {
                   Text(
                     videoItem.intro,
                     style: TextStyle(
-                      fontSize:
-                          Theme.of(context).textTheme.labelMedium!.fontSize,
+                      fontSize: Theme.of(
+                        context,
+                      ).textTheme.labelMedium!.fontSize,
                       color: Theme.of(context).colorScheme.outline,
                     ),
                   ),
@@ -169,21 +170,20 @@ class VideoContent extends StatelessWidget {
                 Text(
                   "${Utils.dateFormat(videoItem.pubdate!, formatType: 'day')} ${videoItem.owner.name}",
                   style: TextStyle(
-                      fontSize:
-                          Theme.of(context).textTheme.labelMedium!.fontSize,
-                      color: Theme.of(context).colorScheme.outline),
+                    fontSize: Theme.of(context).textTheme.labelMedium!.fontSize,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                 ),
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
                   child: Row(
                     children: [
-                      StatView(
-                        theme: 'gray',
-                        view: videoItem.cntInfo['play'],
-                      ),
+                      StatView(theme: 'gray', view: videoItem.cntInfo['play']),
                       const SizedBox(width: 8),
                       StatDanMu(
-                          theme: 'gray', danmu: videoItem.cntInfo['danmaku']),
+                        theme: 'gray',
+                        danmu: videoItem.cntInfo['danmaku'],
+                      ),
                       const Spacer(),
                     ],
                   ),
@@ -210,21 +210,21 @@ class VideoContent extends StatelessWidget {
                           content: const Text('要取消收藏吗?'),
                           actions: [
                             TextButton(
-                                onPressed: () => Get.back(),
-                                child: Text(
-                                  '取消',
-                                  style: TextStyle(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .outline),
-                                )),
+                              onPressed: () => Get.back(),
+                              child: Text(
+                                '取消',
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                              ),
+                            ),
                             TextButton(
                               onPressed: () async {
                                 await callFn!();
                                 Get.back();
                               },
                               child: const Text('确定取消'),
-                            )
+                            ),
                           ],
                         );
                       },

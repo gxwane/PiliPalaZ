@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
-import 'package:hive/hive.dart';
 import 'package:pilipalaz/models/bangumi/info.dart';
 import 'package:pilipalaz/pages/video/index.dart';
-import 'package:pilipalaz/utils/storage.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:pilipalaz/common/widgets/list_sheet.dart';
 
@@ -14,11 +11,13 @@ class BangumiPanel extends StatefulWidget {
     required this.pages,
     this.cid,
     required this.changeFuc,
+    this.isMovie = false,
   });
 
   final List<EpisodeItem> pages;
   final int? cid;
   final Function changeFuc;
+  final bool isMovie;
 
   @override
   State<BangumiPanel> createState() => _BangumiPanelState();
@@ -28,10 +27,6 @@ class _BangumiPanelState extends State<BangumiPanel> {
   late int currentIndex;
   final ScrollController listViewScrollCtr = ScrollController();
   final ScrollController listViewScrollCtr_2 = ScrollController();
-  Box userInfoCache = GStorage.userInfo;
-  dynamic userInfo;
-  // 默认未开通
-  int vipStatus = 0;
   late int cid;
   String heroTag = Get.arguments['heroTag'];
   late final VideoDetailController videoDetailCtr;
@@ -42,16 +37,14 @@ class _BangumiPanelState extends State<BangumiPanel> {
     super.initState();
     cid = widget.cid!;
     currentIndex = widget.pages.indexWhere((e) => e.cid == cid);
+    if (currentIndex < 0) currentIndex = 0;
     scrollToIndex();
-    userInfo = userInfoCache.get('userInfoCache');
-    if (userInfo != null) {
-      vipStatus = userInfo.vipStatus;
-    }
     videoDetailCtr = Get.find<VideoDetailController>(tag: heroTag);
 
     videoDetailCtr.cid.listen((int p0) {
       cid = p0;
       currentIndex = widget.pages.indexWhere((EpisodeItem e) => e.cid == cid);
+      if (currentIndex < 0) currentIndex = 0;
       if (!mounted) return;
       setState(() {});
       scrollToIndex();
@@ -83,8 +76,11 @@ class _BangumiPanelState extends State<BangumiPanel> {
   void scrollToIndex() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // 在回调函数中获取更新后的状态
-      listViewScrollCtr.animateTo(currentIndex * 150,
-          duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
+      listViewScrollCtr.animateTo(
+        currentIndex * 150,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
     });
   }
 
@@ -97,7 +93,7 @@ class _BangumiPanelState extends State<BangumiPanel> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('合集 '),
+              Text(widget.isMovie ? '电影 ' : '选集 '),
               Expanded(
                 child: Text(
                   ' 正在播放：${widget.pages[currentIndex].longTitle}',
@@ -117,16 +113,21 @@ class _BangumiPanelState extends State<BangumiPanel> {
                   ),
                   onPressed: () {
                     ListSheet(
-                            episodes: widget.pages,
-                            bvid: widget.pages[currentIndex].bvid!,
-                            aid: widget.pages[currentIndex].aid!,
-                            currentCid: cid,
-                            changeFucCall: widget.changeFuc,
-                            context: context)
-                        .buildShowBottomSheet();
+                      episodes: widget.pages,
+                      bvid: widget.pages[currentIndex].bvid!,
+                      aid: widget.pages[currentIndex].aid!,
+                      currentCid: cid,
+                      changeFucCall: (bvid, cid, aid) {
+                        final EpisodeItem episode = widget.pages.firstWhere(
+                          (item) => item.cid == cid,
+                        );
+                        widget.changeFuc(bvid, cid, aid, episode.epId);
+                      },
+                      context: context,
+                    ).buildShowBottomSheet();
                   },
                   child: Text(
-                    '全${widget.pages.length}话',
+                    widget.isMovie ? '全片' : '全${widget.pages.length}话',
                     style: const TextStyle(fontSize: 13),
                   ),
                 ),
@@ -151,16 +152,11 @@ class _BangumiPanelState extends State<BangumiPanel> {
                   clipBehavior: Clip.hardEdge,
                   child: InkWell(
                     onTap: () {
-                      if (widget.pages[i].badge != null &&
-                          widget.pages[i].badge == '会员' &&
-                          vipStatus != 1) {
-                        SmartDialog.showToast('需要大会员');
-                        return;
-                      }
                       widget.changeFuc(
                         widget.pages[i].bvid,
                         widget.pages[i].cid,
                         widget.pages[i].aid,
+                        widget.pages[i].epId,
                       );
                       // currentIndex = i;
                       // setState(() {});
@@ -169,7 +165,9 @@ class _BangumiPanelState extends State<BangumiPanel> {
                     //changeFucCall(widget.pages[i], i),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 10),
+                        vertical: 8,
+                        horizontal: 10,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
@@ -182,23 +180,26 @@ class _BangumiPanelState extends State<BangumiPanel> {
                                   height: 12,
                                   semanticLabel: "正在播放：",
                                 ),
-                                const SizedBox(width: 6)
+                                const SizedBox(width: 6),
                               ],
                               Expanded(
-                                  child: Text(
-                                widget.pages[i].title ?? '第${i + 1}话',
-                                maxLines: (widget.pages[i].longTitle != null &&
-                                        widget.pages[i].longTitle != '')
-                                    ? 1
-                                    : 2,
-                                style: TextStyle(
+                                child: Text(
+                                  widget.pages[i].title ?? '第${i + 1}话',
+                                  maxLines:
+                                      (widget.pages[i].longTitle != null &&
+                                          widget.pages[i].longTitle != '')
+                                      ? 1
+                                      : 2,
+                                  style: TextStyle(
                                     fontSize: 13,
                                     color: i == currentIndex
                                         ? Theme.of(context).colorScheme.primary
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .onSurface),
-                              )),
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
                               const SizedBox(width: 2),
                               if (widget.pages[i].badge != null) ...[
                                 const Spacer(),
@@ -214,12 +215,13 @@ class _BangumiPanelState extends State<BangumiPanel> {
                                     widget.pages[i].badge!,
                                     style: TextStyle(
                                       fontSize: 11,
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
                                     ),
                                   ),
                                 ],
-                              ]
+                              ],
                             ],
                           ),
                           if (widget.pages[i].longTitle != null &&
@@ -229,15 +231,14 @@ class _BangumiPanelState extends State<BangumiPanel> {
                               widget.pages[i].longTitle!,
                               maxLines: 1,
                               style: TextStyle(
-                                  fontSize: 13,
-                                  color: i == currentIndex
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Theme.of(context)
-                                          .colorScheme
-                                          .onSurface),
+                                fontSize: 13,
+                                color: i == currentIndex
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.onSurface,
+                              ),
                               overflow: TextOverflow.ellipsis,
-                            )
-                          ]
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -246,7 +247,7 @@ class _BangumiPanelState extends State<BangumiPanel> {
               );
             },
           ),
-        )
+        ),
       ],
     );
   }

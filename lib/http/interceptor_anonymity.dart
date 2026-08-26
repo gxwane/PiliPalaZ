@@ -18,6 +18,7 @@ class AnonymityInterceptor extends Interceptor {
     Api.heartBeat,
     Api.ab2c,
     Api.bangumiInfo,
+    Api.pgcFollowStatus,
     Api.liveRoomInfo,
     Api.onlineTotal,
     Api.webDanmaku,
@@ -25,7 +26,6 @@ class AnonymityInterceptor extends Interceptor {
     Api.aiConclusion,
     Api.getSeasonDetailApi,
   ];
-
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {

@@ -11,12 +11,13 @@
 PiliPalaZ 面向 Android 与 iOS，提供视频浏览、播放、互动和个人内容管理等常用功能，并持续适配较新的 Flutter 与移动平台工具链。
 
 <div align="center">
-  <img src="assets/screenshots/main_screen.png" width="96%" alt="PiliPalaZ 首页、动态与番剧界面">
+  <img src="assets/screenshots/main_screen.png" width="96%" alt="PiliPalaZ 首页、动态与影视界面">
 </div>
 
 ## 主要功能
 
-- 内容发现：推荐、热门、直播、番剧、动态，以及多类型搜索和筛选。
+- 内容发现：推荐、热门、直播、动态，以及覆盖番剧、国创、电影、电视剧、纪录片和综艺的影视中心与多类型搜索。
+- 影视播放：支持剧集进度续播、选集与连播；会员、付费、地区或 DRM 受限内容遵循哔哩哔哩官方权益，接口提供试看时可播放试看片段。
 - 视频播放：画质与音质选择、弹幕、字幕、倍速、播放记忆、手势控制、画中画和横屏适配。
 - 互动管理：点赞、投币、收藏、评论、关注、黑名单、稍后再看、观看记录和站内消息。
 - 使用体验：亮色/暗色主题、动态取色、高刷新率、游客模式、无痕模式和丰富的播放偏好。
@@ -46,17 +47,20 @@ PiliPalaZ 面向 Android 与 iOS，提供视频浏览、播放、互动和个人
 | Android Gradle Plugin | 8.11.1 |
 | Kotlin Gradle Plugin | 2.2.20 |
 | Gradle | 8.14 |
-| Android SDK | compileSdk/targetSdk 36，minSdk 21 |
+| Android SDK | compileSdk/targetSdk 36，minSdk 24 |
 | iOS | GitHub Actions 的 macOS 最新运行环境 |
 
 获取依赖并执行基础检查：
 
 ```bash
-flutter pub get
-flutter analyze --no-pub --no-fatal-infos
-flutter test --no-pub
-flutter build apk --debug --no-pub
+fvm install
+fvm flutter pub get --enforce-lockfile
+fvm flutter analyze --no-pub --fatal-warnings --no-fatal-infos
+fvm flutter test --no-pub
+fvm flutter build apk --debug --no-pub
 ```
+
+仓库通过 `.fvmrc` 固定 Flutter 3.38.7。Windows 允许项目与 Pub Cache 位于不同盘符；若 Kotlin 增量编译出现 `different roots` 并导致构建失败或频繁回退，可将 `PUB_CACHE` 配置到项目所在盘符。FVM 不能替代 Pub Cache，个人绝对路径也不应写入仓库。
 
 正式 Android 与 iOS 构建由 GitHub Actions 的 Release 工作流完成。版本变更请同步更新 `pubspec.yaml` 和 [CHANGELOG.md](CHANGELOG.md)，提交前应完成格式化、测试和对应平台构建检查。
 

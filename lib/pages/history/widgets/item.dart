@@ -8,14 +8,13 @@ import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/http/search.dart';
 import 'package:pilipalaz/http/user.dart';
 import 'package:pilipalaz/http/video.dart';
-import 'package:pilipalaz/models/bangumi/info.dart';
 import 'package:pilipalaz/models/common/business_type.dart';
-import 'package:pilipalaz/models/common/search_type.dart';
 import 'package:pilipalaz/models/live/item.dart';
 import 'package:pilipalaz/pages/history_search/index.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
 import 'package:pilipalaz/utils/id_utils.dart';
 import 'package:pilipalaz/utils/utils.dart';
+import 'package:pilipalaz/services/pgc_playback_coordinator.dart';
 
 class HistoryItem extends StatelessWidget {
   final dynamic videoItem;
@@ -55,8 +54,11 @@ class HistoryItem extends StatelessWidget {
           //     'pageTitle': videoItem.title
           //   },
           // );
-          PiliScheme.routePush(Uri.parse(
-              "https://www.bilibili.com/read/cv${videoItem.history.oid}"));
+          PiliScheme.routePush(
+            Uri.parse(
+              "https://www.bilibili.com/read/cv${videoItem.history.oid}",
+            ),
+          );
         } else if (videoItem.history.business == 'live') {
           if (videoItem.liveStatus == 1) {
             LiveItemModel liveItem = LiveItemModel.fromJson({
@@ -74,75 +76,32 @@ class HistoryItem extends StatelessWidget {
           } else {
             SmartDialog.showToast('直播未开播');
           }
-        } else if (videoItem.badge == '番剧' ||
-            videoItem.tagName.contains('动画')) {
-          /// hack
-          var bvid = videoItem.history.bvid;
-          if (bvid != null && bvid != '') {
-            var result = await VideoHttp.videoIntro(bvid: bvid);
+        } else if (videoItem.history.business == BusinessType.pgc.type) {
+          int? epId = int.tryParse(videoItem.history.epid?.toString() ?? '');
+          if (epId == null && bvid.isNotEmpty) {
+            final Map result = await VideoHttp.videoIntro(bvid: bvid);
             if (result['status']) {
-              String bvid = result['data'].bvid!;
-              int cid = result['data'].cid!;
-              String pic = result['data'].pic!;
-              String heroTag = Utils.makeHeroTag(cid);
-              var epid = result['data'].epId;
-              if (epid != null) {
-                Get.toNamed(
-                  '/video?bvid=$bvid&cid=$cid&epId=${result['data'].epId}',
-                  arguments: {
-                    'pic': pic,
-                    'heroTag': heroTag,
-                    'videoType': SearchType.media_bangumi,
-                  },
-                );
-              } else {
-                int cid = videoItem.history.cid ??
-                    // videoItem.history.oid ??
-                    await SearchHttp.ab2c(aid: aid, bvid: bvid);
-                Get.toNamed('/video?bvid=$bvid&cid=$cid',
-                    arguments: {'heroTag': heroTag, 'pic': videoItem.cover});
-              }
-            } else {
-              SmartDialog.showToast(result['msg']);
-            }
-          } else {
-            if (videoItem.history.epid != '') {
-              SmartDialog.showLoading(msg: '获取中...');
-              var res =
-                  await SearchHttp.bangumiInfo(epId: videoItem.history.epid);
-              SmartDialog.dismiss();
-              if (res['status']) {
-                EpisodeItem episode = res['data'].episodes.first;
-                for (EpisodeItem i in res['data'].episodes) {
-                  if (i.epId == videoItem.history.epid) {
-                    episode = i;
-                    break;
-                  }
-                }
-                String bvid = episode.bvid!;
-                int cid = episode.cid!;
-                String pic = episode.cover!;
-                String heroTag = Utils.makeHeroTag(cid);
-                Get.toNamed(
-                  '/video?bvid=$bvid&cid=$cid&seasonId=${res['data'].seasonId}&epid=${episode.epId}',
-                  arguments: {
-                    'pic': pic,
-                    'heroTag': heroTag,
-                    'videoType': SearchType.media_bangumi,
-                    'bangumiItem': res['data'],
-                  },
-                );
-              } else {
-                SmartDialog.showToast(res['msg']);
-              }
+              epId = result['data'].epId;
             }
           }
+          if (epId == null) {
+            SmartDialog.showToast('影视剧集信息不完整');
+          } else {
+            await PgcPlaybackCoordinator.open(
+              epId: epId,
+              pic: videoItem.cover,
+              heroTag: heroTag,
+            );
+          }
         } else {
-          int cid = videoItem.history.cid ??
+          int cid =
+              videoItem.history.cid ??
               // videoItem.history.oid ??
               await SearchHttp.ab2c(aid: aid, bvid: bvid);
-          Get.toNamed('/video?bvid=$bvid&cid=$cid',
-              arguments: {'heroTag': heroTag, 'pic': videoItem.cover});
+          Get.toNamed(
+            '/video?bvid=$bvid&cid=$cid',
+            arguments: {'heroTag': heroTag, 'pic': videoItem.cover},
+          );
         }
       },
       onLongPress: () {
@@ -160,7 +119,11 @@ class HistoryItem extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-                StyleString.safeSpace, 0, StyleString.safeSpace, 0),
+              StyleString.safeSpace,
+              0,
+              StyleString.safeSpace,
+              0,
+            ),
             child: LayoutBuilder(
               builder: (context, boxConstraints) {
                 double width =
@@ -192,7 +155,8 @@ class HistoryItem extends StatelessWidget {
                                       ),
                                     ),
                                     if (!BusinessType
-                                        .hiddenDurationType.hiddenDurationType
+                                        .hiddenDurationType
+                                        .hiddenDurationType
                                         .contains(videoItem.history.business))
                                       PBadge(
                                         text: videoItem.progress == -1
@@ -205,7 +169,8 @@ class HistoryItem extends StatelessWidget {
                                     // 右上角
                                     if (BusinessType.showBadge.showBadge
                                             .contains(
-                                                videoItem.history.business) ||
+                                              videoItem.history.business,
+                                            ) ||
                                         videoItem.history.business ==
                                             BusinessType.live.type)
                                       PBadge(
@@ -229,10 +194,11 @@ class HistoryItem extends StatelessWidget {
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(12),
                                     color: Colors.black.withOpacity(
-                                        ctr!.enableMultiple.value &&
-                                                videoItem.checked
-                                            ? 0.6
-                                            : 0),
+                                      ctr!.enableMultiple.value &&
+                                              videoItem.checked
+                                          ? 0.6
+                                          : 0,
+                                    ),
                                   ),
                                   child: Center(
                                     child: SizedBox(
@@ -240,30 +206,34 @@ class HistoryItem extends StatelessWidget {
                                       height: 34,
                                       child: AnimatedScale(
                                         scale: videoItem.checked ? 1 : 0,
-                                        duration:
-                                            const Duration(milliseconds: 250),
+                                        duration: const Duration(
+                                          milliseconds: 250,
+                                        ),
                                         curve: Curves.easeInOut,
                                         child: IconButton(
                                           tooltip: '取消选择',
                                           style: ButtonStyle(
                                             padding: WidgetStateProperty.all(
-                                                EdgeInsets.zero),
+                                              EdgeInsets.zero,
+                                            ),
                                             backgroundColor:
                                                 WidgetStateProperty.resolveWith(
-                                              (states) {
-                                                return Colors.white
-                                                    .withOpacity(0.8);
-                                              },
-                                            ),
+                                                  (states) {
+                                                    return Colors.white
+                                                        .withOpacity(0.8);
+                                                  },
+                                                ),
                                           ),
                                           onPressed: () {
                                             feedBack();
                                             onChoose!();
                                           },
-                                          icon: Icon(Icons.done_all_outlined,
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .primary),
+                                          icon: Icon(
+                                            Icons.done_all_outlined,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -274,7 +244,7 @@ class HistoryItem extends StatelessWidget {
                           ),
                         ],
                       ),
-                      VideoContent(videoItem: videoItem, ctr: ctr)
+                      VideoContent(videoItem: videoItem, ctr: ctr),
                     ],
                   ),
                 );
@@ -316,9 +286,10 @@ class VideoContent extends StatelessWidget {
                 videoItem.isFullScreen,
                 textAlign: TextAlign.start,
                 style: TextStyle(
-                    fontSize: Theme.of(context).textTheme.labelMedium!.fontSize,
-                    fontWeight: FontWeight.w400,
-                    color: Theme.of(context).colorScheme.outline),
+                  fontSize: Theme.of(context).textTheme.labelMedium!.fontSize,
+                  fontWeight: FontWeight.w400,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -330,8 +301,9 @@ class VideoContent extends StatelessWidget {
                   Text(
                     videoItem.authorName,
                     style: TextStyle(
-                      fontSize:
-                          Theme.of(context).textTheme.labelMedium!.fontSize,
+                      fontSize: Theme.of(
+                        context,
+                      ).textTheme.labelMedium!.fontSize,
                       color: Theme.of(context).colorScheme.outline,
                     ),
                   ),
@@ -343,9 +315,9 @@ class VideoContent extends StatelessWidget {
                 Text(
                   Utils.dateFormat(videoItem.viewAt!),
                   style: TextStyle(
-                      fontSize:
-                          Theme.of(context).textTheme.labelMedium!.fontSize,
-                      color: Theme.of(context).colorScheme.outline),
+                    fontSize: Theme.of(context).textTheme.labelMedium!.fontSize,
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
                 ),
                 SizedBox(
                   width: 24,
@@ -363,40 +335,43 @@ class VideoContent extends StatelessWidget {
                     onSelected: (String type) {},
                     itemBuilder: (BuildContext context) =>
                         <PopupMenuEntry<String>>[
-                      if (videoItem.badge != '番剧' &&
-                          !videoItem.tagName.contains('动画') &&
-                          videoItem.history.business != 'live' &&
-                          !videoItem.history.business.contains('article'))
-                        PopupMenuItem<String>(
-                          onTap: () async {
-                            var res = await UserHttp.toViewLater(
-                                bvid: videoItem.history.bvid);
-                            SmartDialog.showToast(res['msg']);
-                          },
-                          value: 'pause',
-                          height: 35,
-                          child: const Row(
-                            children: [
-                              Icon(Icons.watch_later_outlined, size: 16),
-                              SizedBox(width: 6),
-                              Text('稍后再看', style: TextStyle(fontSize: 13))
-                            ],
+                          if (videoItem.badge != '番剧' &&
+                              !videoItem.tagName.contains('动画') &&
+                              videoItem.history.business != 'live' &&
+                              !videoItem.history.business.contains('article'))
+                            PopupMenuItem<String>(
+                              onTap: () async {
+                                var res = await UserHttp.toViewLater(
+                                  bvid: videoItem.history.bvid,
+                                );
+                                SmartDialog.showToast(res['msg']);
+                              },
+                              value: 'pause',
+                              height: 35,
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.watch_later_outlined, size: 16),
+                                  SizedBox(width: 6),
+                                  Text('稍后再看', style: TextStyle(fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                          PopupMenuItem<String>(
+                            onTap: () => ctr!.delHistory(
+                              videoItem.kid,
+                              videoItem.history.business,
+                            ),
+                            value: 'pause',
+                            height: 35,
+                            child: const Row(
+                              children: [
+                                Icon(Icons.close_outlined, size: 16),
+                                SizedBox(width: 6),
+                                Text('删除记录', style: TextStyle(fontSize: 13)),
+                              ],
+                            ),
                           ),
-                        ),
-                      PopupMenuItem<String>(
-                        onTap: () => ctr!.delHistory(
-                            videoItem.kid, videoItem.history.business),
-                        value: 'pause',
-                        height: 35,
-                        child: const Row(
-                          children: [
-                            Icon(Icons.close_outlined, size: 16),
-                            SizedBox(width: 6),
-                            Text('删除记录', style: TextStyle(fontSize: 13))
-                          ],
-                        ),
-                      ),
-                    ],
+                        ],
                   ),
                 ),
               ],

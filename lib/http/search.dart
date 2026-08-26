@@ -17,29 +17,21 @@ class SearchHttp {
     if (res.data is String) {
       Map<String, dynamic> resultMap = json.decode(res.data);
       if (resultMap['code'] == 0) {
-        return {
-          'status': true,
-          'data': HotSearchModel.fromJson(resultMap),
-        };
+        return {'status': true, 'data': HotSearchModel.fromJson(resultMap)};
       }
     } else if (res.data is Map<String, dynamic> && res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': HotSearchModel.fromJson(res.data),
-      };
+      return {'status': true, 'data': HotSearchModel.fromJson(res.data)};
     }
 
-    return {
-      'status': false,
-      'data': [],
-      'msg': '请求错误 🙅',
-    };
+    return {'status': false, 'data': [], 'msg': '请求错误 🙅'};
   }
 
   // 获取搜索建议
   static Future searchSuggest({required term}) async {
-    var res = await Request().get(Api.searchSuggest,
-        data: {'term': term, 'main_ver': 'v1', 'highlight': term});
+    var res = await Request().get(
+      Api.searchSuggest,
+      data: {'term': term, 'main_ver': 'v1', 'highlight': term},
+    );
     if (res.data is String) {
       Map<String, dynamic> resultMap = json.decode(res.data);
       if (resultMap['code'] == 0) {
@@ -53,18 +45,10 @@ class SearchHttp {
               : [],
         };
       } else {
-        return {
-          'status': false,
-          'data': [],
-          'msg': '请求错误 🙅',
-        };
+        return {'status': false, 'data': [], 'msg': '请求错误 🙅'};
       }
     } else {
-      return {
-        'status': false,
-        'data': [],
-        'msg': '请求错误 🙅',
-      };
+      return {'status': false, 'data': [], 'msg': '请求错误 🙅'};
     }
   }
 
@@ -110,16 +94,14 @@ class SearchHttp {
             data = SearchUserModel.fromJson(res.data['data']);
             break;
           case SearchType.media_bangumi:
+          case SearchType.media_ft:
             data = SearchMBangumiModel.fromJson(res.data['data']);
             break;
           case SearchType.article:
             data = SearchArticleModel.fromJson(res.data['data']);
             break;
         }
-        return {
-          'status': true,
-          'data': data,
-        };
+        return {'status': true, 'data': data};
       } catch (err) {
         print(err);
       }
@@ -141,8 +123,10 @@ class SearchHttp {
     } else if (bvid != null) {
       data['bvid'] = bvid;
     }
-    final dynamic res =
-        await Request().get(Api.ab2c, data: <String, dynamic>{...data});
+    final dynamic res = await Request().get(
+      Api.ab2c,
+      data: <String, dynamic>{...data},
+    );
     if (res.data['code'] == 0) {
       return res.data['data'].first['cid'];
     } else {
@@ -151,27 +135,27 @@ class SearchHttp {
     }
   }
 
-  static Future<Map<String, dynamic>> bangumiInfo(
-      {int? seasonId, int? epId}) async {
+  static Future<Map<String, dynamic>> bangumiInfo({
+    int? seasonId,
+    int? epId,
+  }) async {
     final Map<String, dynamic> data = {};
     if (seasonId != null) {
       data['season_id'] = seasonId;
     } else if (epId != null) {
       data['ep_id'] = epId;
     }
-    final dynamic res =
-        await Request().get(Api.bangumiInfo, data: <String, dynamic>{...data});
+    final dynamic res = await Request().get(
+      Api.bangumiInfo,
+      data: <String, dynamic>{...data},
+    );
     if (res.data['code'] == 0) {
       return {
         'status': true,
         'data': BangumiInfoModel.fromJson(res.data['result']),
       };
     } else {
-      return {
-        'status': false,
-        'data': [],
-        'msg': res.data['message'],
-      };
+      return {'status': false, 'data': [], 'msg': res.data['message']};
     }
   }
 }

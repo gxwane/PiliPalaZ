@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
-import 'package:get/get.dart';
 import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/widgets/badge.dart';
-import 'package:pilipalaz/http/search.dart';
-import 'package:pilipalaz/models/bangumi/info.dart';
-import 'package:pilipalaz/models/common/search_type.dart';
+import 'package:pilipalaz/models/bangumi/list.dart';
+import 'package:pilipalaz/services/pgc_playback_coordinator.dart';
+import 'package:pilipalaz/services/pgc_vip_entitlement_resolver.dart';
 import 'package:pilipalaz/utils/utils.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 
@@ -16,73 +14,41 @@ class BangumiCardV extends StatelessWidget {
     required this.bangumiItem,
     this.longPress,
     this.longPressEnd,
+    this.onTap,
+    this.vipEntitlement,
   });
 
-  final bangumiItem;
+  final BangumiListItemModel bangumiItem;
   final Function()? longPress;
   final Function()? longPressEnd;
+  final VoidCallback? onTap;
+  final PgcVipEntitlement? vipEntitlement;
 
   @override
   Widget build(BuildContext context) {
-    String heroTag = Utils.makeHeroTag(bangumiItem.mediaId);
+    final String title = bangumiItem.title?.trim().isNotEmpty == true
+        ? bangumiItem.title!
+        : '未命名影视';
+    final String heroTag = Utils.makeHeroTag(
+      bangumiItem.mediaId ?? bangumiItem.seasonId ?? title.hashCode,
+    );
+    final String? overlayText = _overlayText(bangumiItem);
+    final String? displayBadge = _displayBadge(bangumiItem, vipEntitlement);
     return Card(
       elevation: 0,
       clipBehavior: Clip.hardEdge,
       margin: EdgeInsets.zero,
       child: GestureDetector(
-        // onLongPress: () {
-        //   if (longPress != null) {
-        //     longPress!();
-        //   }
-        // },
-        // onLongPressEnd: (details) {
-        //   if (longPressEnd != null) {
-        //     longPressEnd!();
-        //   }
-        // },
+        onLongPress: longPress,
+        onLongPressEnd: longPressEnd == null ? null : (_) => longPressEnd!(),
         child: InkWell(
-          onTap: () async {
-            final int seasonId = bangumiItem.seasonId;
-            SmartDialog.showLoading(msg: '获取中...');
-            final res = await SearchHttp.bangumiInfo(seasonId: seasonId);
-            SmartDialog.dismiss().then((value) {
-              if (res['status']) {
-                if (res['data'].episodes.isEmpty) {
-                  SmartDialog.showToast('资源加载失败');
-                  return;
-                }
-                EpisodeItem episode = res['data'].episodes.first;
-                int? epId = res['data'].userStatus?.progress?.lastEpId;
-                if (epId == null) {
-                  epId = episode.epId;
-                } else {
-                  for (var item in res['data'].episodes) {
-                    if (item.epId == epId) {
-                      episode = item;
-                      break;
-                    }
-                  }
-                }
-                String bvid = episode.bvid!;
-                int cid = episode.cid!;
-                String pic = episode.cover!;
-                print('epId');
-                print(epId);
-                String heroTag = Utils.makeHeroTag(cid);
-                Get.toNamed(
-                  '/video?bvid=$bvid&cid=$cid&seasonId=$seasonId&epId=$epId',
-                  arguments: {
-                    'pic': pic,
-                    'heroTag': heroTag,
-                    'videoType': SearchType.media_bangumi,
-                    'bangumiItem': res['data'],
-                  },
-                );
-              } else {
-                SmartDialog.showToast(res['msg']);
-              }
-            });
-          },
+          onTap:
+              onTap ??
+              () => PgcPlaybackCoordinator.open(
+                seasonId: bangumiItem.seasonId,
+                heroTag: heroTag,
+                pic: bangumiItem.cover,
+              ),
           child: Column(
             children: [
               ClipRRect(
@@ -94,41 +60,44 @@ class BangumiCardV extends StatelessWidget {
                 ),
                 child: AspectRatio(
                   aspectRatio: 0.65,
-                  child: LayoutBuilder(builder: (context, boxConstraints) {
-                    final double maxWidth = boxConstraints.maxWidth;
-                    final double maxHeight = boxConstraints.maxHeight;
-                    return Stack(
-                      children: [
-                        Hero(
-                          tag: heroTag,
-                          child: NetworkImgLayer(
-                            src: bangumiItem.cover,
-                            width: maxWidth,
-                            height: maxHeight,
+                  child: LayoutBuilder(
+                    builder: (context, boxConstraints) {
+                      final double maxWidth = boxConstraints.maxWidth;
+                      final double maxHeight = boxConstraints.maxHeight;
+                      return Stack(
+                        children: [
+                          Hero(
+                            tag: heroTag,
+                            child: NetworkImgLayer(
+                              src: bangumiItem.cover,
+                              width: maxWidth,
+                              height: maxHeight,
+                            ),
                           ),
-                        ),
-                        if (bangumiItem.badge != null)
-                          PBadge(
-                              text: bangumiItem.badge,
+                          if (displayBadge != null)
+                            PBadge(
+                              text: displayBadge,
                               top: 6,
                               right: 6,
                               bottom: null,
-                              left: null),
-                        if (bangumiItem.order != null)
-                          PBadge(
-                            text: bangumiItem.order,
-                            top: null,
-                            right: null,
-                            bottom: 6,
-                            left: 6,
-                            type: 'gray',
-                          ),
-                      ],
-                    );
-                  }),
+                              left: null,
+                            ),
+                          if (overlayText != null)
+                            PBadge(
+                              text: overlayText,
+                              top: null,
+                              right: null,
+                              bottom: 6,
+                              left: 6,
+                              type: 'gray',
+                            ),
+                        ],
+                      );
+                    },
+                  ),
                 ),
               ),
-              BangumiContent(bangumiItem: bangumiItem)
+              BangumiContent(bangumiItem: bangumiItem, title: title),
             ],
           ),
         ),
@@ -138,9 +107,14 @@ class BangumiCardV extends StatelessWidget {
 }
 
 class BangumiContent extends StatelessWidget {
-  const BangumiContent({super.key, required this.bangumiItem});
-  // ignore: prefer_typing_uninitialized_variables
-  final bangumiItem;
+  const BangumiContent({
+    super.key,
+    required this.bangumiItem,
+    required this.title,
+  });
+
+  final BangumiListItemModel bangumiItem;
+  final String title;
   @override
   Widget build(BuildContext context) {
     return Expanded(
@@ -156,32 +130,36 @@ class BangumiContent extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                    child: Text(
-                  bangumiItem.title,
-                  textAlign: TextAlign.start,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.3,
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.start,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.3,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                )),
+                ),
               ],
             ),
             const SizedBox(height: 1),
-            if (bangumiItem.indexShow != null)
+            if (bangumiItem.indexShow?.isNotEmpty == true)
               Text(
-                bangumiItem.indexShow,
+                bangumiItem.indexShow!,
                 maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: Theme.of(context).textTheme.labelMedium!.fontSize,
                   color: Theme.of(context).colorScheme.outline,
                 ),
               ),
-            if (bangumiItem.progress != null)
+            if (bangumiItem.indexShow?.isNotEmpty != true &&
+                bangumiItem.subTitle?.isNotEmpty == true)
               Text(
-                bangumiItem.progress,
+                bangumiItem.subTitle!,
                 maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: Theme.of(context).textTheme.labelMedium!.fontSize,
                   color: Theme.of(context).colorScheme.outline,
@@ -192,4 +170,26 @@ class BangumiContent extends StatelessWidget {
       ),
     );
   }
+}
+
+String? _overlayText(BangumiListItemModel item) {
+  final String score = item.score?.trim() ?? '';
+  if (score.isNotEmpty) {
+    return score.endsWith('分') ? score : '$score分';
+  }
+  final String order = item.order?.trim() ?? '';
+  return order.isEmpty ? null : order;
+}
+
+String? _displayBadge(
+  BangumiListItemModel item,
+  PgcVipEntitlement? vipEntitlement,
+) {
+  final String badge = item.badge?.trim() ?? '';
+  if (badge.isEmpty) return null;
+  final bool isVipCatalogBadge = item.badgeType == 0 && badge.contains('会员');
+  if (isVipCatalogBadge && vipEntitlement == PgcVipEntitlement.unrestricted) {
+    return null;
+  }
+  return badge;
 }

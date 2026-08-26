@@ -39,7 +39,9 @@ class BangumiInfoModel {
     this.type,
     this.userStatus,
     this.staff,
-  });
+  }) {
+    _followStateResolved = userStatus?.follow == 0 || userStatus?.follow == 1;
+  }
 
   Map? activity;
   String? actors;
@@ -80,6 +82,7 @@ class BangumiInfoModel {
   int? type;
   UserStatus? userStatus;
   String? staff;
+  bool _followStateResolved = false;
 
   BangumiInfoModel.fromJson(Map<String, dynamic> json) {
     activity = json['activity'];
@@ -89,9 +92,11 @@ class BangumiInfoModel {
     bkgCover = json['bkg_cover'];
     cover = json['cover'];
     enableVt = json['enableVt'];
-    episodes = json['episodes']
-        .map<EpisodeItem>((e) => EpisodeItem.fromJson(e))
-        .toList();
+    episodes =
+        json['episodes']
+            ?.map<EpisodeItem>((e) => EpisodeItem.fromJson(e))
+            .toList() ??
+        <EpisodeItem>[];
     evaluate = json['evaluate'];
     freya = json['freya'];
     jpTitle = json['jp_title'];
@@ -125,6 +130,28 @@ class BangumiInfoModel {
       userStatus = UserStatus.fromJson(json['user_status']);
     }
     staff = json['staff'];
+  }
+
+  bool? get followedState {
+    if (!_followStateResolved) return null;
+    return userStatus?.follow == 1;
+  }
+
+  void applyFollowStatus(UserStatus status) {
+    final int? follow = status.follow;
+    if (follow != 0 && follow != 1) return;
+    userStatus ??= UserStatus();
+    userStatus!
+      ..follow = follow
+      ..followStatus = status.followStatus
+      ..login = status.login;
+    _followStateResolved = true;
+  }
+
+  void setFollowed(bool value) {
+    userStatus ??= UserStatus();
+    userStatus!.follow = value ? 1 : 0;
+    _followStateResolved = true;
   }
 }
 
@@ -263,11 +290,7 @@ class UserStatus {
 }
 
 class UserProgress {
-  UserProgress({
-    this.lastEpId,
-    this.lastEpIndex,
-    this.lastTime,
-  });
+  UserProgress({this.lastEpId, this.lastEpIndex, this.lastTime});
   int? lastEpId;
   String? lastEpIndex;
   int? lastTime;
@@ -279,11 +302,7 @@ class UserProgress {
 }
 
 class VipInfo {
-  VipInfo({
-    this.dueDate,
-    this.status,
-    this.type,
-  });
+  VipInfo({this.dueDate, this.status, this.type});
   int? dueDate;
   int? status;
   int? type;

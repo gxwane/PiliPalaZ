@@ -5,9 +5,12 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/constants.dart';
-import 'package:pilipalaz/http/search.dart';
 import 'package:pilipalaz/http/video.dart';
+import 'package:pilipalaz/http/pgc.dart';
 import 'package:pilipalaz/models/bangumi/info.dart';
+import 'package:pilipalaz/models/common/pgc_type.dart';
+import 'package:pilipalaz/models/common/search_type.dart';
+import 'package:pilipalaz/models/common/video_source_type.dart';
 import 'package:pilipalaz/models/user/fav_folder.dart';
 import 'package:pilipalaz/pages/video/index.dart';
 import 'package:pilipalaz/pages/video/reply/index.dart';
@@ -18,6 +21,7 @@ import 'package:pilipalaz/utils/storage.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pilipalaz/services/service_locator.dart';
+import 'package:pilipalaz/services/pgc_playback_coordinator.dart';
 
 class BangumiIntroController extends GetxController {
   // 视频bvid
@@ -56,7 +60,8 @@ class BangumiIntroController extends GetxController {
   // 是否收藏
   RxBool hasFav = false.obs;
   // 是否追番
-  RxBool hasFollow = false.obs;
+  RxnBool hasFollow = RxnBool();
+  RxBool isFollowUpdating = false.obs;
   Box userInfoCache = GStorage.userInfo;
   bool userLogin = false;
   Rx<FavFolderData> favFolderData = FavFolderData().obs;
@@ -69,6 +74,12 @@ class BangumiIntroController extends GetxController {
       ? int.tryParse(Get.parameters['cid']!)!.obs
       : 0.obs;
   var userInfo;
+
+  PgcCatalogType get catalogType => PgcCatalogTypeCode.fromApiValue(
+    bangumiDetail.value.type ?? bangumiItem?.type,
+  );
+
+  String get followActionLabel => catalogType.followActionLabel;
 
   @override
   void onInit() {
@@ -96,12 +107,14 @@ class BangumiIntroController extends GetxController {
     }
     userInfo = userInfoCache.get('userInfoCache');
     userLogin = userInfo != null;
+    hasFollow.value = userLogin ? bangumiItem?.followedState : false;
     bangumiDetail.listen((value) {
       final VideoDetailController videoDetailCtr =
           Get.find<VideoDetailController>(tag: heroTag);
       final cid = videoDetailCtr.cid.value;
-      final current =
-          value.episodes?.firstWhere((element) => element.cid == cid);
+      final current = value.episodes?.firstWhere(
+        (element) => element.cid == cid,
+      );
 
       videoPlayerServiceHandler.onVideoDetailChange(
         current?.longTitle ?? "",
@@ -114,7 +127,18 @@ class BangumiIntroController extends GetxController {
 
   void openVideoDetail() {
     Get.toNamed(
-        '/video?bvid=$bvid&cid=${lastPlayCid.value}&seasonId=$seasonId&epId=$epId&resume=true');
+      '/video?bvid=$bvid&cid=${lastPlayCid.value}'
+      '&seasonId=$seasonId&epId=$epId&resume=true',
+      arguments: <String, dynamic>{
+        'pic': bangumiDetail.value.cover ?? bangumiItem?.cover,
+        'heroTag': heroTag,
+        'videoType': catalogType.followGroup == PgcFollowGroup.bangumi
+            ? SearchType.media_bangumi
+            : SearchType.media_ft,
+        'sourceType': VideoSourceType.pgc,
+        'bangumiItem': bangumiDetail.value,
+      },
+    );
   }
 
   // 获取番剧简介&选集
@@ -127,17 +151,53 @@ class BangumiIntroController extends GetxController {
       // 获取收藏状态
       queryHasFavVideo();
     }
-    var result = await SearchHttp.bangumiInfo(seasonId: seasonId, epId: epId);
+    Map<String, dynamic> result;
+    String? followSyncError;
+    if (bangumiItem != null) {
+      result = <String, dynamic>{'status': true, 'data': bangumiItem};
+      if (userLogin && bangumiItem!.followedState == null) {
+        final int? resolvedSeasonId = bangumiItem!.seasonId ?? seasonId;
+        if (resolvedSeasonId == null) {
+          followSyncError = '缺少影视季度信息';
+        } else {
+          final Map<String, dynamic> statusResult = await PgcHttp.followStatus(
+            seasonId: resolvedSeasonId,
+          );
+          if (statusResult['status'] == true) {
+            bangumiItem!.applyFollowStatus(statusResult['data'] as UserStatus);
+          } else {
+            followSyncError = statusResult['msg']?.toString() ?? '追剧状态同步失败';
+          }
+        }
+      }
+    } else {
+      result = await PgcHttp.infoWithFollowStatus(
+        seasonId: seasonId,
+        epId: epId,
+      );
+      followSyncError = result['followStatusError']?.toString();
+    }
     if (result['status']) {
-      bangumiDetail.value = result['data'];
-      epId = bangumiDetail.value.episodes!.first.id;
-      if (bangumiDetail.value.userStatus != null) {
-        hasFollow.value = bangumiDetail.value.userStatus!.follow == 1;
+      _applyBangumiDetail(result['data'] as BangumiInfoModel);
+      if (followSyncError != null) {
+        SmartDialog.showToast('追剧状态同步失败，请稍后重试');
       }
     } else {
       SmartDialog.showToast(result['msg']);
     }
     return result;
+  }
+
+  void _applyBangumiDetail(BangumiInfoModel detail) {
+    bangumiDetail.value = detail;
+    final EpisodeItem selected = PgcEpisodeSelector.select(
+      episodes: detail.episodes ?? const <EpisodeItem>[],
+      explicitEpId: epId,
+      progressEpId: detail.userStatus?.progress?.lastEpId,
+    );
+    epId = selected.epId;
+    seasonId = detail.seasonId;
+    hasFollow.value = userLogin ? detail.followedState : false;
   }
 
   // 获取点赞状态
@@ -184,12 +244,13 @@ class BangumiIntroController extends GetxController {
       return;
     }
     showDialog(
-        context: Get.context!,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('选择投币个数'),
-            contentPadding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
-            content: StatefulBuilder(builder: (context, StateSetter setState) {
+      context: Get.context!,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('选择投币个数'),
+          contentPadding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
+          content: StatefulBuilder(
+            builder: (context, StateSetter setState) {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -213,27 +274,32 @@ class BangumiIntroController extends GetxController {
                   ),
                 ],
               );
-            }),
-            actions: [
-              TextButton(onPressed: () => Get.back(), child: const Text('取消')),
-              TextButton(
-                  onPressed: () async {
-                    var res = await VideoHttp.coinVideo(
-                        bvid: bvid, multiply: _tempThemeValue);
-                    if (res['status']) {
-                      SmartDialog.showToast('投币成功');
-                      hasCoin.value = true;
-                      bangumiDetail.value.stat!['coins'] =
-                          bangumiDetail.value.stat!['coins'] + _tempThemeValue;
-                    } else {
-                      SmartDialog.showToast(res['msg']);
-                    }
-                    Get.back();
-                  },
-                  child: const Text('确定'))
-            ],
-          );
-        });
+            },
+          ),
+          actions: [
+            TextButton(onPressed: () => Get.back(), child: const Text('取消')),
+            TextButton(
+              onPressed: () async {
+                var res = await VideoHttp.coinVideo(
+                  bvid: bvid,
+                  multiply: _tempThemeValue,
+                );
+                if (res['status']) {
+                  SmartDialog.showToast('投币成功');
+                  hasCoin.value = true;
+                  bangumiDetail.value.stat!['coins'] =
+                      bangumiDetail.value.stat!['coins'] + _tempThemeValue;
+                } else {
+                  SmartDialog.showToast(res['msg']);
+                }
+                Get.back();
+              },
+              child: const Text('确定'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // （取消）收藏
@@ -248,9 +314,10 @@ class BangumiIntroController extends GetxController {
       }
     } catch (_) {}
     var result = await VideoHttp.favVideo(
-        aid: IdUtils.bv2av(bvid),
-        addIds: addMediaIdsNew.join(','),
-        delIds: delMediaIdsNew.join(','));
+      aid: IdUtils.bv2av(bvid),
+      addIds: addMediaIdsNew.join(','),
+      delIds: delMediaIdsNew.join(','),
+    );
     if (result['status']) {
       addMediaIdsNew = [];
       delMediaIdsNew = [];
@@ -264,39 +331,41 @@ class BangumiIntroController extends GetxController {
   // 分享视频
   Future actionShareVideo() async {
     showDialog(
-        context: Get.context!,
-        builder: (context) {
-          String videoUrl = '${HttpString.baseUrl}/video/$bvid';
-          return AlertDialog(
-            title: const Text('请选择'),
-            actions: [
-              TextButton.icon(
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: videoUrl));
-                    SmartDialog.showToast('已复制');
-                    Get.back();
-                  },
-                  icon: const Icon(Icons.copy),
-                  label: const Text('复制链接')),
-              TextButton.icon(
-                  onPressed: () {
-                    launchUrl(Uri.parse(videoUrl));
-                    Get.back();
-                  },
-                  icon: const Icon(Icons.open_in_browser),
-                  label: const Text('其它app打开')),
-              TextButton.icon(
-                  onPressed: () async {
-                    await SharePlus.instance.share(
-                      ShareParams(text: videoUrl),
-                    );
-                    Get.back();
-                  },
-                  icon: const Icon(Icons.share),
-                  label: const Text('分享视频')),
-            ],
-          );
-        });
+      context: Get.context!,
+      builder: (context) {
+        String videoUrl = '${HttpString.baseUrl}/video/$bvid';
+        return AlertDialog(
+          title: const Text('请选择'),
+          actions: [
+            TextButton.icon(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: videoUrl));
+                SmartDialog.showToast('已复制');
+                Get.back();
+              },
+              icon: const Icon(Icons.copy),
+              label: const Text('复制链接'),
+            ),
+            TextButton.icon(
+              onPressed: () {
+                launchUrl(Uri.parse(videoUrl));
+                Get.back();
+              },
+              icon: const Icon(Icons.open_in_browser),
+              label: const Text('其它app打开'),
+            ),
+            TextButton.icon(
+              onPressed: () async {
+                await SharePlus.instance.share(ShareParams(text: videoUrl));
+                Get.back();
+              },
+              icon: const Icon(Icons.share),
+              label: const Text('分享视频'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // 选择文件夹
@@ -316,25 +385,55 @@ class BangumiIntroController extends GetxController {
   }
 
   // 修改分P或番剧分集
-  Future changeSeasonOrbangu(bvid, cid, aid) async {
+  Future<bool> changeSeasonOrbangu(bvid, cid, aid, [int? nextEpId]) async {
     // 重新获取视频资源
-    VideoDetailController videoDetailCtr =
-        Get.find<VideoDetailController>(tag: heroTag);
+    VideoDetailController videoDetailCtr = Get.find<VideoDetailController>(
+      tag: heroTag,
+    );
+    final String previousBvid = videoDetailCtr.bvid;
+    final int previousCid = videoDetailCtr.cid.value;
+    final int? previousEpId = videoDetailCtr.epId;
     videoDetailCtr.bvid = bvid;
     videoDetailCtr.cid.value = cid;
     videoDetailCtr.danmakuCid.value = cid;
-    videoDetailCtr.queryVideoUrl();
+    int? resolvedEpId = nextEpId;
+    if (resolvedEpId == null) {
+      for (final EpisodeItem item
+          in bangumiDetail.value.episodes ?? const <EpisodeItem>[]) {
+        if (item.cid == cid) {
+          resolvedEpId = item.epId;
+          break;
+        }
+      }
+    }
+    videoDetailCtr.epId = resolvedEpId;
+    final Map result = await videoDetailCtr.queryVideoUrl();
+    if (result['status'] != true) {
+      videoDetailCtr.bvid = previousBvid;
+      videoDetailCtr.cid.value = previousCid;
+      videoDetailCtr.danmakuCid.value = previousCid;
+      videoDetailCtr.epId = previousEpId;
+      final Map restoreResult = await videoDetailCtr.queryVideoUrl();
+      if (restoreResult['status'] == true) {
+        videoDetailCtr.playbackError.value = '';
+      }
+      return false;
+    }
+    this.bvid = bvid;
+    epId = videoDetailCtr.epId;
     lastPlayCid.value = cid;
     // 触发媒体通知更新
     bangumiDetail.refresh();
     // 重新请求评论
     try {
       /// 未渲染回复组件时可能异常
-      VideoReplyController videoReplyCtr =
-          Get.find<VideoReplyController>(tag: heroTag);
+      VideoReplyController videoReplyCtr = Get.find<VideoReplyController>(
+        tag: heroTag,
+      );
       videoReplyCtr.aid = aid;
       videoReplyCtr.queryReplyList(type: 'init');
     } catch (_) {}
+    return true;
   }
 
   // 切换追番状态
@@ -343,17 +442,28 @@ class BangumiIntroController extends GetxController {
       SmartDialog.showToast('账号未登录');
       return;
     }
-    bool currentStatus = hasFollow.value;
-    hasFollow.value = !currentStatus;
+    final bool? currentStatus = hasFollow.value;
+    if (currentStatus == null || isFollowUpdating.value) return;
+    final bool nextStatus = !currentStatus;
+    isFollowUpdating.value = true;
+    hasFollow.value = nextStatus;
     try {
       var result;
       if (currentStatus) {
-        result = await VideoHttp.bangumiDel(seasonId: bangumiDetail.value.seasonId);
+        result = await VideoHttp.bangumiDel(
+          seasonId: bangumiDetail.value.seasonId,
+        );
       } else {
-        result = await VideoHttp.bangumiAdd(seasonId: bangumiDetail.value.seasonId);
+        result = await VideoHttp.bangumiAdd(
+          seasonId: bangumiDetail.value.seasonId,
+        );
       }
       if (result['status']) {
-        SmartDialog.showToast(result['msg'] ?? (currentStatus ? '已取消追番' : '已追番'));
+        _syncFollowedModels(nextStatus);
+        SmartDialog.showToast(
+          result['msg'] ??
+              (currentStatus ? '已取消$followActionLabel' : '已$followActionLabel'),
+        );
       } else {
         hasFollow.value = currentStatus;
         SmartDialog.showToast(result['msg']);
@@ -361,12 +471,24 @@ class BangumiIntroController extends GetxController {
     } catch (e) {
       hasFollow.value = currentStatus;
       SmartDialog.showToast('操作失败: $e');
+    } finally {
+      isFollowUpdating.value = false;
+    }
+  }
+
+  void _syncFollowedModels(bool followed) {
+    bangumiDetail.value.setFollowed(followed);
+    bangumiDetail.refresh();
+    if (bangumiItem != null && !identical(bangumiItem, bangumiDetail.value)) {
+      bangumiItem!.setFollowed(followed);
     }
   }
 
   Future queryVideoInFolder() async {
     var result = await VideoHttp.videoInFolder(
-        mid: userInfo.mid, rid: IdUtils.bv2av(bvid));
+      mid: userInfo.mid,
+      rid: IdUtils.bv2av(bvid),
+    );
     if (result['status']) {
       favFolderData.value = result['data'];
     }
@@ -391,7 +513,8 @@ class BangumiIntroController extends GetxController {
     int cid = episodes[prevIndex].cid!;
     String bvid = episodes[prevIndex].bvid!;
     int aid = episodes[prevIndex].aid!;
-    changeSeasonOrbangu(bvid, cid, aid);
+    final int? nextEpId = episodes[prevIndex].epId;
+    changeSeasonOrbangu(bvid, cid, aid, nextEpId);
     return true;
   }
 
@@ -411,7 +534,7 @@ class BangumiIntroController extends GetxController {
 
   /// 列表循环或者顺序播放时，自动播放下一个；自动连播时，播放相关视频
   bool nextPlay() {
-    late List episodes;
+    late List<EpisodeItem> episodes;
     PlayRepeat playRepeat = PlPlayerController.getInstance().playRepeat;
 
     if (bangumiDetail.value.episodes != null) {
@@ -421,27 +544,59 @@ class BangumiIntroController extends GetxController {
         return playRelated();
       }
     }
+    if (episodes.isEmpty) return false;
     int currentIndex = episodes.indexWhere((e) => e.cid == lastPlayCid.value);
-    int nextIndex = currentIndex + 1;
-    // 列表循环
-    if (nextIndex == episodes.length - 1) {
-      if (playRepeat == PlayRepeat.listCycle) {
-        nextIndex = 0;
-      } else if (playRepeat == PlayRepeat.autoPlayRelated) {
+    final int? resolvedNextIndex = PgcEpisodeNavigator.nextIndex(
+      episodeCount: episodes.length,
+      currentIndex: currentIndex,
+      cycle: playRepeat == PlayRepeat.listCycle,
+    );
+    if (resolvedNextIndex == null) {
+      if (playRepeat == PlayRepeat.autoPlayRelated) {
         return playRelated();
-      } else {
-        return false;
       }
+      return false;
     }
+    final int nextIndex = resolvedNextIndex;
     int cid = episodes[nextIndex].cid!;
     String bvid = episodes[nextIndex].bvid!;
     int aid = episodes[nextIndex].aid!;
-    changeSeasonOrbangu(bvid, cid, aid);
+    final int? nextEpId = episodes[nextIndex].epId;
+    changeSeasonOrbangu(bvid, cid, aid, nextEpId);
     return true;
   }
 
+  void showPreviewEnded() {
+    final EpisodeItem? current = bangumiDetail.value.episodes?.firstWhere(
+      (EpisodeItem item) => item.cid == lastPlayCid.value,
+      orElse: () => EpisodeItem(),
+    );
+    final String? officialUrl =
+        current?.shareUrl ?? bangumiDetail.value.shareUrl;
+    Get.dialog<void>(
+      AlertDialog(
+        title: const Text('试看已结束'),
+        content: const Text('完整内容需要相应权益，可前往哔哩哔哩官方客户端继续观看。'),
+        actions: <Widget>[
+          TextButton(onPressed: Get.back, child: const Text('关闭')),
+          if (officialUrl?.isNotEmpty == true)
+            FilledButton(
+              onPressed: () {
+                Get.back();
+                launchUrl(
+                  Uri.parse(officialUrl!),
+                  mode: LaunchMode.externalApplication,
+                );
+              },
+              child: const Text('前往官方'),
+            ),
+        ],
+      ),
+    );
+  }
+
   bool playRelated() {
-    SmartDialog.showToast('番剧暂无相关视频');
+    SmartDialog.showToast('影视内容暂无相关视频');
     return false;
   }
 }

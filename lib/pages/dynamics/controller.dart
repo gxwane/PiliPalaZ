@@ -8,16 +8,14 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/dynamics.dart';
 import 'package:pilipalaz/http/search.dart';
-import 'package:pilipalaz/models/bangumi/info.dart';
 import 'package:pilipalaz/models/common/dynamics_type.dart';
-import 'package:pilipalaz/models/common/search_type.dart';
 import 'package:pilipalaz/models/dynamics/result.dart';
 import 'package:pilipalaz/models/dynamics/up.dart';
 import 'package:pilipalaz/models/live/item.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
 import 'package:pilipalaz/utils/id_utils.dart';
 import 'package:pilipalaz/utils/storage.dart';
-import 'package:pilipalaz/utils/utils.dart';
+import 'package:pilipalaz/services/pgc_playback_coordinator.dart';
 
 import '../../models/follow/result.dart';
 
@@ -51,10 +49,13 @@ class DynamicsController extends GetxController
     super.onInit();
 
     tabController = TabController(
-        length: tabsConfig.length,
-        vsync: this,
-        initialIndex:
-            setting.get(SettingBoxKey.defaultDynamicType, defaultValue: 0));
+      length: tabsConfig.length,
+      vsync: this,
+      initialIndex: setting.get(
+        SettingBoxKey.defaultDynamicType,
+        defaultValue: 0,
+      ),
+    );
     tabsPageList = tabsConfig.map((e) {
       return e['page'] as Widget;
     }).toList();
@@ -73,29 +74,40 @@ class DynamicsController extends GetxController
 
     /// 点击评论action 直接查看评论
     if (action == 'comment') {
-      Get.toNamed('/dynamicDetail',
-          arguments: {'item': item, 'floor': floor, 'action': action});
+      Get.toNamed(
+        '/dynamicDetail',
+        arguments: {'item': item, 'floor': floor, 'action': action},
+      );
       return false;
     }
     switch (item!.type) {
       /// 转发的动态
       case 'DYNAMIC_TYPE_FORWARD':
-        Get.toNamed('/dynamicDetail',
-            arguments: {'item': item, 'floor': floor});
+        Get.toNamed(
+          '/dynamicDetail',
+          arguments: {'item': item, 'floor': floor},
+        );
         break;
 
       /// 图文动态查看
       case 'DYNAMIC_TYPE_DRAW':
-        Get.toNamed('/dynamicDetail',
-            arguments: {'item': item, 'floor': floor});
+        Get.toNamed(
+          '/dynamicDetail',
+          arguments: {'item': item, 'floor': floor},
+        );
         break;
       case 'DYNAMIC_TYPE_AV':
         String bvid = item.modules.moduleDynamic.major.archive.bvid;
         String cover = item.modules.moduleDynamic.major.archive.cover;
         try {
           int cid = await SearchHttp.ab2c(bvid: bvid);
-          Get.toNamed('/video?bvid=$bvid&cid=$cid',
-              arguments: {'pic': cover, 'heroTag': heroTag ?? '${item.idStr}-$bvid'});
+          Get.toNamed(
+            '/video?bvid=$bvid&cid=$cid',
+            arguments: {
+              'pic': cover,
+              'heroTag': heroTag ?? '${item.idStr}-$bvid',
+            },
+          );
         } catch (err) {
           SmartDialog.showToast(err.toString());
         }
@@ -112,19 +124,22 @@ class DynamicsController extends GetxController
           if (url.contains('read')) {
             number = 'cv$number';
           }
-          Get.toNamed('/htmlRender', parameters: {
-            'url': url.startsWith('//') ? url.split('//').last : url,
-            'title': title,
-            'id': number,
-            'dynamicType': url.split('//').last.split('/')[1]
-          });
+          Get.toNamed(
+            '/htmlRender',
+            parameters: {
+              'url': url.startsWith('//') ? url.split('//').last : url,
+              'title': title,
+              'id': number,
+              'dynamicType': url.split('//').last.split('/')[1],
+            },
+          );
         } else {
           Get.toNamed(
             '/webview',
             parameters: {
               'url': 'https:$url',
               'type': 'note',
-              'pageTitle': title
+              'pageTitle': title,
             },
           );
         }
@@ -138,8 +153,10 @@ class DynamicsController extends GetxController
       /// 纯文字动态查看
       case 'DYNAMIC_TYPE_WORD':
         print('纯文本');
-        Get.toNamed('/dynamicDetail',
-            arguments: {'item': item, 'floor': floor});
+        Get.toNamed(
+          '/dynamicDetail',
+          arguments: {'item': item, 'floor': floor},
+        );
         break;
       case 'DYNAMIC_TYPE_LIVE_RCMD':
         DynamicLiveModel liveRcmd = item.modules.moduleDynamic.major.liveRcmd;
@@ -153,10 +170,13 @@ class DynamicsController extends GetxController
           'roomid': liveRcmd.roomId,
           'watched_show': liveRcmd.watchedShow,
         });
-        Get.toNamed('/liveRoom?roomid=${liveItem.roomId}', arguments: {
-          'liveItem': liveItem,
-          'heroTag': heroTag ?? liveItem.roomId.toString()
-        });
+        Get.toNamed(
+          '/liveRoom?roomid=${liveItem.roomId}',
+          arguments: {
+            'liveItem': liveItem,
+            'heroTag': heroTag ?? liveItem.roomId.toString(),
+          },
+        );
         break;
 
       /// 合集查看
@@ -167,8 +187,13 @@ class DynamicsController extends GetxController
         String bvid = IdUtils.av2bv(aid);
         String cover = ugcSeason.cover!;
         int cid = await SearchHttp.ab2c(bvid: bvid);
-        Get.toNamed('/video?bvid=$bvid&cid=$cid',
-            arguments: {'pic': cover, 'heroTag': heroTag ?? '${item.idStr}-$bvid'});
+        Get.toNamed(
+          '/video?bvid=$bvid&cid=$cid',
+          arguments: {
+            'pic': cover,
+            'heroTag': heroTag ?? '${item.idStr}-$bvid',
+          },
+        );
         break;
 
       /// 番剧查看
@@ -176,37 +201,7 @@ class DynamicsController extends GetxController
         print('DYNAMIC_TYPE_PGC_UNION 番剧');
         DynamicArchiveModel pgc = item.modules.moduleDynamic.major.pgc;
         if (pgc.epid != null) {
-          SmartDialog.showLoading(msg: '获取中...');
-          var res = await SearchHttp.bangumiInfo(epId: pgc.epid);
-          SmartDialog.dismiss();
-          if (res['status']) {
-            EpisodeItem episode = res['data'].episodes.first;
-            int? epId = res['data'].userStatus?.progress?.lastEpId;
-            if (epId == null) {
-              epId = episode.epId;
-            } else {
-              for (var item in res['data'].episodes) {
-                if (item.epId == epId) {
-                  episode = item;
-                  break;
-                }
-              }
-            }
-            String bvid = episode.bvid!;
-            int cid = episode.cid!;
-            String pic = episode.cover!;
-            Get.toNamed(
-              '/video?bvid=$bvid&cid=$cid&seasonId=${res['data'].seasonId}&epid=$epId',
-              arguments: {
-                'pic': pic,
-                'heroTag': heroTag ?? Utils.makeHeroTag(cid),
-                'videoType': SearchType.media_bangumi,
-                'bangumiItem': res['data'],
-              },
-            );
-          } else {
-            SmartDialog.showToast(res['msg']);
-          }
+          await PgcPlaybackCoordinator.open(epId: pgc.epid, heroTag: heroTag);
         }
         break;
     }
@@ -224,13 +219,19 @@ class DynamicsController extends GetxController
       orderType: 'attention',
     );
     if (res['status']) {
-      allFollowedUps.addAll(res['data'].list.map<UpItem>((FollowItemModel e) =>
-          UpItem(
-              face: e.face,
-              mid: e.mid,
-              uname: e.uname,
-              hasUpdate: hasUpdatedUps.any((element) =>
-                  (element.mid == e.mid) && (element.hasUpdate == true)))));
+      allFollowedUps.addAll(
+        res['data'].list.map<UpItem>(
+          (FollowItemModel e) => UpItem(
+            face: e.face,
+            mid: e.mid,
+            uname: e.uname,
+            hasUpdate: hasUpdatedUps.any(
+              (element) =>
+                  (element.mid == e.mid) && (element.hasUpdate == true),
+            ),
+          ),
+        ),
+      );
       allFollowedUpsPage += 1;
       allFollowedUpsTotal = res['data'].total;
       upData.value.upList = allFollowedUps;
@@ -248,15 +249,18 @@ class DynamicsController extends GetxController
       upData.value.upList = [];
       upData.value.liveUsers = LiveUsers();
     }
-    if (setting.get(SettingBoxKey.dynamicsShowAllFollowedUp,
-        defaultValue: false)) {
+    if (setting.get(
+      SettingBoxKey.dynamicsShowAllFollowedUp,
+      defaultValue: false,
+    )) {
       allFollowedUpsPage = 1;
       Future f1 = DynamicsHttp.followUp();
       Future f2 = FollowHttp.followings(
-          vmid: userInfo.mid,
-          pn: allFollowedUpsPage,
-          ps: 50,
-          orderType: 'attention');
+        vmid: userInfo.mid,
+        pn: allFollowedUpsPage,
+        ps: 50,
+        orderType: 'attention',
+      );
       List<dynamic> ress = await Future.wait([f1, f2]);
       if (!ress[0]['status']) {
         SmartDialog.showToast("获取关注动态失败：${ress[0]['msg']}");
@@ -267,20 +271,25 @@ class DynamicsController extends GetxController
       if (!ress[1]['status']) {
         SmartDialog.showToast("获取关注列表失败：${ress[1]['msg']}");
       } else {
-        allFollowedUps = ress[1]['data']
-            .list
-            .map<UpItem>((FollowItemModel e) => UpItem(
+        allFollowedUps = ress[1]['data'].list
+            .map<UpItem>(
+              (FollowItemModel e) => UpItem(
                 face: e.face,
                 mid: e.mid,
                 uname: e.uname,
-                hasUpdate: hasUpdatedUps.any((element) =>
-                    (element.mid == e.mid) && (element.hasUpdate == true))))
+                hasUpdate: hasUpdatedUps.any(
+                  (element) =>
+                      (element.mid == e.mid) && (element.hasUpdate == true),
+                ),
+              ),
+            )
             .toList();
         allFollowedUpsPage += 1;
         allFollowedUpsTotal = ress[1]['data'].total;
       }
-      upData.value.upList =
-          allFollowedUpsTotal > 0 ? allFollowedUps : hasUpdatedUps;
+      upData.value.upList = allFollowedUpsTotal > 0
+          ? allFollowedUps
+          : hasUpdatedUps;
       return ress[0];
     }
     var res = await DynamicsHttp.followUp();
@@ -307,7 +316,7 @@ class DynamicsController extends GetxController
     print(tabsConfig[tabController.index]['ctr']);
     await Future.wait(<Future>[
       queryFollowUp(),
-      tabsConfig[tabController.index]['ctr'].onRefresh()
+      tabsConfig[tabController.index]['ctr'].onRefresh(),
     ]);
   }
 
