@@ -16,6 +16,7 @@ import 'package:pilipalaz/http/user.dart';
 import 'package:pilipalaz/models/video/play/quality.dart';
 import 'package:pilipalaz/models/video/play/url.dart';
 import 'package:pilipalaz/pages/video/index.dart';
+import 'package:pilipalaz/pages/video/video_playback_selection.dart';
 import 'package:pilipalaz/pages/video/introduction/widgets/menu_row.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
@@ -52,7 +53,7 @@ class HeaderControl extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _HeaderControlState extends State<HeaderControl> {
-  late PlayUrlModel videoInfo;
+  PlayUrlModel get videoInfo => widget.videoDetailCtr!.data;
   List<PlaySpeed> playSpeed = PlaySpeed.values;
   static const TextStyle subTitleStyle = TextStyle(fontSize: 12);
   static const TextStyle titleStyle = TextStyle(fontSize: 14);
@@ -74,7 +75,6 @@ class _HeaderControlState extends State<HeaderControl> {
   @override
   void initState() {
     super.initState();
-    videoInfo = widget.videoDetailCtr!.data;
     // listenFullScreenStatus();
     heroTag = widget.heroTag;
     // if (Get.arguments != null && Get.arguments['heroTag'] != null) {
@@ -419,16 +419,18 @@ class _HeaderControlState extends State<HeaderControl> {
               ],
             ),
           ),
-          ListTile(
-            onTap: () => {Get.back(), showSetVideoQa()},
-            dense: true,
-            leading: const Icon(Icons.play_circle_outline, size: 20),
-            title: const Text('选择画质', style: titleStyle),
-            subtitle: Text(
-                '当前画质 ${widget.videoDetailCtr!.currentVideoQa.description}',
-                style: subTitleStyle),
-          ),
-          if (widget.videoDetailCtr!.currentAudioQa != null)
+          if (hasSelectableDashVideo(videoInfo))
+            ListTile(
+              onTap: () => {Get.back(), showSetVideoQa()},
+              dense: true,
+              leading: const Icon(Icons.play_circle_outline, size: 20),
+              title: const Text('选择画质', style: titleStyle),
+              subtitle: Text(
+                  '当前画质 ${widget.videoDetailCtr!.currentVideoQa.description}',
+                  style: subTitleStyle),
+            ),
+          if (hasSelectableDashVideo(videoInfo) &&
+              widget.videoDetailCtr!.currentAudioQa != null)
             ListTile(
               onTap: () => {Get.back(), showSetAudioQa()},
               dense: true,
@@ -438,15 +440,16 @@ class _HeaderControlState extends State<HeaderControl> {
                   '当前音质 ${widget.videoDetailCtr!.currentAudioQa!.description}',
                   style: subTitleStyle),
             ),
-          ListTile(
-            onTap: () => {Get.back(), showSetDecodeFormats()},
-            dense: true,
-            leading: const Icon(Icons.av_timer_outlined, size: 20),
-            title: const Text('解码格式', style: titleStyle),
-            subtitle: Text(
-                '当前解码格式 ${widget.videoDetailCtr!.currentDecodeFormats.description}',
-                style: subTitleStyle),
-          ),
+          if (hasSelectableDashVideo(videoInfo))
+            ListTile(
+              onTap: () => {Get.back(), showSetDecodeFormats()},
+              dense: true,
+              leading: const Icon(Icons.av_timer_outlined, size: 20),
+              title: const Text('解码格式', style: titleStyle),
+              subtitle: Text(
+                  '当前解码格式 ${describeVideoCodec(widget.videoDetailCtr!.firstVideo.codecs)}',
+                  style: subTitleStyle),
+            ),
           ListTile(
             onTap: () => {Get.back(), showSetRepeat()},
             dense: true,
@@ -717,11 +720,14 @@ class _HeaderControlState extends State<HeaderControl> {
 
   /// 选择画质
   void showSetVideoQa() {
-    if (videoInfo.dash == null) {
+    final PlayUrlModel currentVideoInfo = videoInfo;
+    final List<VideoItem>? videos = currentVideoInfo.dash?.video;
+    final List<FormatItem> videoFormat =
+        currentVideoInfo.supportFormats ?? const <FormatItem>[];
+    if (videos == null || videos.isEmpty || videoFormat.isEmpty) {
       SmartDialog.showToast('当前视频不支持选择画质');
       return;
     }
-    final List<FormatItem> videoFormat = videoInfo.supportFormats!;
     final VideoQuality currentVideoQa = widget.videoDetailCtr!.currentVideoQa;
 
     /// 总质量分类
@@ -729,9 +735,8 @@ class _HeaderControlState extends State<HeaderControl> {
 
     /// 可用的质量分类
     int userfulQaSam = 0;
-    final List<VideoItem> video = videoInfo.dash!.video!;
     final Set<int> idSet = {};
-    for (final VideoItem item in video) {
+    for (final VideoItem item in videos) {
       final int id = item.id!;
       if (!idSet.contains(id)) {
         idSet.add(id);
@@ -790,6 +795,7 @@ class _HeaderControlState extends State<HeaderControl> {
                             final int quality = videoFormat[i].quality!;
                             widget.videoDetailCtr!.currentVideoQa =
                                 VideoQualityCode.fromCode(quality)!;
+                            widget.videoDetailCtr!.cacheVideoQa = quality;
                             String oldQualityDesc = VideoQualityCode.fromCode(
                                     setting.get(SettingBoxKey.defaultVideoQa,
                                         defaultValue:
@@ -832,8 +838,13 @@ class _HeaderControlState extends State<HeaderControl> {
 
   /// 选择音质
   void showSetAudioQa() {
+    final List<AudioItem> audio =
+        videoInfo.dash?.audio ?? const <AudioItem>[];
+    if (audio.isEmpty || widget.videoDetailCtr!.currentAudioQa == null) {
+      SmartDialog.showToast('当前视频不支持选择音质');
+      return;
+    }
     final AudioQuality currentAudioQa = widget.videoDetailCtr!.currentAudioQa!;
-    final List<AudioItem> audio = videoInfo.dash!.audio!;
     MyDialog.showCorner(
       context,
       Container(
@@ -902,16 +913,26 @@ class _HeaderControlState extends State<HeaderControl> {
 
   // 选择解码格式
   void showSetDecodeFormats() {
-    // 当前选中的解码格式
-    final VideoDecodeFormats currentDecodeFormats =
-        widget.videoDetailCtr!.currentDecodeFormats;
+    final PlayUrlModel currentVideoInfo = videoInfo;
+    final List<VideoItem>? videos = currentVideoInfo.dash?.video;
+    if (videos == null || videos.isEmpty) {
+      SmartDialog.showToast('当前视频不支持选择解码格式');
+      return;
+    }
     final VideoItem firstVideo = widget.videoDetailCtr!.firstVideo;
-    // 当前视频可用的解码格式
-    final List<FormatItem> videoFormat = videoInfo.supportFormats!;
-    final List? list = videoFormat
-        .firstWhere((FormatItem e) => e.quality == firstVideo.quality!.code)
-        .codecs;
-    if (list == null) {
+    final int? qualityCode = firstVideo.id ?? firstVideo.quality?.code;
+    final FormatItem? selectedFormat = currentVideoInfo.supportFormats
+        ?.firstWhereOrNull(
+            (FormatItem format) => format.quality == qualityCode);
+    final List<String> codecs =
+        selectedFormat?.codecs?.whereType<String>().toList() ??
+            videos
+                .where((VideoItem video) => video.id == qualityCode)
+                .map((VideoItem video) => video.codecs)
+                .whereType<String>()
+                .toSet()
+                .toList();
+    if (codecs.isEmpty) {
       SmartDialog.showToast('当前视频不支持选择解码格式');
       return;
     }
@@ -936,25 +957,20 @@ class _HeaderControlState extends State<HeaderControl> {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    for (var i in list) ...[
+                    for (final String codec in codecs) ...[
                       ListTile(
                         onTap: () {
-                          if (i.startsWith(currentDecodeFormats.code)) return;
-                          widget.videoDetailCtr!.currentDecodeFormats =
-                              VideoDecodeFormatsCode.fromString(i)!;
-                          widget.videoDetailCtr!.updatePlayer();
+                          if (codec == firstVideo.codecs) return;
+                          widget.videoDetailCtr!
+                              .updatePlayer(preferredCodec: codec);
                           Get.back();
                         },
                         dense: true,
                         contentPadding:
                             const EdgeInsets.only(left: 20, right: 20),
-                        title: Text(
-                            VideoDecodeFormatsCode.fromString(i)!.description!),
-                        subtitle: Text(
-                          i!,
-                          style: subTitleStyle,
-                        ),
-                        trailing: i.startsWith(currentDecodeFormats.code)
+                        title: Text(describeVideoCodec(codec)),
+                        subtitle: Text(codec, style: subTitleStyle),
+                        trailing: codec == firstVideo.codecs
                             ? Icon(
                                 Icons.done,
                                 color: Theme.of(context).colorScheme.primary,
@@ -1496,16 +1512,16 @@ class _HeaderControlState extends State<HeaderControl> {
           print(widget.controller!.dataSource.videoSource);
           print(widget.controller!.dataSource.audioSource);
           widget.controller!.controls = false;
+          final VideoItem video = widget.videoDetailCtr!.firstVideo;
+          final int videoWidth = video.width ?? 16;
+          final int videoHeight = video.height ?? 9;
           FlPiP().enable(
             ios: FlPiPiOSConfig(
                 videoPath: widget.videoDetailCtr!.videoUrl,
                 audioPath: widget.videoDetailCtr!.audioUrl,
                 packageName: null),
             android: FlPiPAndroidConfig(
-              aspectRatio: Rational(
-                widget.videoDetailCtr!.data.dash!.video!.first.width!,
-                widget.videoDetailCtr!.data.dash!.video!.first.height!,
-              ),
+              aspectRatio: Rational(videoWidth, videoHeight),
             ),
           );
         },

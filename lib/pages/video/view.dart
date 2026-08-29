@@ -18,6 +18,7 @@ import 'package:pilipalaz/pages/video/introduction/bangumi/index.dart';
 import 'package:pilipalaz/pages/danmaku/view.dart';
 import 'package:pilipalaz/pages/video/reply/index.dart';
 import 'package:pilipalaz/pages/video/controller.dart';
+import 'package:pilipalaz/pages/video/playback_input.dart';
 import 'package:pilipalaz/pages/video/introduction/detail/index.dart';
 import 'package:pilipalaz/pages/video/related/index.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
@@ -73,7 +74,6 @@ class _VideoDetailPageState extends State<VideoDetailPage>
   bool isShowing = true;
   bool _wasPlayingBeforePush = false;
   final GlobalKey relatedVideoPanelKey = GlobalKey();
-  final GlobalKey videoPlayerFutureKey = GlobalKey();
   final GlobalKey videoReplyPanelKey = GlobalKey();
   final GlobalKey scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -177,10 +177,10 @@ class _VideoDetailPageState extends State<VideoDetailPage>
         if (value['status']) {
           // fix: 手动播放首个视频前媒体通知不完整
           videoPlayerServiceHandler.onStatusChange(PlayerStatus.paused, false);
-          videoDetailController.playerInit(autoplay: false);
           plPlayerController = videoDetailController.plPlayerController;
           plPlayerController!.addStatusLister(playerListener);
           listenFullScreenStatus();
+          if (mounted) setState(() {});
         }
       });
     }
@@ -188,9 +188,7 @@ class _VideoDetailPageState extends State<VideoDetailPage>
 
   Future<void> retryVideoSource() async {
     final Future<dynamic> retryFuture = videoDetailController.queryVideoUrl();
-    setState(() {
-      _futureBuilderFuture = retryFuture;
-    });
+    _futureBuilderFuture = retryFuture;
     final dynamic result = await retryFuture;
     if (!mounted ||
         videoDetailController.autoPlay.value ||
@@ -199,11 +197,11 @@ class _VideoDetailPageState extends State<VideoDetailPage>
       return;
     }
     videoPlayerServiceHandler.onStatusChange(PlayerStatus.paused, false);
-    await videoDetailController.playerInit(autoplay: false);
-    if (!mounted) return;
     plPlayerController = videoDetailController.plPlayerController;
+    if (!mounted || plPlayerController == null) return;
     plPlayerController!.addStatusLister(playerListener);
     listenFullScreenStatus();
+    setState(() {});
   }
 
   // void autoEnterPip() {
@@ -550,60 +548,55 @@ class _VideoDetailPageState extends State<VideoDetailPage>
   //   }
   // }
 
-  Widget get plPlayer => FutureBuilder(
-    key: videoPlayerFutureKey,
-    future: _futureBuilderFuture,
-    builder: (BuildContext context, AsyncSnapshot snapshot) {
-      if (snapshot.hasError ||
-          (snapshot.hasData && snapshot.data['status'] != true)) {
-        return ColoredBox(
-          color: Colors.black,
-          child: Center(
-            child: TextButton.icon(
-              onPressed: retryVideoSource,
-              icon: const Icon(Icons.refresh),
-              label: Obx(
-                () => Text(
-                  videoDetailController.playbackError.value.isEmpty
-                      ? '视频加载失败，点击重试'
-                      : videoDetailController.playbackError.value,
-                ),
-              ),
+  Widget get plPlayer => Obx(() {
+    final PlaybackLoadState loadState =
+        videoDetailController.playbackLoadState.value;
+    if (loadState == PlaybackLoadState.failed) {
+      return ColoredBox(
+        color: Colors.black,
+        child: Center(
+          child: TextButton.icon(
+            onPressed: retryVideoSource,
+            icon: const Icon(Icons.refresh),
+            label: Text(
+              videoDetailController.playbackError.value.isEmpty
+                  ? '视频加载失败，点击重试'
+                  : videoDetailController.playbackError.value,
             ),
           ),
-        );
-      }
-      if (!snapshot.hasData || !snapshot.data['status']) {
-        return const ColoredBox(color: Colors.transparent);
-      }
-      return Obx(() {
-        if ((!videoDetailController.autoPlay.value &&
-                videoDetailController.isShowCover.value) ||
-            plPlayerController == null ||
-            plPlayerController!.videoController == null) {
-          return const ColoredBox(color: Colors.transparent);
-        }
-        return PLVideoPlayer(
-          key: Key(heroTag),
-          controller: plPlayerController!,
-          videoIntroController: !videoDetailController.sourceType.isPgc
-              ? videoIntroController
-              : null,
-          bangumiIntroController: videoDetailController.sourceType.isPgc
-              ? bangumiIntroController
-              : null,
-          headerControl: videoDetailController.headerControl,
-          danmuWidget: Obx(
-            () => PlDanmaku(
-              key: Key(videoDetailController.danmakuCid.value.toString()),
-              cid: videoDetailController.danmakuCid.value,
-              playerController: plPlayerController!,
-            ),
-          ),
-        );
-      });
-    },
-  );
+        ),
+      );
+    }
+    if (loadState == PlaybackLoadState.loading) {
+      return const ColoredBox(color: Colors.transparent);
+    }
+    final PlPlayerController? activePlayerController =
+        plPlayerController ?? videoDetailController.plPlayerController;
+    if ((!videoDetailController.autoPlay.value &&
+            videoDetailController.isShowCover.value) ||
+        activePlayerController == null ||
+        activePlayerController.videoController == null) {
+      return const ColoredBox(color: Colors.transparent);
+    }
+    return PLVideoPlayer(
+      key: Key(heroTag),
+      controller: activePlayerController,
+      videoIntroController: !videoDetailController.sourceType.isPgc
+          ? videoIntroController
+          : null,
+      bangumiIntroController: videoDetailController.sourceType.isPgc
+          ? bangumiIntroController
+          : null,
+      headerControl: videoDetailController.headerControl,
+      danmuWidget: Obx(
+        () => PlDanmaku(
+          key: Key(videoDetailController.danmakuCid.value.toString()),
+          cid: videoDetailController.danmakuCid.value,
+          playerController: activePlayerController,
+        ),
+      ),
+    );
+  });
 
   Widget get manualPlayerWidget => Obx(
     () => Visibility(

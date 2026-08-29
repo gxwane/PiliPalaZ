@@ -26,6 +26,8 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:pilipalaz/http/video.dart';
 import 'package:pilipalaz/pages/mine/controller.dart';
+import 'package:pilipalaz/plugin/pl_player/external_audio_command.dart';
+import 'package:pilipalaz/plugin/pl_player/hardware_decode_fallback_guard.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
 import 'package:pilipalaz/plugin/pl_player/player_buffer_policy.dart';
@@ -125,6 +127,9 @@ class PlPlayerController with WidgetsBindingObserver {
   bool _positionCorrectionInFlight = false;
   bool _refreshInFlight = false;
   bool _nativePlayerStale = false;
+  HardwareDecodeFailureHandler? _onHardwareDecodeFailure;
+  final HardwareDecodeFallbackGuard _hardwareDecodeFallbackGuard =
+      HardwareDecodeFallbackGuard();
   PlayerDiagnosticSession? _diagnosticSession;
   final PlaybackResourceOwnership _resourceOwnership =
       PlaybackResourceOwnership();
@@ -377,8 +382,10 @@ class PlPlayerController with WidgetsBindingObserver {
     return _instance != null;
   }
 
-  static Future<void> playIfExists(
-      {bool repeat = false, bool hideControls = true}) async {
+  static Future<void> playIfExists({
+    bool repeat = false,
+    bool hideControls = true,
+  }) async {
     await _instance?.play(repeat: repeat, hideControls: hideControls);
   }
 
@@ -386,8 +393,10 @@ class PlPlayerController with WidgetsBindingObserver {
     return _instance?.playerStatus.status.value;
   }
 
-  static Future<void> pauseIfExists(
-      {bool notify = true, bool isInterrupt = false}) async {
+  static Future<void> pauseIfExists({
+    bool notify = true,
+    bool isInterrupt = false,
+  }) async {
     if (_instance?.playerStatus.status.value == PlayerStatus.playing) {
       await _instance?.pause(notify: notify, isInterrupt: isInterrupt);
     }
@@ -407,8 +416,10 @@ class PlPlayerController with WidgetsBindingObserver {
     return _instance?.volume.value;
   }
 
-  static Future<void> setVolumeIfExists(double volumeNew,
-      {bool videoPlayerVolume = false}) async {
+  static Future<void> setVolumeIfExists(
+    double volumeNew, {
+    bool videoPlayerVolume = false,
+  }) async {
     await _instance?.setVolume(volumeNew, videoPlayerVolume: videoPlayerVolume);
   }
 
@@ -417,55 +428,74 @@ class PlPlayerController with WidgetsBindingObserver {
   }
 
   void updateSettings() {
-    isOpenDanmu.value =
-        setting.get(SettingBoxKey.enableShowDanmaku, defaultValue: true);
+    isOpenDanmu.value = setting.get(
+      SettingBoxKey.enableShowDanmaku,
+      defaultValue: true,
+    );
     blockTypes = setting.get(SettingBoxKey.danmakuBlockType, defaultValue: []);
     showArea = setting
         .get(SettingBoxKey.danmakuShowArea, defaultValue: 0.5)
         .toDouble();
     // 不透明度
-    opacityVal =
-        setting.get(SettingBoxKey.danmakuOpacity, defaultValue: 1.0).toDouble();
+    opacityVal = setting
+        .get(SettingBoxKey.danmakuOpacity, defaultValue: 1.0)
+        .toDouble();
     // 字体大小
     fontSizeVal = setting
         .get(SettingBoxKey.danmakuFontScale, defaultValue: 1.0)
         .toDouble();
     // 弹幕时间
-    danmakuDurationVal =
-        setting.get(SettingBoxKey.danmakuDuration, defaultValue: 7.29).round();
+    danmakuDurationVal = setting
+        .get(SettingBoxKey.danmakuDuration, defaultValue: 7.29)
+        .round();
     // 描边粗细
-    strokeWidth =
-        setting.get(SettingBoxKey.strokeWidth, defaultValue: 1.5).toDouble();
+    strokeWidth = setting
+        .get(SettingBoxKey.strokeWidth, defaultValue: 1.5)
+        .toDouble();
     // 弹幕字体粗细
     fontWeight = setting.get(SettingBoxKey.fontWeight, defaultValue: 5).round();
     // 弹幕海量模式
-    massiveMode =
-        setting.get(SettingBoxKey.danmakuMassiveMode, defaultValue: false);
+    massiveMode = setting.get(
+      SettingBoxKey.danmakuMassiveMode,
+      defaultValue: false,
+    );
     playRepeat = PlayRepeat.values.toList().firstWhere(
-          (e) =>
-              e.value ==
-              videoStorage.get(VideoBoxKey.playRepeat,
-                  defaultValue: PlayRepeat.pause.value),
-        );
+      (e) =>
+          e.value ==
+          videoStorage.get(
+            VideoBoxKey.playRepeat,
+            defaultValue: PlayRepeat.pause.value,
+          ),
+    );
     _playbackSpeed.value = videoStorage
         .get(VideoBoxKey.playSpeedDefault, defaultValue: 1.0)
         .toDouble();
-    enableAutoLongPressSpeed = setting
-        .get(SettingBoxKey.enableAutoLongPressSpeed, defaultValue: false);
-    enableLongPressSpeedIncrease = setting
-        .get(SettingBoxKey.enableLongPressSpeedIncrease, defaultValue: false);
+    enableAutoLongPressSpeed = setting.get(
+      SettingBoxKey.enableAutoLongPressSpeed,
+      defaultValue: false,
+    );
+    enableLongPressSpeedIncrease = setting.get(
+      SettingBoxKey.enableLongPressSpeedIncrease,
+      defaultValue: false,
+    );
     if (!enableAutoLongPressSpeed) {
       _longPressSpeed.value = videoStorage
           .get(VideoBoxKey.longPressSpeedDefault, defaultValue: 3.0)
           .toDouble();
     }
     // 后台播放
-    _continuePlayInBackground.value = setting
-        .get(SettingBoxKey.continuePlayInBackground, defaultValue: false);
-    enableLongShowControl =
-        setting.get(SettingBoxKey.enableLongShowControl, defaultValue: false);
-    horizontalScreen =
-        setting.get(SettingBoxKey.horizontalScreen, defaultValue: false);
+    _continuePlayInBackground.value = setting.get(
+      SettingBoxKey.continuePlayInBackground,
+      defaultValue: false,
+    );
+    enableLongShowControl = setting.get(
+      SettingBoxKey.enableLongShowControl,
+      defaultValue: false,
+    );
+    horizontalScreen = setting.get(
+      SettingBoxKey.horizontalScreen,
+      defaultValue: false,
+    );
     subtitleFontSize.value = videoStorage
         .get(VideoBoxKey.subtitleFontSize, defaultValue: 60.0)
         .toDouble();
@@ -483,9 +513,11 @@ class PlPlayerController with WidgetsBindingObserver {
         .toDouble();
 
     List<double> defaultList = <double>[0.5, 0.75, 1.25, 1.5, 1.75, 3.0];
-    speedsList = List<double>.from(videoStorage
-        .get(VideoBoxKey.customSpeedsList, defaultValue: defaultList)
-        .map((e) => e.toDouble()));
+    speedsList = List<double>.from(
+      videoStorage
+          .get(VideoBoxKey.customSpeedsList, defaultValue: defaultList)
+          .map((e) => e.toDouble()),
+    );
     for (final PlaySpeed i in PlaySpeed.values) {
       speedsList.add(i.value);
     }
@@ -518,10 +550,12 @@ class PlPlayerController with WidgetsBindingObserver {
           route.startsWith('/video') || route.startsWith('/live');
       if (!isPlayerRoute && !floatingManager.containsFloating(globalId)) {
         _nativePlayerStale = true;
-        unawaited(PlayerDiagnostics.instance.record(
-          'idle_player_marked_stale',
-          <String, Object?>{'lifecycle': state.name, 'route': route},
-        ));
+        unawaited(
+          PlayerDiagnostics.instance.record(
+            'idle_player_marked_stale',
+            <String, Object?>{'lifecycle': state.name, 'route': route},
+          ),
+        );
       }
     }
   }
@@ -532,13 +566,14 @@ class PlPlayerController with WidgetsBindingObserver {
     final String route = Get.currentRoute;
     final bool isPlayerRoute =
         route.startsWith('/video') || route.startsWith('/live');
-    if (!isPlayerRoute ||
-        _videoPlayerController?.state.playing != true) {
+    if (!isPlayerRoute || _videoPlayerController?.state.playing != true) {
       _nativePlayerStale = true;
-      unawaited(PlayerDiagnostics.instance.record(
-        'memory_pressure_player_marked_stale',
-        <String, Object?>{'route': route},
-      ));
+      unawaited(
+        PlayerDiagnostics.instance.record(
+          'memory_pressure_player_marked_stale',
+          <String, Object?>{'route': route},
+        ),
+      );
     }
   }
 
@@ -547,8 +582,9 @@ class PlPlayerController with WidgetsBindingObserver {
       return;
     }
     if (!await FlPiP().isAvailable) return;
-    _playerListenerForEnterPip =
-        onPlayerStatusChanged.listen((PlayerStatus status) async {
+    _playerListenerForEnterPip = onPlayerStatusChanged.listen((
+      PlayerStatus status,
+    ) async {
       if (status != PlayerStatus.playing) {
         // bool isActive = (await FlPiP().isActive)?.status == PiPStatus.enabled;
         // if (isActive) return;
@@ -559,10 +595,11 @@ class PlPlayerController with WidgetsBindingObserver {
       print('enable pip');
       FlPiP().enable(
         ios: FlPiPiOSConfig(
-            enabledWhenBackground: true,
-            videoPath: dataSource.videoSource!,
-            audioPath: dataSource.audioSource!,
-            packageName: 'PiliPalaZ'),
+          enabledWhenBackground: true,
+          videoPath: dataSource.videoSource!,
+          audioPath: dataSource.audioSource!,
+          packageName: 'PiliPalaZ',
+        ),
         android: FlPiPAndroidConfig(
           enabledWhenBackground: true,
           aspectRatio: Rational(
@@ -576,9 +613,7 @@ class PlPlayerController with WidgetsBindingObserver {
   }
 
   // 获取实例 传参
-  static PlPlayerController getInstance({
-    String videoType = 'archive',
-  }) {
+  static PlPlayerController getInstance({String videoType = 'archive'}) {
     // 如果实例尚未创建，则创建一个新实例
     _instance ??= PlPlayerController._();
     // print('getInstance');
@@ -622,9 +657,18 @@ class PlPlayerController with WidgetsBindingObserver {
     int cid = 0,
     // 历史记录开关
     bool enableHeart = true,
+    HardwareDecodeFailureHandler? onHardwareDecodeFailure,
   }) async {
     _resourceOwnership.claim(owner);
     final int session = ++_playbackSession;
+    _hardwareDecodeFallbackGuard.beginSession(
+      session,
+      enabled:
+          Platform.isAndroid &&
+          enableHA &&
+          hwdec != 'no' &&
+          videoType.value != 'live',
+    );
     _resetPlaybackPresentationForSource(
       initialPosition: seekTo,
       initialDuration: duration,
@@ -652,6 +696,7 @@ class PlPlayerController with WidgetsBindingObserver {
       _bvid = bvid;
       _cid = cid;
       _enableHeart = enableHeart;
+      _onHardwareDecodeFailure = onHardwareDecodeFailure;
 
       await _diagnosticSession?.complete('session_replaced');
       _diagnosticSession = await PlayerDiagnostics.instance.startSession(
@@ -669,8 +714,10 @@ class PlPlayerController with WidgetsBindingObserver {
             SettingBoxKey.videoSync,
             defaultValue: 'display-resample',
           ),
-          'expandedBuffer':
-              setting.get(SettingBoxKey.expandBuffer, defaultValue: false),
+          'expandedBuffer': setting.get(
+            SettingBoxKey.expandBuffer,
+            defaultValue: false,
+          ),
         },
       );
       await _diagnosticSession?.checkpoint('set_data_source_begin');
@@ -679,9 +726,7 @@ class PlPlayerController with WidgetsBindingObserver {
         await _diagnosticSession?.checkpoint('stale_native_player_recreate');
         await _disposeNativePlayer();
         _nativePlayerStale = false;
-        await _diagnosticSession?.checkpoint(
-          'stale_native_player_recreated',
-        );
+        await _diagnosticSession?.checkpoint('stale_native_player_recreated');
       }
 
       if (_videoPlayerController != null &&
@@ -694,7 +739,14 @@ class PlPlayerController with WidgetsBindingObserver {
       // }
       // 配置Player 音轨、字幕等等
       _videoPlayerController = await _createVideoController(
-          dataSource, _looping, enableHA, hwdec, width, height, seekTo);
+        dataSource,
+        _looping,
+        enableHA,
+        hwdec,
+        width,
+        height,
+        seekTo,
+      );
       if (session != _playbackSession) return;
       _attachPlaybackCommands(_videoPlayerController!);
       // 获取视频时长 00:00
@@ -741,8 +793,8 @@ class PlPlayerController with WidgetsBindingObserver {
   Future<bool> _detectActiveAndroidVpn() async {
     if (!Platform.isAndroid) return false;
     try {
-      final List<ConnectivityResult> results =
-          await Connectivity().checkConnectivity();
+      final List<ConnectivityResult> results = await Connectivity()
+          .checkConnectivity();
       return hasActiveVpn(results);
     } catch (err) {
       await _diagnosticSession?.checkpoint(
@@ -772,8 +824,10 @@ class PlPlayerController with WidgetsBindingObserver {
     );
     // 初始化时清空弹幕，防止上次重叠
     danmakuController?.clear();
-    final bool forceExpanded =
-        setting.get(SettingBoxKey.expandBuffer, defaultValue: false);
+    final bool forceExpanded = setting.get(
+      SettingBoxKey.expandBuffer,
+      defaultValue: false,
+    );
     final bool vpnActive = await _detectActiveAndroidVpn();
     final PlayerBufferPolicy bufferPolicy = resolvePlayerBufferPolicy(
       isLive: videoType.value == 'live',
@@ -781,22 +835,28 @@ class PlPlayerController with WidgetsBindingObserver {
       vpnActive: vpnActive,
     );
     final int bufferSize = bufferPolicy.bufferSize;
-    await _diagnosticSession?.checkpoint(
-      'native_player_prepare',
-      <String, Object?>{
-        'reuse': _videoPlayerController != null,
-        'bufferSize': bufferSize,
-        'bufferReason': bufferPolicy.reason.name,
-        'vpnActive': vpnActive,
-        'initialPositionMs': initialPosition.inMilliseconds,
-      },
-    );
-    Player player = _videoPlayerController ??
+    final String? effectiveHwdec = enableHA
+        ? (Platform.isAndroid && (hwdec == null || hwdec == 'auto')
+              ? 'auto-safe'
+              : hwdec)
+        : null;
+    await _diagnosticSession
+        ?.checkpoint('native_player_prepare', <String, Object?>{
+          'reuse': _videoPlayerController != null,
+          'bufferSize': bufferSize,
+          'bufferReason': bufferPolicy.reason.name,
+          'vpnActive': vpnActive,
+          'initialPositionMs': initialPosition.inMilliseconds,
+          'effectiveHwdec': effectiveHwdec,
+        });
+    Player player =
+        _videoPlayerController ??
         Player(
           configuration: PlayerConfiguration(
-              // 默认缓冲 4M 大小
-              bufferSize: bufferSize,
-              logLevel: MPVLogLevel.v),
+            // 默认缓冲 4M 大小
+            bufferSize: bufferSize,
+            logLevel: MPVLogLevel.v,
+          ),
         );
     await _diagnosticSession?.checkpoint('native_player_ready');
     final NativePlayer pp = player.platform as NativePlayer;
@@ -814,8 +874,15 @@ class PlPlayerController with WidgetsBindingObserver {
       await pp.setProperty("ao", ao);
     }
     // video-sync=display-resample
-    await pp.setProperty("video-sync",
-        setting.get(SettingBoxKey.videoSync, defaultValue: 'display-resample'));
+    await pp.setProperty(
+      "video-sync",
+      setting.get(SettingBoxKey.videoSync, defaultValue: 'display-resample'),
+    );
+    if (Platform.isAndroid && _videoController != null) {
+      await pp.setProperty('vf', '');
+      await pp.setProperty('fbo-format', 'auto');
+      await pp.setProperty('hwdec', effectiveHwdec ?? 'no');
+    }
     // await pp.setProperty('vf', 'rotate=90');
     await pp.setProperty('force-seekable', 'yes');
     // await pp.setProperty("video-rotate", "no");
@@ -826,23 +893,14 @@ class PlPlayerController with WidgetsBindingObserver {
     // await pp.setProperty("vo", "gpu-next");
     // await pp.setProperty("gpu-context", "android");
     // await pp.setProperty("gpu-api", "opengl");
-    await player.setAudioTrack(
-      AudioTrack.auto(),
+    await player.setAudioTrack(AudioTrack.auto());
+    // DURL 自带音频；清空外置音轨列表时不能把空字符串当成文件加载。
+    await pp.command(
+      buildExternalAudioCommand(
+        dataSource.audioSource,
+        isWindows: UniversalPlatform.isWindows,
+      ),
     );
-    // 音轨
-    if (dataSource.audioSource?.isNotEmpty ?? false) {
-      await pp.setProperty(
-        'audio-files',
-        UniversalPlatform.isWindows
-            ? dataSource.audioSource!.replaceAll(';', '\\;')
-            : dataSource.audioSource!.replaceAll(':', '\\:'),
-      );
-    } else {
-      await pp.setProperty(
-        'audio-files',
-        '',
-      );
-    }
     await _diagnosticSession?.checkpoint('native_properties_complete');
 
     // 字幕
@@ -862,15 +920,16 @@ class PlPlayerController with WidgetsBindingObserver {
       'video_controller_prepare',
       <String, Object?>{'reuse': _videoController != null},
     );
-    _videoController = _videoController ??
-        VideoController(
-          player,
-          configuration: VideoControllerConfiguration(
-            enableHardwareAcceleration: enableHA,
-            androidAttachSurfaceAfterVideoParameters: false,
-            hwdec: enableHA ? hwdec : null,
-          ),
-        );
+    if (_videoController == null) {
+      _videoController = VideoController(
+        player,
+        configuration: VideoControllerConfiguration(
+          enableHardwareAcceleration: enableHA,
+          androidAttachSurfaceAfterVideoParameters: false,
+          hwdec: effectiveHwdec,
+        ),
+      );
+    }
     await _diagnosticSession?.checkpoint('video_controller_ready');
 
     player.setPlaylistMode(looping);
@@ -885,8 +944,11 @@ class PlPlayerController with WidgetsBindingObserver {
       );
     } else {
       await player.open(
-        Media(dataSource.videoSource!,
-            httpHeaders: dataSource.httpHeaders, start: seekTo),
+        Media(
+          dataSource.videoSource!,
+          httpHeaders: dataSource.httpHeaders,
+          start: seekTo,
+        ),
         play: false,
       );
     }
@@ -919,16 +981,12 @@ class PlPlayerController with WidgetsBindingObserver {
         SmartDialog.showToast('视频源为空，请重新进入本页面');
         return false;
       }
-      if (dataSource.audioSource?.isEmpty ?? true) {
-        SmartDialog.showToast('音频源为空');
-      } else {
-        await (_videoPlayerController!.platform as NativePlayer).setProperty(
-          'audio-files',
-          UniversalPlatform.isWindows
-              ? dataSource.audioSource!.replaceAll(';', '\\;')
-              : dataSource.audioSource!.replaceAll(':', '\\:'),
-        );
-      }
+      await (_videoPlayerController!.platform as NativePlayer).command(
+        buildExternalAudioCommand(
+          dataSource.audioSource,
+          isWindows: UniversalPlatform.isWindows,
+        ),
+      );
       if (expectedSession != null && expectedSession != _playbackSession) {
         return false;
       }
@@ -955,8 +1013,262 @@ class PlPlayerController with WidgetsBindingObserver {
     // seekTo(currentPos);
   }
 
+  Future<void> _handleHardwareDecodeFailure(int session) async {
+    if (session != _playbackSession || _videoPlayerController == null) return;
+    final Map<String, Object?> nativeState = await _readNativeVideoState();
+    final HardwareDecodeFailureContext context = HardwareDecodeFailureContext(
+      position: _position.value,
+      wasPlaying: _videoPlayerController!.state.playing,
+      videoCodec: nativeState['video-codec']?.toString(),
+      pixelFormat: _pixelFormatFromState(nativeState),
+    );
+    await _diagnosticSession
+        ?.checkpoint('hardware_decode_recovery_begin', <String, Object?>{
+          'positionMs': context.position.inMilliseconds,
+          'wasPlaying': context.wasPlaying,
+          ...nativeState,
+        });
+
+    HardwareDecodeRecoveryDecision decision =
+        HardwareDecodeRecoveryDecision.unavailable;
+    final HardwareDecodeFailureHandler? handler = _onHardwareDecodeFailure;
+    if (handler != null) {
+      try {
+        decision = await handler(context);
+      } catch (err, stackTrace) {
+        await _diagnosticSession?.checkpoint(
+          'hardware_decode_source_recovery_error',
+          <String, Object?>{'error': err.toString()},
+        );
+        Catcher2.reportCheckedError(
+          err,
+          stackTrace,
+          extraData: <String, Object?>{
+            'phase': 'hardware_decode_source_recovery',
+            'controllerSession': session,
+            'diagnosticSession': _diagnosticSession?.id,
+            'bvid': _bvid,
+            'cid': _cid,
+          },
+        );
+      }
+    }
+    await _diagnosticSession?.checkpoint(
+      'hardware_decode_source_recovery_result',
+      <String, Object?>{'decision': decision.name},
+    );
+    if (session != _playbackSession ||
+        decision == HardwareDecodeRecoveryDecision.sourceReplaced) {
+      return;
+    }
+    await _retryWithSoftwareDecoding(session, initialState: nativeState);
+  }
+
+  Future<void> _retryWithSoftwareDecoding(
+    int session, {
+    Map<String, Object?>? initialState,
+  }) async {
+    final Future<void> previousOperation = _sourceOperation;
+    final Completer<void> operationCompleter = Completer<void>();
+    _sourceOperation = operationCompleter.future;
+    try {
+      try {
+        await previousOperation;
+      } catch (_) {}
+      if (session != _playbackSession || _videoPlayerController == null) {
+        return;
+      }
+
+      final DataSource fallbackSource = dataSource;
+      final Player player = _videoPlayerController!;
+      final NativePlayer nativePlayer = player.platform as NativePlayer;
+      final Duration resumePosition = _position.value;
+      final bool resumePlayback = player.state.playing;
+      final Map<String, Object?> stateBeforeFallback =
+          initialState ?? await _readNativeVideoState();
+      bool compatibilityFilterApplied = _stateRequires8BitOutput(
+        stateBeforeFallback,
+      );
+
+      dataStatus.status.value = DataStatus.loading;
+      await _diagnosticSession
+          ?.checkpoint('hardware_decode_fallback_begin', <String, Object?>{
+            'positionMs': resumePosition.inMilliseconds,
+            'requires8BitOutput': compatibilityFilterApplied,
+            ...stateBeforeFallback,
+          });
+
+      // mpv allows changing hwdec before reloading the same media. Reusing the
+      // player also preserves Android's already attached SurfaceTexture; fully
+      // recreating Player here can leave Flutter displaying the disposed
+      // texture even though software decoding itself has started successfully.
+      await nativePlayer.setProperty('hwdec', 'no');
+      if (compatibilityFilterApplied) {
+        await _applyAndroid8BitSoftwareOutputFilter(
+          nativePlayer,
+          detectedState: stateBeforeFallback,
+          phase: 'before_software_open',
+        );
+      }
+      await nativePlayer.command(
+        buildExternalAudioCommand(
+          fallbackSource.audioSource,
+          isWindows: UniversalPlatform.isWindows,
+        ),
+      );
+      _positionGuard.expectPosition(resumePosition);
+      final String fallbackVideoSource =
+          fallbackSource.type == DataSourceType.asset &&
+              !fallbackSource.videoSource!.startsWith('asset://')
+          ? 'asset://${fallbackSource.videoSource}'
+          : fallbackSource.videoSource!;
+      await player.open(
+        Media(
+          fallbackVideoSource,
+          httpHeaders: fallbackSource.httpHeaders,
+          start: resumePosition,
+        ),
+        play: resumePlayback,
+      );
+      if (session != _playbackSession) return;
+      Map<String, Object?> stateAfterFallback = await _waitForDecodedVideoState(
+        session,
+      );
+      if (!compatibilityFilterApplied &&
+          _stateRequires8BitOutput(stateAfterFallback)) {
+        await _applyAndroid8BitSoftwareOutputFilter(
+          nativePlayer,
+          detectedState: stateAfterFallback,
+          phase: 'after_software_open',
+        );
+        compatibilityFilterApplied = true;
+        stateAfterFallback = await _readNativeVideoState();
+      }
+      _duration.value = player.state.duration;
+      updateDurationSecond();
+      dataStatus.status.value = DataStatus.loaded;
+      chooseSubtitle();
+      _hardwareDecodeFallbackGuard.finishFallback(session);
+      SmartDialog.showToast('硬件解码失败，已切换为软件解码');
+      await _diagnosticSession
+          ?.checkpoint('hardware_decode_fallback_complete', <String, Object?>{
+            'positionMs': resumePosition.inMilliseconds,
+            'compatibilityFilterApplied': compatibilityFilterApplied,
+            ...stateAfterFallback,
+          });
+    } catch (err, stackTrace) {
+      if (session != _playbackSession) return;
+      _hardwareDecodeFallbackGuard.finishFallback(session);
+      dataStatus.status.value = DataStatus.error;
+      await _diagnosticSession?.checkpoint(
+        'hardware_decode_fallback_error',
+        <String, Object?>{'error': err.toString()},
+      );
+      Catcher2.reportCheckedError(
+        err,
+        stackTrace,
+        extraData: <String, Object?>{
+          'phase': 'hardware_decode_fallback',
+          'controllerSession': session,
+          'diagnosticSession': _diagnosticSession?.id,
+          'bvid': _bvid,
+          'cid': _cid,
+        },
+      );
+      SmartDialog.showToast('软件解码仍然失败，请尝试切换画质或关闭硬解');
+    } finally {
+      operationCompleter.complete();
+    }
+  }
+
+  String? _pixelFormatFromState(Map<String, Object?> state) {
+    for (final String property in <String>[
+      'video-out-params/pixelformat',
+      'video-params/pixelformat',
+    ]) {
+      final String value = state[property]?.toString().trim() ?? '';
+      if (value.isNotEmpty && value != 'null') return value;
+    }
+    return null;
+  }
+
+  bool _stateRequires8BitOutput(Map<String, Object?> state) {
+    return <String>[
+      'video-out-params/pixelformat',
+      'video-params/pixelformat',
+    ].any(
+      (String property) =>
+          requiresAndroid8BitSoftwareOutput(state[property]?.toString()),
+    );
+  }
+
+  Future<Map<String, Object?>> _waitForDecodedVideoState(int session) async {
+    Map<String, Object?> state = await _readNativeVideoState();
+    String? previousPixelFormat;
+    int stableReadCount = 0;
+    for (int attempt = 0; attempt < 8; attempt++) {
+      if (session != _playbackSession || _stateRequires8BitOutput(state)) {
+        return state;
+      }
+      final String? pixelFormat = _pixelFormatFromState(state);
+      if (pixelFormat != null) {
+        stableReadCount = pixelFormat == previousPixelFormat
+            ? stableReadCount + 1
+            : 1;
+        previousPixelFormat = pixelFormat;
+        if (stableReadCount >= 3) return state;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 125));
+      state = await _readNativeVideoState();
+    }
+    return state;
+  }
+
+  Future<void> _applyAndroid8BitSoftwareOutputFilter(
+    NativePlayer nativePlayer, {
+    required Map<String, Object?> detectedState,
+    required String phase,
+  }) async {
+    await nativePlayer.setProperty('vf', 'format=yuv420p');
+    await _diagnosticSession?.checkpoint(
+      'software_decode_8bit_filter_applied',
+      <String, Object?>{'phase': phase, ...detectedState},
+    );
+  }
+
+  Future<Map<String, Object?>> _readNativeVideoState() async {
+    final Player? player = _videoPlayerController;
+    if (player == null) return const <String, Object?>{};
+    final NativePlayer nativePlayer = player.platform as NativePlayer;
+    final Map<String, Object?> state = <String, Object?>{};
+    for (final String property in <String>[
+      'video-codec',
+      'video-format',
+      'hwdec-current',
+      'current-vo',
+      'vo-configured',
+      'width',
+      'height',
+      'estimated-vf-fps',
+      'video-params/pixelformat',
+      'video-out-params/pixelformat',
+      'fbo-format',
+      'decoder-frame-drop-count',
+      'frame-drop-count',
+    ]) {
+      try {
+        state[property] = await nativePlayer.getProperty(property);
+      } catch (err) {
+        state[property] = 'error: $err';
+      }
+    }
+    state['videoRect'] = _videoController?.rect.value?.toString();
+    state['textureId'] = _videoController?.id.value;
+    return state;
+  }
+
   // 开始播放
-  Future _initializePlayer() async {
+  Future _initializePlayer({bool? autoplay}) async {
     if (_instance == null) return;
     // 设置倍速
     if (videoType.value == 'live') {
@@ -979,15 +1291,17 @@ class PlPlayerController with WidgetsBindingObserver {
     // }
 
     // 自动播放
-    if (_autoPlay) {
+    if (autoplay ?? _autoPlay) {
       await playIfExists();
       // await play(duration: duration);
     }
   }
 
   Future<void> autoEnterFullScreen() async {
-    bool autoEnterFullscreen = GStorage.setting
-        .get(SettingBoxKey.enableAutoEnter, defaultValue: false);
+    bool autoEnterFullscreen = GStorage.setting.get(
+      SettingBoxKey.enableAutoEnter,
+      defaultValue: false,
+    );
     if (autoEnterFullscreen) {
       Future.delayed(const Duration(milliseconds: 500), () {
         if (dataStatus.status.value != DataStatus.loaded) {
@@ -1010,165 +1324,182 @@ class PlPlayerController with WidgetsBindingObserver {
   /// 播放事件监听
   void startListeners(int session) {
     final Player player = videoPlayerController!;
-    subscriptions.addAll(
-      [
-        player.stream.playing.listen((event) {
-          if (session != _playbackSession) return;
-          if (event) {
-            playerStatus.status.value = PlayerStatus.playing;
-          } else {
-            playerStatus.status.value = PlayerStatus.paused;
-          }
-          videoPlayerServiceHandler.onStatusChange(
-              playerStatus.status.value, isBuffering.value);
+    subscriptions.addAll([
+      player.stream.playing.listen((event) {
+        if (session != _playbackSession) return;
+        if (event) {
+          playerStatus.status.value = PlayerStatus.playing;
+        } else {
+          playerStatus.status.value = PlayerStatus.paused;
+        }
+        videoPlayerServiceHandler.onStatusChange(
+          playerStatus.status.value,
+          isBuffering.value,
+        );
+
+        /// 触发回调事件
+        for (var element in _statusListeners) {
+          // if (element != null) {
+          element(event ? PlayerStatus.playing : PlayerStatus.paused);
+          // }
+        }
+        if (player.state.position.inSeconds != 0) {
+          makeHeartBeat(positionSeconds.value, type: 'status');
+        }
+      }),
+      player.stream.completed.listen((event) {
+        if (session != _playbackSession) return;
+        if (event) {
+          print("stream completed");
+          playerStatus.status.value = PlayerStatus.completed;
 
           /// 触发回调事件
           for (var element in _statusListeners) {
-            // if (element != null) {
-            element(event ? PlayerStatus.playing : PlayerStatus.paused);
-            // }
+            element(PlayerStatus.completed);
           }
-          if (player.state.position.inSeconds != 0) {
-            makeHeartBeat(positionSeconds.value, type: 'status');
-          }
-        }),
-        player.stream.completed.listen((event) {
-          if (session != _playbackSession) return;
-          if (event) {
-            print("stream completed");
-            playerStatus.status.value = PlayerStatus.completed;
-
-            /// 触发回调事件
-            for (var element in _statusListeners) {
-              element(PlayerStatus.completed);
-            }
-          } else {
-            // playerStatus.status.value = PlayerStatus.playing;
-          }
-          makeHeartBeat(positionSeconds.value, type: 'completed');
-        }),
-        player.stream.position.listen((event) {
-          if (session != _playbackSession) return;
-          final PlaybackPositionDecision decision = _positionGuard.evaluate(
-            event,
-            isPlaying: player.state.playing,
-            isBuffering: isBuffering.value,
-            isLive: videoType.value == 'live',
-          );
-          if (decision.action == PlaybackPositionAction.ignore) return;
-          if (decision.action == PlaybackPositionAction.correct) {
-            unawaited(_correctUnexpectedPosition(
+        } else {
+          // playerStatus.status.value = PlayerStatus.playing;
+        }
+        makeHeartBeat(positionSeconds.value, type: 'completed');
+      }),
+      player.stream.position.listen((event) {
+        if (session != _playbackSession) return;
+        final PlaybackPositionDecision decision = _positionGuard.evaluate(
+          event,
+          isPlaying: player.state.playing,
+          isBuffering: isBuffering.value,
+          isLive: videoType.value == 'live',
+        );
+        if (decision.action == PlaybackPositionAction.ignore) return;
+        if (decision.action == PlaybackPositionAction.correct) {
+          unawaited(
+            _correctUnexpectedPosition(
               session: session,
               reportedPosition: event,
               targetPosition: decision.correctionTarget!,
               regression: decision.regression!,
-            ));
-            return;
-          }
-          _position.value = event;
-          updatePositionSecond();
-          if (!isSliderMoving.value) {
-            _sliderPosition.value = event;
-            updateSliderPositionSecond();
-          }
+            ),
+          );
+          return;
+        }
+        _position.value = event;
+        updatePositionSecond();
+        if (!isSliderMoving.value) {
+          _sliderPosition.value = event;
+          updateSliderPositionSecond();
+        }
 
-          /// 触发回调事件
-          for (var element in _positionListeners) {
-            element(event);
-          }
-          makeHeartBeat(event.inSeconds);
-        }),
-        player.stream.duration.listen((Duration event) {
-          if (session != _playbackSession) return;
-          duration.value = event;
-        }),
-        player.stream.buffer.listen((Duration event) {
-          if (session != _playbackSession) return;
-          _buffered.value = event;
-          updateBufferedSecond();
-        }),
-        player.stream.buffering.listen((bool event) {
-          if (session != _playbackSession) return;
-          isBuffering.value = event;
-          videoPlayerServiceHandler.onStatusChange(
-              playerStatus.status.value, event);
-        }),
-        player.stream.log.listen((event) {
-          if (session != _playbackSession) return;
-          // print('videoPlayerController!.stream.log.listen');
-          // print('[pp] $event');
-          // if (event.level == "v") {
-          if (isBuffering.value) {
-            _playerLog.value = "[${event.prefix}]${event.text}";
-          }
-          // }
-          // SmartDialog.showToast('视频加载日志： $event');
-        }),
-        player.stream.error.listen((String event) {
-          if (session != _playbackSession) return;
-          final PlayerDiagnosticSession? diagnostic = _diagnosticSession;
+        /// 触发回调事件
+        for (var element in _positionListeners) {
+          element(event);
+        }
+        makeHeartBeat(event.inSeconds);
+      }),
+      player.stream.duration.listen((Duration event) {
+        if (session != _playbackSession) return;
+        duration.value = event;
+      }),
+      player.stream.buffer.listen((Duration event) {
+        if (session != _playbackSession) return;
+        _buffered.value = event;
+        updateBufferedSecond();
+      }),
+      player.stream.buffering.listen((bool event) {
+        if (session != _playbackSession) return;
+        isBuffering.value = event;
+        videoPlayerServiceHandler.onStatusChange(
+          playerStatus.status.value,
+          event,
+        );
+      }),
+      player.stream.log.listen((event) {
+        if (session != _playbackSession) return;
+        // print('videoPlayerController!.stream.log.listen');
+        // print('[pp] $event');
+        // if (event.level == "v") {
+        if (isBuffering.value) {
+          _playerLog.value = "[${event.prefix}]${event.text}";
+        }
+        // }
+        // SmartDialog.showToast('视频加载日志： $event');
+      }),
+      player.stream.error.listen((String event) {
+        if (session != _playbackSession) return;
+        final PlayerDiagnosticSession? diagnostic = _diagnosticSession;
+        if (diagnostic != null) {
+          unawaited(
+            diagnostic.checkpoint('native_player_error', <String, Object?>{
+              'error': event,
+            }),
+          );
+        }
+        // 直播的错误提示没有参考价值，均不予显示
+        if (videoType.value == 'live') return;
+        final HardwareDecodeFallbackAction fallbackAction =
+            _hardwareDecodeFallbackGuard.evaluate(session, event);
+        if (fallbackAction == HardwareDecodeFallbackAction.fallback) {
+          unawaited(_handleHardwareDecodeFailure(session));
+          return;
+        }
+        if (fallbackAction == HardwareDecodeFallbackAction.suppress) {
+          return;
+        }
+        if (event.startsWith("Failed to open .") ||
+            event.startsWith("Cannot open file ''")) {
+          SmartDialog.showToast('视频源为空');
+        }
+        if (event.startsWith("Failed to open https://") ||
+            event.startsWith("Can not open external file https://") ||
+            //tcp: ffurl_read returned 0xdfb9b0bb
+            //tcp: ffurl_read returned 0xffffff99
+            event.startsWith('tcp: ffurl_read returned ')) {
+          _retryTimer?.cancel();
           if (diagnostic != null) {
-            unawaited(diagnostic.checkpoint(
-              'native_player_error',
-              <String, Object?>{'error': event},
-            ));
+            unawaited(diagnostic.checkpoint('network_retry_scheduled'));
           }
-          // 直播的错误提示没有参考价值，均不予显示
-          if (videoType.value == 'live') return;
-          if (event.startsWith("Failed to open .") ||
-              event.startsWith("Cannot open file ''")) {
-            SmartDialog.showToast('视频源为空');
-          }
-          if (event.startsWith("Failed to open https://") ||
-              event.startsWith("Can not open external file https://") ||
-              //tcp: ffurl_read returned 0xdfb9b0bb
-              //tcp: ffurl_read returned 0xffffff99
-              event.startsWith('tcp: ffurl_read returned ')) {
-            _retryTimer?.cancel();
-            if (diagnostic != null) {
-              unawaited(diagnostic.checkpoint('network_retry_scheduled'));
-            }
-            _retryTimer = Timer(const Duration(seconds: 3), () async {
-              if (session != _playbackSession) return;
-              print("isBuffering.value: ${isBuffering.value}");
-              print("_buffered.value: ${_buffered.value}");
-              if (isBuffering.value && _buffered.value == Duration.zero) {
-                await _diagnosticSession?.checkpoint('network_retry_begin');
-                SmartDialog.showToast('视频链接打开失败，重试中',
-                    displayTime: const Duration(milliseconds: 500));
-                if (!await refreshPlayer(expectedSession: session)) {
-                  print("failed");
-                }
+          _retryTimer = Timer(const Duration(seconds: 3), () async {
+            if (session != _playbackSession) return;
+            print("isBuffering.value: ${isBuffering.value}");
+            print("_buffered.value: ${_buffered.value}");
+            if (isBuffering.value && _buffered.value == Duration.zero) {
+              await _diagnosticSession?.checkpoint('network_retry_begin');
+              SmartDialog.showToast(
+                '视频链接打开失败，重试中',
+                displayTime: const Duration(milliseconds: 500),
+              );
+              if (!await refreshPlayer(expectedSession: session)) {
+                print("failed");
               }
-            });
-            return;
-          }
-          print('videoPlayerController!.stream.error.listen');
-          print(event);
-          if (event.startsWith('Could not open codec')) {
-            SmartDialog.showToast('无法加载解码器, $event，可能会切换至软解');
-            return;
-          }
-          SmartDialog.showToast('视频加载错误, $event');
-        }),
-        // videoPlayerController!.stream.volume.listen((event) {
-        //   if (!mute.value && _volumeBeforeMute != event) {
-        //     _volumeBeforeMute = event / 100;
-        //   }
-        // }),
-        // 媒体通知监听
-        // onPlayerStatusChanged.listen((PlayerStatus event) {
-        //   videoPlayerServiceHandler.onStatusChange(event, isBuffering.value);
-        // }),
-        onPositionChanged.listen((Duration event) {
-          if (session != _playbackSession) return;
-          EasyThrottle.throttle(
-              'mediaServicePosition',
-              const Duration(seconds: 1),
-              () => videoPlayerServiceHandler.onPositionChange(event));
-        }),
-      ],
-    );
+            }
+          });
+          return;
+        }
+        print('videoPlayerController!.stream.error.listen');
+        print(event);
+        if (event.startsWith('Could not open codec')) {
+          SmartDialog.showToast('视频解码失败，请尝试切换画质或关闭硬解');
+          return;
+        }
+        SmartDialog.showToast('视频加载错误, $event');
+      }),
+      // videoPlayerController!.stream.volume.listen((event) {
+      //   if (!mute.value && _volumeBeforeMute != event) {
+      //     _volumeBeforeMute = event / 100;
+      //   }
+      // }),
+      // 媒体通知监听
+      // onPlayerStatusChanged.listen((PlayerStatus event) {
+      //   videoPlayerServiceHandler.onStatusChange(event, isBuffering.value);
+      // }),
+      onPositionChanged.listen((Duration event) {
+        if (session != _playbackSession) return;
+        EasyThrottle.throttle(
+          'mediaServicePosition',
+          const Duration(seconds: 1),
+          () => videoPlayerServiceHandler.onPositionChange(event),
+        );
+      }),
+    ]);
   }
 
   Future<void> _correctUnexpectedPosition({
@@ -1181,17 +1512,15 @@ class PlPlayerController with WidgetsBindingObserver {
     _positionCorrectionInFlight = true;
     _positionGuard.expectPosition(targetPosition);
     try {
-      await _diagnosticSession?.checkpoint(
-        'unexpected_position_regression',
-        <String, Object?>{
-          'reportedPositionMs': reportedPosition.inMilliseconds,
-          'targetPositionMs': targetPosition.inMilliseconds,
-          'regressionMs': regression.inMilliseconds,
-          'bufferedMs': _buffered.value.inMilliseconds,
-          'isBuffering': isBuffering.value,
-          'playerLog': _playerLog.value,
-        },
-      );
+      await _diagnosticSession
+          ?.checkpoint('unexpected_position_regression', <String, Object?>{
+            'reportedPositionMs': reportedPosition.inMilliseconds,
+            'targetPositionMs': targetPosition.inMilliseconds,
+            'regressionMs': regression.inMilliseconds,
+            'bufferedMs': _buffered.value.inMilliseconds,
+            'isBuffering': isBuffering.value,
+            'playerLog': _playerLog.value,
+          });
       if (session != _playbackSession) return;
       await _videoPlayerController?.seek(targetPosition);
     } catch (err) {
@@ -1238,8 +1567,9 @@ class PlPlayerController with WidgetsBindingObserver {
     } else {
       print('seek duration else');
       _timerForSeek?.cancel();
-      _timerForSeek =
-          Timer.periodic(const Duration(milliseconds: 200), (Timer t) async {
+      _timerForSeek = Timer.periodic(const Duration(milliseconds: 200), (
+        Timer t,
+      ) async {
         //_timerForSeek = null;
         if (duration.value.inSeconds != 0) {
           await _videoPlayerController?.stream.buffer.first;
@@ -1275,8 +1605,10 @@ class PlPlayerController with WidgetsBindingObserver {
 
   // 还原默认速度
   Future<void> setDefaultSpeed() async {
-    double speed =
-        videoStorage.get(VideoBoxKey.playSpeedDefault, defaultValue: 1.0);
+    double speed = videoStorage.get(
+      VideoBoxKey.playSpeedDefault,
+      defaultValue: 1.0,
+    );
     await _videoPlayerController?.setRate(speed);
     _playbackSpeed.value = speed;
   }
@@ -1384,8 +1716,10 @@ class PlPlayerController with WidgetsBindingObserver {
     } catch (_) {}
   }
 
-  Future<void> setVolume(double volumeNew,
-      {bool videoPlayerVolume = false}) async {
+  Future<void> setVolume(
+    double volumeNew, {
+    bool videoPlayerVolume = false,
+  }) async {
     if (volumeNew < 0.0) {
       volumeNew = 0.0;
     } else if (volumeNew > 1.0) {
@@ -1446,38 +1780,40 @@ class PlPlayerController with WidgetsBindingObserver {
       builder: (context) {
         return AlertDialog(
           title: const Text('视频尺寸'),
-          content: StatefulBuilder(builder: (context, StateSetter setState) {
-            return Wrap(
-              alignment: WrapAlignment.start,
-              spacing: 8,
-              runSpacing: 2,
-              children: [
-                for (var i in videoFitType) ...[
-                  if (_videoFit.value == i['attr']) ...[
-                    FilledButton(
-                      onPressed: () async {
-                        _videoFit.value = i['attr'];
-                        _videoFitDesc.value = i['desc'];
-                        setVideoFit();
-                        Get.back();
-                      },
-                      child: Text(i['desc']),
-                    ),
-                  ] else ...[
-                    FilledButton.tonal(
-                      onPressed: () async {
-                        _videoFit.value = i['attr'];
-                        _videoFitDesc.value = i['desc'];
-                        setVideoFit();
-                        Get.back();
-                      },
-                      child: Text(i['desc']),
-                    ),
-                  ]
-                ]
-              ],
-            );
-          }),
+          content: StatefulBuilder(
+            builder: (context, StateSetter setState) {
+              return Wrap(
+                alignment: WrapAlignment.start,
+                spacing: 8,
+                runSpacing: 2,
+                children: [
+                  for (var i in videoFitType) ...[
+                    if (_videoFit.value == i['attr']) ...[
+                      FilledButton(
+                        onPressed: () async {
+                          _videoFit.value = i['attr'];
+                          _videoFitDesc.value = i['desc'];
+                          setVideoFit();
+                          Get.back();
+                        },
+                        child: Text(i['desc']),
+                      ),
+                    ] else ...[
+                      FilledButton.tonal(
+                        onPressed: () async {
+                          _videoFit.value = i['attr'];
+                          _videoFitDesc.value = i['desc'];
+                          setVideoFit();
+                          Get.back();
+                        },
+                        child: Text(i['desc']),
+                      ),
+                    ],
+                  ],
+                ],
+              );
+            },
+          ),
         );
       },
     );
@@ -1487,8 +1823,10 @@ class PlPlayerController with WidgetsBindingObserver {
   Future<void> setVideoFit() async {
     List attrs = videoFitType.map((e) => e['attr']).toList();
     int index = attrs.indexOf(_videoFit.value);
-    SmartDialog.showToast(videoFitType[index]['toast'],
-        displayTime: const Duration(seconds: 1));
+    SmartDialog.showToast(
+      videoFitType[index]['toast'],
+      displayTime: const Duration(seconds: 1),
+    );
     videoStorage.put(VideoBoxKey.cacheVideoFit, index);
   }
 
@@ -1503,8 +1841,10 @@ class PlPlayerController with WidgetsBindingObserver {
         _dataListenerForVideoFit = dataStatus.status.listen((status) {
           if (status == DataStatus.loaded) {
             _dataListenerForVideoFit?.cancel();
-            int fitValue =
-                videoStorage.get(VideoBoxKey.cacheVideoFit, defaultValue: 0);
+            int fitValue = videoStorage.get(
+              VideoBoxKey.cacheVideoFit,
+              defaultValue: 0,
+            );
             var attr = videoFitType[fitValue]['attr'];
             if (attr == BoxFit.none || attr == BoxFit.scaleDown) {
               _videoFit.value = attr;
@@ -1551,8 +1891,9 @@ class PlPlayerController with WidgetsBindingObserver {
       return;
     }
     if (val) {
-      _doubleSpeedStatus.value =
-          enableAutoLongPressSpeed ? playbackSpeed * 2 : longPressSpeed;
+      _doubleSpeedStatus.value = enableAutoLongPressSpeed
+          ? playbackSpeed * 2
+          : longPressSpeed;
       await setPlaybackSpeed(_doubleSpeedStatus.value);
       if (enableLongPressSpeedIncrease) {
         Timer.periodic(const Duration(milliseconds: 500), (timer) async {
@@ -1583,8 +1924,11 @@ class PlPlayerController with WidgetsBindingObserver {
   }
 
   // 应用内小窗
-  bool triggerFloatingWindow(VideoIntroController? videoIntroController,
-      BangumiIntroController? bangumiIntroController, String heroTag) {
+  bool triggerFloatingWindow(
+    VideoIntroController? videoIntroController,
+    BangumiIntroController? bangumiIntroController,
+    String heroTag,
+  ) {
     if (videoController == null) {
       return false;
     }
@@ -1594,17 +1938,15 @@ class PlPlayerController with WidgetsBindingObserver {
         child: IconButton(
           constraints: const BoxConstraints(),
           style: ButtonStyle(
-            backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                (Set<WidgetState> states) {
-              return Theme.of(Get.context!)
-                  .colorScheme
-                  .surface
-                  .withOpacity(0.9);
+            backgroundColor: WidgetStateProperty.resolveWith<Color>((
+              Set<WidgetState> states,
+            ) {
+              return Theme.of(
+                Get.context!,
+              ).colorScheme.surface.withOpacity(0.9);
             }),
             shape: WidgetStateProperty.all(
-              RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(0),
-              ),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
             ),
           ),
           onPressed: onPressed,
@@ -1622,8 +1964,9 @@ class PlPlayerController with WidgetsBindingObserver {
     double? videoWidth = videoPlayerController?.state.width?.toDouble();
     // bool isVertical = direction.value == 'vertical';
     // 长宽比
-    double aspectRatio =
-        direction.value == 'horizontal' ? 9.0 / 16.0 : 16.0 / 9.0;
+    double aspectRatio = direction.value == 'horizontal'
+        ? 9.0 / 16.0
+        : 16.0 / 9.0;
 
     if (videoWidth != null && videoHeight != null) {
       if ((videoWidth > videoHeight) ^ (direction.value != 'horizontal')) {
@@ -1665,9 +2008,9 @@ class PlPlayerController with WidgetsBindingObserver {
                 resumeUponEnteringForegroundMode: true,
                 // 字幕尺寸调节
                 subtitleViewConfiguration: SubtitleViewConfiguration(
-                    style: subtitleStyle.value,
-                    padding:
-                        EdgeInsets.only(bottom: subtitleBottomPadding.value)),
+                  style: subtitleStyle.value,
+                  padding: EdgeInsets.only(bottom: subtitleBottomPadding.value),
+                ),
                 fit: BoxFit.contain,
               ),
             ),
@@ -1675,42 +2018,48 @@ class PlPlayerController with WidgetsBindingObserver {
           SizedBox(
             width: floatingWidth,
             height: extentHeight,
-            child: Row(children: [
-              // if (videoIntroController != null &&
-              //         videoIntroController.hasNextEpisode() ||
-              //     bangumiIntroController != null &&
-              //         bangumiIntroController.hasNextEpisode())
-              // iconButton(Icons.skip_next, () {
-              //   if (videoIntroController != null) {
-              //     videoIntroController.nextPlay();
-              //   } else if (bangumiIntroController != null) {
-              //     bangumiIntroController.nextPlay();
-              //   }
-              // }),
-              if (!isLive)
-                iconButton(
-                  MdiIcons.rewind10,
-                  () => seekTo(position.value - const Duration(seconds: 10),
-                      type: 'slide'),
-                ),
-              if (!isLive)
-                Obx(
-                  () => iconButton(
-                    playerStatus.playing ? Icons.pause : Icons.play_arrow,
-                    () => togglePlay(),
+            child: Row(
+              children: [
+                // if (videoIntroController != null &&
+                //         videoIntroController.hasNextEpisode() ||
+                //     bangumiIntroController != null &&
+                //         bangumiIntroController.hasNextEpisode())
+                // iconButton(Icons.skip_next, () {
+                //   if (videoIntroController != null) {
+                //     videoIntroController.nextPlay();
+                //   } else if (bangumiIntroController != null) {
+                //     bangumiIntroController.nextPlay();
+                //   }
+                // }),
+                if (!isLive)
+                  iconButton(
+                    MdiIcons.rewind10,
+                    () => seekTo(
+                      position.value - const Duration(seconds: 10),
+                      type: 'slide',
+                    ),
                   ),
-                ),
-              if (!isLive)
-                iconButton(
-                  MdiIcons.fastForward10,
-                  () => seekTo(position.value + const Duration(seconds: 10),
-                      type: 'slide'),
-                ),
-              iconButton(Icons.close, () {
-                floatingManager.closeFloating(globalId);
-                pauseIfExists();
-              }),
-            ]),
+                if (!isLive)
+                  Obx(
+                    () => iconButton(
+                      playerStatus.playing ? Icons.pause : Icons.play_arrow,
+                      () => togglePlay(),
+                    ),
+                  ),
+                if (!isLive)
+                  iconButton(
+                    MdiIcons.fastForward10,
+                    () => seekTo(
+                      position.value + const Duration(seconds: 10),
+                      type: 'slide',
+                    ),
+                  ),
+                iconButton(Icons.close, () {
+                  floatingManager.closeFloating(globalId);
+                  pauseIfExists();
+                }),
+              ],
+            ),
           ),
         ],
       ),
@@ -1749,10 +2098,7 @@ class PlPlayerController with WidgetsBindingObserver {
     floatingWindow = floatingManager.createFloating(
       globalId,
       Floating(
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16.0),
-          child: baseWindow,
-        ),
+        ClipRRect(borderRadius: BorderRadius.circular(16.0), child: baseWindow),
         isPosCache: true,
         slideType: FloatingSlideType.onRightAndTop,
         right: 0,
@@ -1778,13 +2124,18 @@ class PlPlayerController with WidgetsBindingObserver {
   }
 
   // 全屏
-  Future<void> triggerFullScreen(
-      {bool status = true, bool equivalent = false}) async {
+  Future<void> triggerFullScreen({
+    bool status = true,
+    bool equivalent = false,
+  }) async {
     stopScreenTimer();
     FullScreenMode mode = FullScreenModeCode.fromCode(
-        setting.get(SettingBoxKey.fullScreenMode, defaultValue: 0))!;
-    bool removeSafeArea = setting.get(SettingBoxKey.videoPlayerRemoveSafeArea,
-        defaultValue: false);
+      setting.get(SettingBoxKey.fullScreenMode, defaultValue: 0),
+    )!;
+    bool removeSafeArea = setting.get(
+      SettingBoxKey.videoPlayerRemoveSafeArea,
+      defaultValue: false,
+    );
     if (!isFullScreen.value && status) {
       // StatusBarControl.setHidden(true, animation: StatusBarAnimation.FADE);
       hideStatusBar();
@@ -1837,8 +2188,9 @@ class PlPlayerController with WidgetsBindingObserver {
 
   /// 截屏
   Future screenshot() async {
-    final Uint8List? screenshot =
-        await _videoPlayerController!.screenshot(format: 'image/png');
+    final Uint8List? screenshot = await _videoPlayerController!.screenshot(
+      format: 'image/png',
+    );
     return screenshot;
   }
 
@@ -1860,7 +2212,8 @@ class PlPlayerController with WidgetsBindingObserver {
     }
     // print("playerStatus.status.value: ${playerStatus.status.value}");
     // print("type: $type");
-    bool isComplete = playerStatus.status.value == PlayerStatus.completed ||
+    bool isComplete =
+        playerStatus.status.value == PlayerStatus.completed ||
         type == 'completed';
     // 播放状态变化时，更新
     if (type == 'status' || type == 'completed') {
@@ -1874,11 +2227,7 @@ class PlPlayerController with WidgetsBindingObserver {
     // 正常播放时，间隔3秒更新一次
     if (progress - _heartDuration >= 3) {
       _heartDuration = progress;
-      await VideoHttp.heartBeat(
-        bvid: _bvid,
-        cid: _cid,
-        progress: progress,
-      );
+      await VideoHttp.heartBeat(bvid: _bvid, cid: _cid, progress: progress);
     }
   }
 
@@ -1897,8 +2246,10 @@ class PlPlayerController with WidgetsBindingObserver {
     setting.put(SettingBoxKey.strokeWidth, strokeWidth);
     setting.put(SettingBoxKey.fontWeight, fontWeight);
     setting.put(SettingBoxKey.danmakuMassiveMode, massiveMode);
-    setting.put(SettingBoxKey.convertToScrollDanmaku,
-        PlDanmakuController.convertToScrollDanmaku);
+    setting.put(
+      SettingBoxKey.convertToScrollDanmaku,
+      PlDanmakuController.convertToScrollDanmaku,
+    );
   }
 
   Future<void> releaseNativeResources(PlayerResourceOwner owner) {
@@ -1976,7 +2327,9 @@ class PlPlayerController with WidgetsBindingObserver {
     if (player != null) {
       try {
         final NativePlayer nativePlayer = player.platform as NativePlayer;
-        await nativePlayer.setProperty('audio-files', '');
+        await nativePlayer.command(
+          buildExternalAudioCommand(null, isWindows: Platform.isWindows),
+        );
       } catch (err) {
         debugPrint('clear native audio files failed: $err');
       }
@@ -2082,8 +2435,10 @@ class PlPlayerController with WidgetsBindingObserver {
       setSubtitle(index != -1 ? index : defaultIndex);
     }
 
-    String preference = setting.get(SettingBoxKey.subtitlePreference,
-        defaultValue: SubtitlePreference.values.first.code);
+    String preference = setting.get(
+      SettingBoxKey.subtitlePreference,
+      defaultValue: SubtitlePreference.values.first.code,
+    );
 
     if (_vttSubtitlesIndex < 1 || _vttSubtitlesIndex >= _vttSubtitles.length) {
       switch (preference) {
@@ -2101,7 +2456,8 @@ class PlPlayerController with WidgetsBindingObserver {
 
     if (_vttSubtitles[_vttSubtitlesIndex.value]['language']!.startsWith('ai')) {
       setSubtitleFallback(
-          preference == 'withoutAi' ? 0 : _vttSubtitlesIndex.value);
+        preference == 'withoutAi' ? 0 : _vttSubtitlesIndex.value,
+      );
     } else {
       setSubtitle(_vttSubtitlesIndex.value);
     }
@@ -2116,25 +2472,30 @@ class PlPlayerController with WidgetsBindingObserver {
     }
     Map<String, String> s = _vttSubtitles[index];
     debugPrint(s['text']);
-    _videoPlayerController?.setSubtitleTrack(SubtitleTrack.data(
-      s['text']!,
-      title: s['title']!,
-      language: s['language']!,
-    ));
+    _videoPlayerController?.setSubtitleTrack(
+      SubtitleTrack.data(
+        s['text']!,
+        title: s['title']!,
+        language: s['language']!,
+      ),
+    );
     _vttSubtitlesIndex.value = index;
   }
 
   void setContinuePlayInBackground(bool? status) {
     _continuePlayInBackground.value =
         status ?? !_continuePlayInBackground.value;
-    setting.put(SettingBoxKey.continuePlayInBackground,
-        _continuePlayInBackground.value);
+    setting.put(
+      SettingBoxKey.continuePlayInBackground,
+      _continuePlayInBackground.value,
+    );
   }
 
   void setOnlyPlayAudio(bool? status) {
     _onlyPlayAudio.value = status ?? !_onlyPlayAudio.value;
     videoPlayerController?.setVideoTrack(
-        _onlyPlayAudio.value ? VideoTrack.no() : VideoTrack.auto());
+      _onlyPlayAudio.value ? VideoTrack.no() : VideoTrack.auto(),
+    );
   }
 
   void setSubtitleFontSize() {
@@ -2143,34 +2504,37 @@ class PlPlayerController with WidgetsBindingObserver {
       builder: (context) {
         return AlertDialog(
           title: const Text('字幕字号设置'),
-          content: StatefulBuilder(builder: (context, StateSetter setState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Slider(
-                  value: subtitleFontSize.value,
-                  onChanged: (double value) {
-                    setState(() {
-                      subtitleFontSize.value = value;
-                      subtitleStyle.value = subtitleStyle.value
-                          .copyWith(fontSize: subtitleFontSize.value);
-                    });
-                  },
-                  onChangeEnd: (double value) {
-                    videoStorage.put(VideoBoxKey.subtitleFontSize, value);
-                  },
-                  min: 40.0,
-                  max: 120.0,
-                  divisions: 80,
-                  label: subtitleFontSize.value.round().toString(),
-                ),
-                Text(
-                  '当前字号：${subtitleFontSize.value.round()}',
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ],
-            );
-          }),
+          content: StatefulBuilder(
+            builder: (context, StateSetter setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Slider(
+                    value: subtitleFontSize.value,
+                    onChanged: (double value) {
+                      setState(() {
+                        subtitleFontSize.value = value;
+                        subtitleStyle.value = subtitleStyle.value.copyWith(
+                          fontSize: subtitleFontSize.value,
+                        );
+                      });
+                    },
+                    onChangeEnd: (double value) {
+                      videoStorage.put(VideoBoxKey.subtitleFontSize, value);
+                    },
+                    min: 40.0,
+                    max: 120.0,
+                    divisions: 80,
+                    label: subtitleFontSize.value.round().toString(),
+                  ),
+                  Text(
+                    '当前字号：${subtitleFontSize.value.round()}',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ],
+              );
+            },
+          ),
         );
       },
     );
@@ -2182,32 +2546,37 @@ class PlPlayerController with WidgetsBindingObserver {
       builder: (context) {
         return AlertDialog(
           title: const Text('字幕底部间距设置'),
-          content: StatefulBuilder(builder: (context, StateSetter setState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Slider(
-                  value: subtitleBottomPadding.value,
-                  onChanged: (double value) {
-                    setState(() {
-                      subtitleBottomPadding.value = value;
-                    });
-                  },
-                  onChangeEnd: (double value) {
-                    videoStorage.put(VideoBoxKey.subtitleBottomPadding, value);
-                  },
-                  min: 10.0,
-                  max: 180.0,
-                  divisions: 170,
-                  label: subtitleBottomPadding.value.round().toString(),
-                ),
-                Text(
-                  '当前底部间距：${subtitleBottomPadding.value.round()}',
-                  style: const TextStyle(fontSize: 16),
-                ),
-              ],
-            );
-          }),
+          content: StatefulBuilder(
+            builder: (context, StateSetter setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Slider(
+                    value: subtitleBottomPadding.value,
+                    onChanged: (double value) {
+                      setState(() {
+                        subtitleBottomPadding.value = value;
+                      });
+                    },
+                    onChangeEnd: (double value) {
+                      videoStorage.put(
+                        VideoBoxKey.subtitleBottomPadding,
+                        value,
+                      );
+                    },
+                    min: 10.0,
+                    max: 180.0,
+                    divisions: 170,
+                    label: subtitleBottomPadding.value.round().toString(),
+                  ),
+                  Text(
+                    '当前底部间距：${subtitleBottomPadding.value.round()}',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                ],
+              );
+            },
+          ),
         );
       },
     );

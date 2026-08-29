@@ -172,37 +172,54 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   void initState() {
     super.initState();
     animationController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 100));
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
     videoController = widget.controller.videoController!;
     videoIntroController = widget.videoIntroController;
     bangumiIntroController = widget.bangumiIntroController;
     widget.controller.headerControl = widget.headerControl;
     widget.controller.bottomControl = widget.bottomControl;
     widget.controller.danmuWidget = widget.danmuWidget;
-    defaultBtmProgressBehavior = setting.get(SettingBoxKey.btmProgressBehavior,
-        defaultValue: BtmProgressBehavior.values.first.code);
-    enableQuickDouble =
-        setting.get(SettingBoxKey.enableQuickDouble, defaultValue: true);
-    enableAdjustBrightnessVolume = setting
-        .get(SettingBoxKey.enableAdjustBrightnessVolume, defaultValue: true);
+    defaultBtmProgressBehavior = setting.get(
+      SettingBoxKey.btmProgressBehavior,
+      defaultValue: BtmProgressBehavior.values.first.code,
+    );
+    enableQuickDouble = setting.get(
+      SettingBoxKey.enableQuickDouble,
+      defaultValue: true,
+    );
+    enableAdjustBrightnessVolume = setting.get(
+      SettingBoxKey.enableAdjustBrightnessVolume,
+      defaultValue: true,
+    );
     // fullScreenGestureReverse = setting
     //     .get(SettingBoxKey.fullScreenGestureReverse, defaultValue: false);
     // enableFloatingWindowGesture = setting
     //     .get(SettingBoxKey.enableFloatingWindowGesture, defaultValue: true);
-    setSystemBrightness =
-        setting.get(SettingBoxKey.setSystemBrightness, defaultValue: false);
-    enableExtraButtonOnFullScreen = setting
-        .get(SettingBoxKey.enableExtraButtonOnFullScreen, defaultValue: true);
+    setSystemBrightness = setting.get(
+      SettingBoxKey.setSystemBrightness,
+      defaultValue: false,
+    );
+    enableExtraButtonOnFullScreen = setting.get(
+      SettingBoxKey.enableExtraButtonOnFullScreen,
+      defaultValue: true,
+    );
     Map<int, int> gestureCodeMap = Map<int, int>.from(
-        setting.get(SettingBoxKey.playerGestureActionMap, defaultValue: {
-      PlayerMiddleGesture.nonFullScreenUp.code:
-          PlayerGestureAction.toggleFullScreen.code,
-      PlayerMiddleGesture.nonFullScreenDown.code:
-          PlayerGestureAction.pipInside.code,
-      PlayerMiddleGesture.fullScreenUp.code: PlayerGestureAction.pipInside.code,
-      PlayerMiddleGesture.fullScreenDown.code:
-          PlayerGestureAction.toggleFullScreen.code,
-    }));
+      setting.get(
+        SettingBoxKey.playerGestureActionMap,
+        defaultValue: {
+          PlayerMiddleGesture.nonFullScreenUp.code:
+              PlayerGestureAction.toggleFullScreen.code,
+          PlayerMiddleGesture.nonFullScreenDown.code:
+              PlayerGestureAction.pipInside.code,
+          PlayerMiddleGesture.fullScreenUp.code:
+              PlayerGestureAction.pipInside.code,
+          PlayerMiddleGesture.fullScreenDown.code:
+              PlayerGestureAction.toggleFullScreen.code,
+        },
+      ),
+    );
     middleGestureAction = Map.fromEntries(
       PlayerMiddleGesture.values.map(
         (e) => MapEntry(
@@ -227,19 +244,21 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       try {
         _brightnessValue.value = await ScreenBrightness.instance.system;
         if (setSystemBrightness) {
-          ScreenBrightness.instance.onSystemScreenBrightnessChanged
-              .listen((value) {
+          ScreenBrightness.instance.onSystemScreenBrightnessChanged.listen((
+            value,
+          ) {
             if (mounted) {
               _brightnessValue.value = value;
             }
           });
         } else {
-          ScreenBrightness.instance.onApplicationScreenBrightnessChanged
-              .listen((value) {
-            if (mounted) {
-              _brightnessValue.value = value;
-            }
-          });
+          ScreenBrightness.instance.onApplicationScreenBrightnessChanged.listen(
+            (value) {
+              if (mounted) {
+                _brightnessValue.value = value;
+              }
+            },
+          );
         }
       } catch (_) {}
     });
@@ -535,7 +554,6 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     );
   }
 
-
   // 动态构建底部控制条
   List<BottomControlItem> buildBottomControl() {
     final PlPlayerController playerController = widget.controller;
@@ -796,21 +814,26 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   Widget build(BuildContext context) {
     final PlPlayerController playerController = widget.controller;
     final Color colorTheme = Theme.of(context).colorScheme.primary;
-    const TextStyle textStyle = TextStyle(
-      color: Colors.white,
-      fontSize: 12,
-    );
+    const TextStyle textStyle = TextStyle(color: Colors.white, fontSize: 12);
     Widget video = Video(
-      key: ValueKey('${playerController.videoFit.value}${playerController.continuePlayInBackground.value}'
-          '${playerController.subtitleFontSize.value}${playerController.subtitleBottomPadding.value}'),
+      key: ValueKey(
+        '${playerController.videoFit.value}'
+        '${playerController.continuePlayInBackground.value}'
+        '${playerController.subtitleFontSize.value}'
+        '${playerController.subtitleBottomPadding.value}',
+      ),
       controller: videoController,
       controls: NoVideoControls,
-      pauseUponEnteringBackgroundMode: !playerController.continuePlayInBackground.value,
+      pauseUponEnteringBackgroundMode:
+          !playerController.continuePlayInBackground.value,
       resumeUponEnteringForegroundMode: true,
       // 字幕尺寸调节
       subtitleViewConfiguration: SubtitleViewConfiguration(
-          style: playerController.subtitleStyle.value,
-          padding: EdgeInsets.only(bottom: playerController.subtitleBottomPadding.value)),
+        style: playerController.subtitleStyle.value,
+        padding: EdgeInsets.only(
+          bottom: playerController.subtitleBottomPadding.value,
+        ),
+      ),
       fit: playerController.videoFit.value,
     );
     return Stack(
@@ -864,15 +887,17 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                   final double sectionWidth = totalWidth / 3;
                   if (tapPosition < sectionWidth) {
                     // 左边区域
-                    _gestureType =
-                        enableAdjustBrightnessVolume ? 'left' : 'middle';
+                    _gestureType = enableAdjustBrightnessVolume
+                        ? 'left'
+                        : 'middle';
                   } else if (tapPosition < sectionWidth * 2) {
                     // 全屏/应用内小窗
                     _gestureType = 'middle';
                   } else {
                     // 右边区域
-                    _gestureType =
-                        enableAdjustBrightnessVolume ? 'right' : 'middle';
+                    _gestureType = enableAdjustBrightnessVolume
+                        ? 'right'
+                        : 'middle';
                   }
                 } else {
                   return;
@@ -888,10 +913,12 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                     playerController.sliderPosition.value.inMilliseconds;
                 final double scale = 90000 / renderBox.size.width;
                 final Duration pos = Duration(
-                    milliseconds:
-                        curSliderPosition + (delta.dx * scale).round());
-                final Duration result =
-                    pos.clamp(Duration.zero, playerController.duration.value);
+                  milliseconds: curSliderPosition + (delta.dx * scale).round(),
+                );
+                final Duration result = pos.clamp(
+                  Duration.zero,
+                  playerController.duration.value,
+                );
                 playerController.onUpdatedSliderProgress(result);
                 playerController.onChangedSliderStart();
               } else if (_gestureType == 'left') {
@@ -920,84 +947,108 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                 // }
 
                 void floatingWindowTrigger() {
-                  String heroTag = videoIntroController?.heroTag ??
+                  String heroTag =
+                      videoIntroController?.heroTag ??
                       bangumiIntroController?.heroTag ??
                       '';
                   playerController.triggerFloatingWindow(
-                      videoIntroController, bangumiIntroController, heroTag);
+                    videoIntroController,
+                    bangumiIntroController,
+                    heroTag,
+                  );
 
                   popRouteStackContinuously = Get.currentRoute;
-                  Get.until((route) =>
-                      route.settings.name?.startsWith('/video') != true &&
-                      route.settings.name?.startsWith('/live') != true);
+                  Get.until(
+                    (route) =>
+                        route.settings.name?.startsWith('/video') != true &&
+                        route.settings.name?.startsWith('/live') != true,
+                  );
                   popRouteStackContinuously = "";
                 }
 
                 void actionTrigger(PlayerGestureAction action) {
                   EasyThrottle.throttle(
-                      'floatingWindow', const Duration(milliseconds: 800),
-                      () async {
-                    switch (action) {
-                      case PlayerGestureAction.none:
-                        break;
-                      case PlayerGestureAction.toggleFullScreen:
-                        playerController.triggerFullScreen(status: !playerController.isFullScreen.value);
-                        break;
-                      case PlayerGestureAction.pipInside:
-                        floatingWindowTrigger();
-                        break;
-                      case PlayerGestureAction.pipOutside:
-                        // lib/pages/video/widgets/header_control.dart
+                    'floatingWindow',
+                    const Duration(milliseconds: 800),
+                    () async {
+                      switch (action) {
+                        case PlayerGestureAction.none:
+                          break;
+                        case PlayerGestureAction.toggleFullScreen:
+                          playerController.triggerFullScreen(
+                            status: !playerController.isFullScreen.value,
+                          );
+                          break;
+                        case PlayerGestureAction.pipInside:
+                          floatingWindowTrigger();
+                          break;
+                        case PlayerGestureAction.pipOutside:
+                          // lib/pages/video/widgets/header_control.dart
 
-                        print(playerController.dataSource.videoSource);
-                        print(playerController.dataSource.audioSource);
-                        playerController.controls = false;
-                        FlPiP().enable(
-                          ios: FlPiPiOSConfig(
-                              videoPath: playerController.dataSource.videoSource ?? "",
-                              audioPath: playerController.dataSource.audioSource ?? "",
-                              packageName: null),
-                          android: FlPiPAndroidConfig(
-                            aspectRatio: Rational(
-                                playerController.videoPlayerController!.state.width!,
-                                playerController.videoPlayerController!.state.height!),
-                          ),
-                        );
-                        break;
-                      case PlayerGestureAction.backToHome:
-                        // lib/pages/video/widgets/header_control.dart
-                        popRouteStackContinuously = Get.currentRoute;
-                        Get.until((route) => route.isFirst);
-                        popRouteStackContinuously = "";
-                        break;
-                      case PlayerGestureAction.prevPlay:
-                        bool? ret;
-                        ret ??= videoIntroController?.prevPlay();
-                        ret ??= bangumiIntroController?.prevPlay();
-                        SmartDialog.showToast(ret == true ? '上一集' : '没有上一集了');
-                        break;
-                      case PlayerGestureAction.nextPlay:
-                        bool? ret;
-                        ret ??= videoIntroController?.nextPlay();
-                        ret ??= bangumiIntroController?.nextPlay();
-                        SmartDialog.showToast(ret == true ? '下一集' : '没有下一集了');
-                        break;
-                    }
-                  });
+                          print(playerController.dataSource.videoSource);
+                          print(playerController.dataSource.audioSource);
+                          playerController.controls = false;
+                          FlPiP().enable(
+                            ios: FlPiPiOSConfig(
+                              videoPath:
+                                  playerController.dataSource.videoSource ?? "",
+                              audioPath:
+                                  playerController.dataSource.audioSource ?? "",
+                              packageName: null,
+                            ),
+                            android: FlPiPAndroidConfig(
+                              aspectRatio: Rational(
+                                playerController
+                                    .videoPlayerController!
+                                    .state
+                                    .width!,
+                                playerController
+                                    .videoPlayerController!
+                                    .state
+                                    .height!,
+                              ),
+                            ),
+                          );
+                          break;
+                        case PlayerGestureAction.backToHome:
+                          // lib/pages/video/widgets/header_control.dart
+                          popRouteStackContinuously = Get.currentRoute;
+                          Get.until((route) => route.isFirst);
+                          popRouteStackContinuously = "";
+                          break;
+                        case PlayerGestureAction.prevPlay:
+                          bool? ret;
+                          ret ??= videoIntroController?.prevPlay();
+                          ret ??= bangumiIntroController?.prevPlay();
+                          SmartDialog.showToast(ret == true ? '上一集' : '没有上一集了');
+                          break;
+                        case PlayerGestureAction.nextPlay:
+                          bool? ret;
+                          ret ??= videoIntroController?.nextPlay();
+                          ret ??= bangumiIntroController?.nextPlay();
+                          SmartDialog.showToast(ret == true ? '下一集' : '没有下一集了');
+                          break;
+                      }
+                    },
+                  );
                 }
 
                 if (cumulativeDy > threshold) {
                   _gestureType = 'middle_down';
-                  actionTrigger(middleGestureAction[playerController.isFullScreen.value
-                      ? PlayerMiddleGesture.fullScreenDown
-                      : PlayerMiddleGesture.nonFullScreenDown]!);
+                  actionTrigger(
+                    middleGestureAction[playerController.isFullScreen.value
+                        ? PlayerMiddleGesture.fullScreenDown
+                        : PlayerMiddleGesture.nonFullScreenDown]!,
+                  );
 
                   // print('middle_down:$cumulativeDy');
                 } else if (cumulativeDy < -threshold) {
                   _gestureType = 'middle_up';
-                  actionTrigger(middleGestureAction[playerController.isFullScreen.value
-                      ? PlayerMiddleGesture.fullScreenUp
-                      : PlayerMiddleGesture.nonFullScreenUp]!);
+                  actionTrigger(
+                    middleGestureAction[playerController.isFullScreen.value
+                        ? PlayerMiddleGesture.fullScreenUp
+                        : PlayerMiddleGesture.nonFullScreenUp]!,
+                  );
                   // print('middle_up:$cumulativeDy');
                 }
               } else if (_gestureType == 'right') {
@@ -1005,23 +1056,32 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                 final double level =
                     min(renderBox.size.height, renderBox.size.width) * 0.5;
                 EasyThrottle.throttle(
-                    'setVolume', const Duration(milliseconds: 20), () {
-                  final double volume = _volumeValue.value - delta.dy / level;
-                  final double result = volume.clamp(0.0, 1.0);
-                  setVolume(result);
-                });
+                  'setVolume',
+                  const Duration(milliseconds: 20),
+                  () {
+                    final double volume = _volumeValue.value - delta.dy / level;
+                    final double result = volume.clamp(0.0, 1.0);
+                    setVolume(result);
+                  },
+                );
               }
             },
             onInteractionEnd: (ScaleEndDetails details) {
               if (playerController.isSliderMoving.value) {
                 playerController.onChangedSliderEnd();
-                playerController.seekTo(playerController.sliderPosition.value, type: 'slider');
+                playerController.seekTo(
+                  playerController.sliderPosition.value,
+                  type: 'slider',
+                );
               }
               interacting = false;
               _initialFocalPoint = Offset.zero;
               _gestureType = null;
             },
-            child: Transform.flip(flipX: playerController.flipX.value, child: video),
+            child: Transform.flip(
+              flipX: playerController.flipX.value,
+              child: video,
+            ),
           ),
         ),
 
@@ -1033,25 +1093,32 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
               translation: const Offset(0.0, 0.3), // 上下偏移量（负数向上偏移）
               child: AnimatedOpacity(
                 curve: Curves.easeInOut,
-                opacity: playerController.doubleSpeedStatus.value > 0 ? 1.0 : 0.0,
+                opacity: playerController.doubleSpeedStatus.value > 0
+                    ? 1.0
+                    : 0.0,
                 duration: const Duration(milliseconds: 150),
                 child: Container(
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: const Color(0x88000000),
-                      borderRadius: BorderRadius.circular(16.0),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: const Color(0x88000000),
+                    borderRadius: BorderRadius.circular(16.0),
+                  ),
+                  height: 32.0,
+                  width: 85.0,
+                  child: Center(
+                    child: Obx(
+                      () => Text(
+                        playerController.doubleSpeedStatus.value > 0
+                            ? '${playerController.doubleSpeedStatus.value.toStringAsFixed(2)}倍速中'
+                            : '${playerController.playbackSpeed}倍速',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
-                    height: 32.0,
-                    width: 85.0,
-                    child: Center(
-                      child: Obx(() => Text(
-                            playerController.doubleSpeedStatus.value > 0
-                                ? '${playerController.doubleSpeedStatus.value.toStringAsFixed(2)}倍速中'
-                                : '${playerController.playbackSpeed}倍速',
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 13),
-                          )),
-                    )),
+                  ),
+                ),
               ),
             ),
           ),
@@ -1083,7 +1150,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                         children: [
                           Obx(() {
                             return Text(
-                              Utils.timeFormat(playerController.sliderPositionSeconds.value),
+                              Utils.timeFormat(
+                                playerController.sliderPositionSeconds.value,
+                              ),
                               style: textStyle,
                             );
                           }),
@@ -1092,7 +1161,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                           const SizedBox(width: 2),
                           Obx(
                             () => Text(
-                              Utils.timeFormat(playerController.durationSeconds.value),
+                              Utils.timeFormat(
+                                playerController.durationSeconds.value,
+                              ),
                               style: textStyle,
                             ),
                           ),
@@ -1135,8 +1206,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                           _volumeValue.value == 0.0
                               ? Icons.volume_off
                               : _volumeValue.value < 0.5
-                                  ? Icons.volume_down
-                                  : Icons.volume_up,
+                              ? Icons.volume_down
+                              : Icons.volume_up,
                           color: const Color(0xFFFFFFFF),
                           size: 20.0,
                         ),
@@ -1189,8 +1260,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                           _brightnessValue.value < 1.0 / 3.0
                               ? Icons.brightness_low
                               : _brightnessValue.value < 2.0 / 3.0
-                                  ? Icons.brightness_medium
-                                  : Icons.brightness_high,
+                              ? Icons.brightness_medium
+                              : Icons.brightness_high,
                           color: const Color(0xFFFFFFFF),
                           size: 18.0,
                         ),
@@ -1247,11 +1318,13 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             label: '双击开关控件',
             child: GestureDetector(
               onTap: () {
-                playerController.controls = !playerController.showControls.value;
+                playerController.controls =
+                    !playerController.showControls.value;
               },
               onDoubleTapDown: (TapDownDetails details) {
                 // live模式下禁用 锁定时🔒禁用
-                if (playerController.videoType.value == 'live' || playerController.controlsLock.value) {
+                if (playerController.videoType.value == 'live' ||
+                    playerController.controlsLock.value) {
                   return;
                 }
                 RenderBox renderBox =
@@ -1284,22 +1357,29 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         Obx(
           () => Column(
             children: [
-              if (widget.headerControl != null || playerController.headerControl != null)
+              if (widget.headerControl != null ||
+                  playerController.headerControl != null)
                 ClipRect(
                   child: AppBarAni(
                     controller: animationController,
-                    visible: !playerController.controlsLock.value && playerController.showControls.value,
+                    visible:
+                        !playerController.controlsLock.value &&
+                        playerController.showControls.value,
                     position: 'top',
-                    child: widget.headerControl ?? playerController.headerControl!,
+                    child:
+                        widget.headerControl ?? playerController.headerControl!,
                   ),
                 ),
               const Spacer(),
               ClipRect(
                 child: AppBarAni(
                   controller: animationController,
-                  visible: !playerController.controlsLock.value && playerController.showControls.value,
+                  visible:
+                      !playerController.controlsLock.value &&
+                      playerController.showControls.value,
                   position: 'bottom',
-                  child: widget.bottomControl ??
+                  child:
+                      widget.bottomControl ??
                       BottomControl(
                         controller: widget.controller,
                         controls: buildBottomControl(),
@@ -1313,221 +1393,240 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         ),
 
         /// 进度条 live模式下禁用
+        Obx(() {
+          final int value = playerController.sliderPositionSeconds.value;
+          final int max = playerController.durationSeconds.value;
+          final int buffer = playerController.bufferedSeconds.value;
 
-        Obx(
-          () {
-            final int value = playerController.sliderPositionSeconds.value;
-            final int max = playerController.durationSeconds.value;
-            final int buffer = playerController.bufferedSeconds.value;
+          bool isEquivalentFullScreen =
+              playerController.isFullScreen.value ||
+              !playerController.horizontalScreen &&
+                  MediaQuery.of(context).orientation == Orientation.landscape;
+          if (playerController.showControls.value) {
+            return Container();
+          }
+          if (defaultBtmProgressBehavior ==
+              BtmProgressBehavior.alwaysHide.code) {
+            return const SizedBox();
+          }
+          if (defaultBtmProgressBehavior ==
+                  BtmProgressBehavior.onlyShowFullScreen.code &&
+              !isEquivalentFullScreen) {
+            return const SizedBox();
+          } else if (defaultBtmProgressBehavior ==
+                  BtmProgressBehavior.onlyHideFullScreen.code &&
+              isEquivalentFullScreen) {
+            return const SizedBox();
+          }
 
-            bool isEquivalentFullScreen = playerController.isFullScreen.value ||
-                !playerController.horizontalScreen &&
-                    MediaQuery.of(context).orientation == Orientation.landscape;
-            if (playerController.showControls.value) {
-              return Container();
-            }
-            if (defaultBtmProgressBehavior ==
-                BtmProgressBehavior.alwaysHide.code) {
-              return const SizedBox();
-            }
-            if (defaultBtmProgressBehavior ==
-                    BtmProgressBehavior.onlyShowFullScreen.code &&
-                !isEquivalentFullScreen) {
-              return const SizedBox();
-            } else if (defaultBtmProgressBehavior ==
-                    BtmProgressBehavior.onlyHideFullScreen.code &&
-                isEquivalentFullScreen) {
-              return const SizedBox();
-            }
-
-            if (playerController.videoType.value == 'live') {
-              return Container();
-            }
-            if (value > max || max <= 0) {
-              return const SizedBox();
-            }
-            return Positioned(
-                bottom: -1,
-                left: 0,
-                right: 0,
-                child: Semantics(
-                  // label: '${(value / max * 100).round()}%',
-                  value: '${(value / max * 100).round()}%',
-                  // enabled: false,
-                  child: ProgressBar(
-                    progress: Duration(seconds: value),
-                    buffered: Duration(seconds: buffer),
-                    total: Duration(seconds: max),
-                    progressBarColor: colorTheme,
-                    baseBarColor: Colors.white.withOpacity(0.2),
-                    bufferedBarColor:
-                        Theme.of(context).colorScheme.primary.withOpacity(0.4),
-                    timeLabelLocation: TimeLabelLocation.none,
-                    // timeLabelLocation: TimeLabelLocation.sides,
-                    thumbColor: colorTheme,
-                    barHeight: 3.5,
-                    thumbRadius: draggingFixedProgressBar.value ? 7 : 2.5,
-                    // onDragStart: (duration) {
-                    //   draggingFixedProgressBar.value = true;
-                    //   feedBack();
-                    //   playerController.onChangedSliderStart();
-                    // },
-                    // onDragUpdate: (duration) {
-                    //   double newProgress = duration.timeStamp.inSeconds / max;
-                    //   if ((newProgress - _lastAnnouncedValue).abs() > 0.02) {
-                    //     _accessibilityDebounce?.cancel();
-                    //     _accessibilityDebounce =
-                    //         Timer(const Duration(milliseconds: 200), () {
-                    //       SemanticsService.announce(
-                    //           "${(newProgress * 100).round()}%",
-                    //           TextDirection.ltr);
-                    //       _lastAnnouncedValue = newProgress;
-                    //     });
-                    //   }
-                    //   playerController.onUpdatedSliderProgress(duration.timeStamp);
-                    // },
-                    // onSeek: (duration) {
-                    //   draggingFixedProgressBar.value = false;
-                    //   playerController.onChangedSliderEnd();
-                    //   playerController.onChangedSlider(duration.inSeconds.toDouble());
-                    //   playerController.seekTo(Duration(seconds: duration.inSeconds),
-                    //       type: 'slider');
-                    //   SemanticsService.announce(
-                    //       "${(duration.inSeconds / max * 100).round()}%",
-                    //       TextDirection.ltr);
-                    // },
-                  ),
-                  // SlideTransition(
-                  //     position: Tween<Offset>(
-                  //       begin: Offset.zero,
-                  //       end: const Offset(0, -1),
-                  //     ).animate(CurvedAnimation(
-                  //       parent: animationController,
-                  //       curve: Curves.easeInOut,
-                  //     )),
-                  //     child: ),
-                ));
-          },
-        ),
+          if (playerController.videoType.value == 'live') {
+            return Container();
+          }
+          if (value > max || max <= 0) {
+            return const SizedBox();
+          }
+          return Positioned(
+            bottom: -1,
+            left: 0,
+            right: 0,
+            child: Semantics(
+              // label: '${(value / max * 100).round()}%',
+              value: '${(value / max * 100).round()}%',
+              // enabled: false,
+              child: ProgressBar(
+                progress: Duration(seconds: value),
+                buffered: Duration(seconds: buffer),
+                total: Duration(seconds: max),
+                progressBarColor: colorTheme,
+                baseBarColor: Colors.white.withOpacity(0.2),
+                bufferedBarColor: Theme.of(
+                  context,
+                ).colorScheme.primary.withOpacity(0.4),
+                timeLabelLocation: TimeLabelLocation.none,
+                // timeLabelLocation: TimeLabelLocation.sides,
+                thumbColor: colorTheme,
+                barHeight: 3.5,
+                thumbRadius: draggingFixedProgressBar.value ? 7 : 2.5,
+                // onDragStart: (duration) {
+                //   draggingFixedProgressBar.value = true;
+                //   feedBack();
+                //   playerController.onChangedSliderStart();
+                // },
+                // onDragUpdate: (duration) {
+                //   double newProgress = duration.timeStamp.inSeconds / max;
+                //   if ((newProgress - _lastAnnouncedValue).abs() > 0.02) {
+                //     _accessibilityDebounce?.cancel();
+                //     _accessibilityDebounce =
+                //         Timer(const Duration(milliseconds: 200), () {
+                //       SemanticsService.announce(
+                //           "${(newProgress * 100).round()}%",
+                //           TextDirection.ltr);
+                //       _lastAnnouncedValue = newProgress;
+                //     });
+                //   }
+                //   playerController.onUpdatedSliderProgress(duration.timeStamp);
+                // },
+                // onSeek: (duration) {
+                //   draggingFixedProgressBar.value = false;
+                //   playerController.onChangedSliderEnd();
+                //   playerController.onChangedSlider(duration.inSeconds.toDouble());
+                //   playerController.seekTo(Duration(seconds: duration.inSeconds),
+                //       type: 'slider');
+                //   SemanticsService.announce(
+                //       "${(duration.inSeconds / max * 100).round()}%",
+                //       TextDirection.ltr);
+                // },
+              ),
+              // SlideTransition(
+              //     position: Tween<Offset>(
+              //       begin: Offset.zero,
+              //       end: const Offset(0, -1),
+              //     ).animate(CurvedAnimation(
+              //       parent: animationController,
+              //       curve: Curves.easeInOut,
+              //     )),
+              //     child: ),
+            ),
+          );
+        }),
 
         // 锁
-        SafeArea(child: Obx(() {
-          bool isEquivalentFullScreen = playerController.isFullScreen.value ||
-              !playerController.horizontalScreen &&
-                  MediaQuery.of(context).orientation == Orientation.landscape;
-          return Align(
-            alignment: Alignment.centerLeft,
-            child: FractionalTranslation(
-              translation: const Offset(1, -0.2),
-              child: Visibility(
-                visible: playerController.videoType.value != 'live' &&
-                    enableExtraButtonOnFullScreen &&
-                    playerController.showControls.value &&
-                    (isEquivalentFullScreen || playerController.controlsLock.value),
-                child: ComBtn(
-                  icon: FaIcon(
-                    playerController.controlsLock.value
-                        ? FontAwesomeIcons.lock
-                        : FontAwesomeIcons.lockOpen,
-                    semanticLabel: playerController.controlsLock.value ? '解锁' : '锁定',
-                    size: 15,
-                    color: Colors.white,
+        SafeArea(
+          child: Obx(() {
+            bool isEquivalentFullScreen =
+                playerController.isFullScreen.value ||
+                !playerController.horizontalScreen &&
+                    MediaQuery.of(context).orientation == Orientation.landscape;
+            return Align(
+              alignment: Alignment.centerLeft,
+              child: FractionalTranslation(
+                translation: const Offset(1, -0.2),
+                child: Visibility(
+                  visible:
+                      playerController.videoType.value != 'live' &&
+                      enableExtraButtonOnFullScreen &&
+                      playerController.showControls.value &&
+                      (isEquivalentFullScreen ||
+                          playerController.controlsLock.value),
+                  child: ComBtn(
+                    icon: FaIcon(
+                      playerController.controlsLock.value
+                          ? FontAwesomeIcons.lock
+                          : FontAwesomeIcons.lockOpen,
+                      semanticLabel: playerController.controlsLock.value
+                          ? '解锁'
+                          : '锁定',
+                      size: 15,
+                      color: Colors.white,
+                    ),
+                    fuc: () => playerController.onLockControl(
+                      !playerController.controlsLock.value,
+                    ),
                   ),
-                  fuc: () => playerController.onLockControl(!playerController.controlsLock.value),
                 ),
               ),
-            ),
-          );
-        })),
+            );
+          }),
+        ),
 
         // 截图
-        SafeArea(child: Obx(() {
-          bool isEquivalentFullScreen = playerController.isFullScreen.value ||
-              !playerController.horizontalScreen &&
-                  MediaQuery.of(context).orientation == Orientation.landscape;
-          return Align(
-            alignment: Alignment.centerRight,
-            child: FractionalTranslation(
-              translation: const Offset(-1, -0.2),
-              child: Visibility(
-                visible: playerController.showControls.value &&
-                    isEquivalentFullScreen &&
-                    enableExtraButtonOnFullScreen,
-                child: ComBtn(
-                  icon: const Icon(
-                    Icons.photo_camera,
-                    semanticLabel: '截图',
-                    size: 20,
-                    color: Colors.white,
-                  ),
-                  fuc: () {
-                    SmartDialog.showToast('截图中');
-                    playerController.videoPlayerController
-                        ?.screenshot(format: 'image/png')
-                        .then((value) {
-                      if (value != null) {
-                        if (!context.mounted) return;
-                        SmartDialog.showToast('点击弹窗保存截图');
-                        showDialog(
-                          context: context,
-                          builder: (BuildContext context) {
-                            return AlertDialog(
-                              // title: const Text('点击保存'),
-                              titlePadding: EdgeInsets.zero,
-                              contentPadding: const EdgeInsets.all(8),
-                              insetPadding:
-                                  EdgeInsets.only(left: context.width / 2),
-                              //移除圆角
-                              shape: const RoundedRectangleBorder(),
-                              content: GestureDetector(
-                                onTap: () async {
-                                  String name = DateTime.now()
-                                      .toString()
-                                      .replaceAll(' ', '_')
-                                      .replaceAll(':', '-')
-                                      .split('.')
-                                      .first;
-                                  final SaveResult result =
-                                      await SaverGallery.saveImage(
-                                    value,
-                                    fileName: name,
-                                    extension: 'png',
-                                    androidRelativePath: "Pictures/Screenshots",
-                                    skipIfExists: false,
-                                  );
+        SafeArea(
+          child: Obx(() {
+            bool isEquivalentFullScreen =
+                playerController.isFullScreen.value ||
+                !playerController.horizontalScreen &&
+                    MediaQuery.of(context).orientation == Orientation.landscape;
+            return Align(
+              alignment: Alignment.centerRight,
+              child: FractionalTranslation(
+                translation: const Offset(-1, -0.2),
+                child: Visibility(
+                  visible:
+                      playerController.showControls.value &&
+                      isEquivalentFullScreen &&
+                      enableExtraButtonOnFullScreen,
+                  child: ComBtn(
+                    icon: const Icon(
+                      Icons.photo_camera,
+                      semanticLabel: '截图',
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                    fuc: () {
+                      SmartDialog.showToast('截图中');
+                      playerController.videoPlayerController
+                          ?.screenshot(format: 'image/png')
+                          .then((value) {
+                            if (value != null) {
+                              if (!context.mounted) return;
+                              SmartDialog.showToast('点击弹窗保存截图');
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    // title: const Text('点击保存'),
+                                    titlePadding: EdgeInsets.zero,
+                                    contentPadding: const EdgeInsets.all(8),
+                                    insetPadding: EdgeInsets.only(
+                                      left: context.width / 2,
+                                    ),
+                                    //移除圆角
+                                    shape: const RoundedRectangleBorder(),
+                                    content: GestureDetector(
+                                      onTap: () async {
+                                        String name = DateTime.now()
+                                            .toString()
+                                            .replaceAll(' ', '_')
+                                            .replaceAll(':', '-')
+                                            .split('.')
+                                            .first;
+                                        final SaveResult result =
+                                            await SaverGallery.saveImage(
+                                              value,
+                                              fileName: name,
+                                              extension: 'png',
+                                              androidRelativePath:
+                                                  "Pictures/Screenshots",
+                                              skipIfExists: false,
+                                            );
 
-                                  if (result.isSuccess) {
-                                    Get.back();
-                                    SmartDialog.showToast('$name.png已保存到相册/截图');
-                                  } else {
-                                    await SmartDialog.showToast(
-                                        '保存失败，${result.errorMessage}');
-                                  }
+                                        if (result.isSuccess) {
+                                          Get.back();
+                                          SmartDialog.showToast(
+                                            '$name.png已保存到相册/截图',
+                                          );
+                                        } else {
+                                          await SmartDialog.showToast(
+                                            '保存失败，${result.errorMessage}',
+                                          );
+                                        }
+                                      },
+                                      child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                          maxWidth: context.width / 3,
+                                          maxHeight: context.height / 3,
+                                        ),
+                                        child: Image.memory(value),
+                                      ),
+                                    ),
+                                  );
                                 },
-                                child: ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    maxWidth: context.width / 3,
-                                    maxHeight: context.height / 3,
-                                  ),
-                                  child: Image.memory(value),
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      } else {
-                        SmartDialog.showToast('截图失败');
-                      }
-                    });
-                  },
+                              );
+                            } else {
+                              SmartDialog.showToast('截图失败');
+                            }
+                          });
+                    },
+                  ),
                 ),
               ),
-            ),
-          );
-        })),
+            );
+          }),
+        ),
         //
         Obx(() {
-          if (playerController.dataStatus.loading || playerController.isBuffering.value) {
+          if (playerController.dataStatus.loading ||
+              playerController.isBuffering.value) {
             return Center(
               child: GestureDetector(
                 onTap: () {
@@ -1541,37 +1640,46 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                       colors: [Colors.black26, Colors.transparent],
                     ),
                   ),
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    Image.asset(
-                      'assets/images/loading.gif',
-                      height: 25,
-                      semanticLabel: "加载中",
-                    ),
-                    if (playerController.isBuffering.value)
-                      Obx(() {
-                        if (playerController.buffered.value == Duration.zero) {
-                          return SizedBox(
-                            width: 180,
-                            child: Text(
-                              playerController.playerLog.value,
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 10),
-                              semanticsLabel: '',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        'assets/images/loading.gif',
+                        height: 25,
+                        semanticLabel: "加载中",
+                      ),
+                      if (playerController.isBuffering.value)
+                        Obx(() {
+                          if (playerController.buffered.value ==
+                              Duration.zero) {
+                            return SizedBox(
+                              width: 180,
+                              child: Text(
+                                playerController.playerLog.value,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                ),
+                                semanticsLabel: '',
+                              ),
+                            );
+                          }
+                          String bufferStr = playerController.buffered
+                              .toString();
+                          return Text(
+                            bufferStr.substring(0, bufferStr.length - 3),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
                             ),
+                            semanticsLabel: '',
                           );
-                        }
-                        String bufferStr = playerController.buffered.toString();
-                        return Text(
-                          bufferStr.substring(0, bufferStr.length - 3),
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 10),
-                          semanticsLabel: '',
-                        );
-                      }),
-                  ]),
+                        }),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -1596,12 +1704,12 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                               end: _hideSeekBackwardButton.value ? 0.0 : 1.0,
                             ),
                             duration: const Duration(milliseconds: 500),
-                            builder: (BuildContext context, double value,
-                                    Widget? child) =>
-                                Opacity(
-                              opacity: value,
-                              child: child,
-                            ),
+                            builder:
+                                (
+                                  BuildContext context,
+                                  double value,
+                                  Widget? child,
+                                ) => Opacity(opacity: value, child: child),
                             onEnd: () {
                               if (_hideSeekBackwardButton.value) {
                                 _hideSeekBackwardButton.value = false;
@@ -1620,8 +1728,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                                   Duration.zero,
                                   player.state.duration,
                                 );
-                                widget.controller
-                                    .seekTo(result, type: 'slider');
+                                widget.controller.seekTo(
+                                  result,
+                                  type: 'slider',
+                                );
                                 widget.controller.play();
                               },
                             ),
@@ -1642,12 +1752,12 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                               end: _hideSeekForwardButton.value ? 0.0 : 1.0,
                             ),
                             duration: const Duration(milliseconds: 500),
-                            builder: (BuildContext context, double value,
-                                    Widget? child) =>
-                                Opacity(
-                              opacity: value,
-                              child: child,
-                            ),
+                            builder:
+                                (
+                                  BuildContext context,
+                                  double value,
+                                  Widget? child,
+                                ) => Opacity(opacity: value, child: child),
                             onEnd: () {
                               if (_hideSeekForwardButton.value) {
                                 _hideSeekForwardButton.value = false;
@@ -1666,8 +1776,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                                   Duration.zero,
                                   player.state.duration,
                                 );
-                                widget.controller
-                                    .seekTo(result, type: 'slider');
+                                widget.controller.seekTo(
+                                  result,
+                                  type: 'slider',
+                                );
                                 widget.controller.play();
                               },
                             ),

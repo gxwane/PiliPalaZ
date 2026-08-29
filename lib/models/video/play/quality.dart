@@ -12,7 +12,7 @@ enum VideoQuality {
   super4K,
   hdr,
   dolbyVision,
-  super8k
+  super8k,
 }
 
 extension VideoQualityCode on VideoQuality {
@@ -54,7 +54,7 @@ extension VideoQualityDesc on VideoQuality {
     '4K 超清',
     'HDR 真彩色',
     '杜比视界',
-    '8K 超高清'
+    '8K 超高清',
   ];
   get description => _descList[index];
 }
@@ -63,13 +63,7 @@ extension VideoQualityDesc on VideoQuality {
 enum AudioQuality { k64, k132, k192, dolby, hiRes }
 
 extension AudioQualityCode on AudioQuality {
-  static final List<int> _codeList = [
-    30216,
-    30232,
-    30280,
-    30250,
-    30251,
-  ];
+  static final List<int> _codeList = [30216, 30232, 30280, 30250, 30251];
   int get code => _codeList[index];
 
   static AudioQuality? fromCode(int code) {
@@ -92,12 +86,7 @@ extension AudioQualityDesc on AudioQuality {
   get description => _descList[index];
 }
 
-enum VideoDecodeFormats {
-  DVH1,
-  AV1,
-  HEVC,
-  AVC,
-}
+enum VideoDecodeFormats { DVH1, AV1, HEVC, AVC }
 
 extension VideoDecodeFormatsDesc on VideoDecodeFormats {
   static final List<String> _descList = ['DVH1', 'AV1', 'HEVC', 'AVC'];
@@ -117,13 +106,17 @@ extension VideoDecodeFormatsCode on VideoDecodeFormats {
   }
 
   static VideoDecodeFormats? fromString(String val) {
-    var result = VideoDecodeFormats.values.first;
-    for (var i in _codeList) {
-      if (val.startsWith(i)) {
-        result = VideoDecodeFormats.values[_codeList.indexOf(i)];
-        break;
-      }
+    final String normalized = val.trim().toLowerCase();
+    if (normalized.startsWith('dvh1') || normalized.startsWith('dvhe')) {
+      return VideoDecodeFormats.DVH1;
     }
-    return result;
+    if (normalized.startsWith('av01')) return VideoDecodeFormats.AV1;
+    if (normalized.startsWith('hev1') || normalized.startsWith('hvc1')) {
+      return VideoDecodeFormats.HEVC;
+    }
+    if (normalized.startsWith('avc1')) return VideoDecodeFormats.AVC;
+    return null;
   }
+
+  bool matches(String value) => fromString(value) == this;
 }

@@ -4,6 +4,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
+import 'log_sanitizer.dart';
+
 class ApiInterceptor extends Interceptor {
   // @override
   // void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
@@ -44,14 +46,15 @@ class ApiInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     // 处理网络请求错误
     // handler.next(err);
-    String url = err.requestOptions.uri.toString();
-    print('🌹🌹ApiInterceptor: $url');
+    final String url = err.requestOptions.uri.toString();
+    final String safeUrl = redactSensitiveLog(url);
+    print('🌹🌹ApiInterceptor: $safeUrl');
     // 屏蔽弹幕、心跳、人数请求的错误提示
     if (!url.contains('heartbeat') &&
         !url.contains('seg.so') &&
         !url.contains('online/total')) {
       SmartDialog.showToast(
-        await dioError(err) + url,
+        await dioError(err) + safeUrl,
         displayType: SmartToastType.onlyRefresh,
         displayTime: const Duration(milliseconds: 1200),
       );

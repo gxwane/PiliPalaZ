@@ -13,6 +13,7 @@ import 'package:pilipalaz/models/common/search_type.dart';
 import 'package:pilipalaz/models/common/video_source_type.dart';
 import 'package:pilipalaz/models/user/fav_folder.dart';
 import 'package:pilipalaz/pages/video/index.dart';
+import 'package:pilipalaz/pages/video/playback_input.dart';
 import 'package:pilipalaz/pages/video/reply/index.dart';
 import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
@@ -393,6 +394,8 @@ class BangumiIntroController extends GetxController {
     final String previousBvid = videoDetailCtr.bvid;
     final int previousCid = videoDetailCtr.cid.value;
     final int? previousEpId = videoDetailCtr.epId;
+    final bool previousWasReady =
+        videoDetailCtr.playbackLoadState.value == PlaybackLoadState.ready;
     videoDetailCtr.bvid = bvid;
     videoDetailCtr.cid.value = cid;
     videoDetailCtr.danmakuCid.value = cid;
@@ -407,15 +410,27 @@ class BangumiIntroController extends GetxController {
       }
     }
     videoDetailCtr.epId = resolvedEpId;
-    final Map result = await videoDetailCtr.queryVideoUrl();
+    final Map result = await videoDetailCtr.queryVideoUrl(
+      preserveCurrentOnFailure: previousWasReady,
+    );
     if (result['status'] != true) {
+      final String targetMessage = result['msg']?.toString() ?? '影视内容暂不可播放';
       videoDetailCtr.bvid = previousBvid;
       videoDetailCtr.cid.value = previousCid;
       videoDetailCtr.danmakuCid.value = previousCid;
       videoDetailCtr.epId = previousEpId;
-      final Map restoreResult = await videoDetailCtr.queryVideoUrl();
+      final Map restoreResult = await videoDetailCtr.queryVideoUrl(
+        showPreviewNotice: false,
+      );
       if (restoreResult['status'] == true) {
         videoDetailCtr.playbackError.value = '';
+        SmartDialog.showNotify(
+          msg: targetMessage,
+          displayTime: const Duration(seconds: 4),
+          notifyType: NotifyType.warning,
+        );
+      } else {
+        videoDetailCtr.playbackError.value = '切换剧集失败，原剧集也未能恢复，请点击重试';
       }
       return false;
     }

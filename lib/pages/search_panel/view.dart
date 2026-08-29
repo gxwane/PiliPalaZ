@@ -15,6 +15,29 @@ import 'widgets/media_bangumi_panel.dart';
 import 'widgets/user_panel.dart';
 import 'widgets/video_panel.dart';
 
+SliverGridDelegate searchSkeletonGridDelegate(
+  SearchType searchType, {
+  required double maxCrossAxisExtent,
+}) {
+  if (searchType == SearchType.media_bangumi ||
+      searchType == SearchType.media_ft) {
+    return SliverGridDelegateWithMaxCrossAxisExtent(
+      mainAxisSpacing: StyleString.safeSpace,
+      crossAxisSpacing: StyleString.safeSpace,
+      maxCrossAxisExtent: maxCrossAxisExtent,
+      mainAxisExtent: 160,
+    );
+  }
+
+  return SliverGridDelegateWithExtentAndRatio(
+    mainAxisSpacing: StyleString.safeSpace,
+    crossAxisSpacing: StyleString.safeSpace,
+    maxCrossAxisExtent: maxCrossAxisExtent,
+    childAspectRatio: StyleString.aspectRatio * 2.4,
+    mainAxisExtent: 0,
+  );
+}
+
 class SearchPanel extends StatefulWidget {
   final String? keyword;
   final SearchType? searchType;
@@ -145,12 +168,9 @@ class _SearchPanelState extends State<SearchPanel>
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [
                 SliverGrid(
-                  gridDelegate: SliverGridDelegateWithExtentAndRatio(
-                    mainAxisSpacing: StyleString.safeSpace,
-                    crossAxisSpacing: StyleString.safeSpace,
+                  gridDelegate: searchSkeletonGridDelegate(
+                    widget.searchType!,
                     maxCrossAxisExtent: Grid.maxRowWidth * 2,
-                    childAspectRatio: StyleString.aspectRatio * 2.4,
-                    mainAxisExtent: 0,
                   ),
                   delegate: SliverChildBuilderDelegate((context, index) {
                     switch (widget.searchType) {

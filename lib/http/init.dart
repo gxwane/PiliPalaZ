@@ -8,6 +8,7 @@ import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/utils/id_utils.dart';
 import '../utils/login.dart';
@@ -17,6 +18,7 @@ import 'api.dart';
 import 'constants.dart';
 import 'interceptor.dart';
 import 'interceptor_anonymity.dart';
+import 'log_sanitizer.dart';
 
 class Request {
   static final Request _instance = Request._internal();
@@ -85,7 +87,6 @@ class Request {
     List<Cookie> cookies = await cookieManager.cookieJar
         .loadForRequest(Uri.parse(HttpString.apiBaseUrl));
     // String token = '';
-    print("cookies $cookies");
     if (cookies.where((e) => e.name == 'Buvid').isNotEmpty) {
       return cookies.firstWhere((e) => e.name == 'Buvid').value;
     }
@@ -179,12 +180,19 @@ class Request {
     //添加拦截器
     dio.interceptors.add(ApiInterceptor());
 
-    // 日志拦截器 输出请求、响应内容
-    dio.interceptors.add(LogInterceptor(
-      request: false,
-      requestHeader: false,
-      responseHeader: false,
-    ));
+    // 调试日志保留请求路径与响应状态，但不输出正文或敏感凭证。
+    if (kDebugMode) {
+      dio.interceptors.add(
+        LogInterceptor(
+          request: false,
+          requestHeader: false,
+          requestBody: false,
+          responseHeader: false,
+          responseBody: false,
+          logPrint: (Object message) => debugPrint(redactSensitiveLog(message)),
+        ),
+      );
+    }
 
     dio.transformer = BackgroundTransformer();
     dio.options.validateStatus = (int? status) {
