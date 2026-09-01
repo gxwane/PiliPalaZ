@@ -14,7 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/common/widgets/custom_toast.dart';
-import 'package:pilipalaz/http/init.dart';
+import 'package:pilipalaz/http/http_runtime.dart';
 import 'package:pilipalaz/models/common/color_type.dart';
 import 'package:pilipalaz/models/common/theme_type.dart';
 import 'package:pilipalaz/pages/search/index.dart';
@@ -88,8 +88,8 @@ void main() async {
     );
   }
   await setupServiceLocator();
-  Request();
-  await Request.setCookie();
+  final httpRuntime = HttpRuntime.ensureInitialized();
+  await httpRuntime.initializeSession();
   RecommendFilter();
   SmartDialog.config.toast = SmartConfigToast(
     displayType: SmartToastType.onlyRefresh,

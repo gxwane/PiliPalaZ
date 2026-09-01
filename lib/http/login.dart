@@ -79,7 +79,7 @@ class LoginHttp {
         'data': CaptchaDataModel.fromJson(res.data['data']),
       };
     } else {
-      return {'status': false, 'data': res.message};
+      return {'status': false, 'data': res.data['message']};
     }
   }
 
