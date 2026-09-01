@@ -9,18 +9,13 @@ class SettingPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final SettingController settingController = Get.put(SettingController());
     final TextStyle titleStyle = Theme.of(context).textTheme.titleMedium!;
-    final TextStyle subTitleStyle = Theme.of(context)
-        .textTheme
-        .labelMedium!
+    final TextStyle subTitleStyle = Theme.of(context).textTheme.labelMedium!
         .copyWith(color: Theme.of(context).colorScheme.outline);
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
         titleSpacing: 0,
-        title: Text(
-          '设置',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        title: Text('设置', style: Theme.of(context).textTheme.titleMedium),
       ),
       body: ListView(
         children: [
@@ -29,7 +24,7 @@ class SettingPage extends StatelessWidget {
             dense: false,
             leading: const Icon(Icons.privacy_tip_outlined),
             title: Text('隐私设置', style: titleStyle),
-            subtitle: Text('黑名单、access_key刷新、无痕模式', style: subTitleStyle),
+            subtitle: Text('本地诊断、黑名单、无痕模式', style: subTitleStyle),
           ),
           ListTile(
             onTap: () => Get.toNamed('/recommendSetting'),
@@ -57,8 +52,10 @@ class SettingPage extends StatelessWidget {
             leading: const Icon(Icons.style_outlined),
             dense: false,
             title: Text('外观设置', style: titleStyle),
-            subtitle: Text('横屏适配（平板）、侧栏、列宽、首页、动态红点、主题、字号、图片、帧率等',
-                style: subTitleStyle),
+            subtitle: Text(
+              '横屏适配（平板）、侧栏、列宽、首页、动态红点、主题、字号、图片、帧率等',
+              style: subTitleStyle,
+            ),
           ),
           ListTile(
             onTap: () => Get.toNamed('/extraSetting'),

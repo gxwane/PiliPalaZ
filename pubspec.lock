@@ -226,14 +226,6 @@ packages:
       url: "https://github.com/orz12/canvas_danmaku.git"
     source: git
     version: "0.2.2"
-  catcher_2:
-    dependency: "direct main"
-    description:
-      name: catcher_2
-      sha256: ac9dd03230fa4058d14d46450335ca3c40564f734d793e52f81053f3cbf95009
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.9"
   characters:
     dependency: "direct main"
     description:
@@ -585,14 +577,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_mailer:
-    dependency: transitive
-    description:
-      name: flutter_mailer
-      sha256: b01486ed1abed30e50748b330082a9287dde50433bcdb2cfe9fd27da32b8a763
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.0.3"
   flutter_native_splash:
     dependency: "direct dev"
     description:
@@ -651,14 +635,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.17.3"
-  fluttertoast:
-    dependency: transitive
-    description:
-      name: fluttertoast
-      sha256: "144ddd74d49c865eba47abe31cbc746c7b311c82d6c32e571fd73c4264b740e2"
-      url: "https://pub.dev"
-    source: hosted
-    version: "9.0.0"
   font_awesome_flutter:
     dependency: "direct main"
     description:
@@ -893,14 +869,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.1.0"
-  logger:
-    dependency: "direct main"
-    description:
-      name: logger
-      sha256: "25aee487596a6257655a1e091ec2ae66bc30e7af663592cc3a27e6591e05035c"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.7.0"
   logging:
     dependency: transitive
     description:
@@ -909,14 +877,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.0"
-  mailer:
-    dependency: transitive
-    description:
-      name: mailer
-      sha256: "9f7213f57272c2a047f13ae89e68652d492f929d84ded9a618424b38da328f97"
-      url: "https://pub.dev"
-    source: hosted
-    version: "7.2.0"
   markdown:
     dependency: "direct main"
     description:
@@ -1293,14 +1253,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.1"
-  punycoder:
-    dependency: transitive
-    description:
-      name: punycoder
-      sha256: "982734df864d9588eb13e28ac1c5a46b57e22117b3696032ac58739966cec190"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.0"
   qr:
     dependency: transitive
     description:
@@ -1413,14 +1365,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.3.8"
-  sentry:
-    dependency: transitive
-    description:
-      name: sentry
-      sha256: "330a341076e16b87aa8a4f97b0bd48c085737d087e81ef337aee2b4c3e8896f9"
-      url: "https://pub.dev"
-    source: hosted
-    version: "9.26.0"
   share_plus:
     dependency: "direct main"
     description:
@@ -1618,14 +1562,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
-  unorm_dart:
-    dependency: transitive
-    description:
-      name: unorm_dart
-      sha256: "0c69186b03ca6addab0774bcc0f4f17b88d4ce78d9d4d8f0619e30a99ead58e7"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.2"
   uri_parser:
     dependency: transitive
     description:

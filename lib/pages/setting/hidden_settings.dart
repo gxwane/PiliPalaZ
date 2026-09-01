@@ -9,7 +9,6 @@ class HiddenSetting extends StatefulWidget {
 }
 
 class _HiddenSettingState extends State<HiddenSetting> {
-
   @override
   void initState() {
     super.initState();
@@ -28,10 +27,7 @@ class _HiddenSettingState extends State<HiddenSetting> {
       appBar: AppBar(
         centerTitle: false,
         titleSpacing: 0,
-        title: Text(
-          '开发人员选项',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        title: Text('开发人员选项', style: Theme.of(context).textTheme.titleMedium),
       ),
       body: Column(
         children: [
@@ -79,7 +75,7 @@ class _HiddenSettingState extends State<HiddenSetting> {
             ),
           ),
           ListTile(
-            title: const Text('查看日志'),
+            title: const Text('查看本地诊断'),
             onTap: () {
               Get.toNamed('/logs');
             },

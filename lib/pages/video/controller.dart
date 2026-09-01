@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:catcher_2/catcher_2.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -15,6 +14,8 @@ import 'package:pilipalaz/pages/video/playback_input.dart';
 import 'package:pilipalaz/pages/video/video_playback_selection.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/hardware_decode_fallback_guard.dart';
+import 'package:pilipalaz/services/diagnostics/diagnostic_record.dart';
+import 'package:pilipalaz/services/diagnostics/local_diagnostics.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:pilipalaz/utils/utils.dart';
 import 'package:pilipalaz/utils/video_utils.dart';
@@ -428,14 +429,12 @@ class VideoDetailController extends GetxController
       isShowCover.value = false;
     }
     if (error != null) {
-      Catcher2.reportCheckedError(
-        error,
-        stackTrace,
-        extraData: {
-          'phase': 'video_playback_initialization',
-          'bvid': bvid,
-          'cid': cid.value,
-        },
+      unawaited(
+        LocalDiagnostics.instance.recordFailure(
+          DiagnosticFailureKind.videoPlaybackInitialization,
+          error,
+          stackTrace,
+        ),
       );
     }
     return <String, dynamic>{

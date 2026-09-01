@@ -1,136 +1,138 @@
-import 'dart:io';
-import 'package:pilipalaz/common/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pilipalaz/common/widgets/no_data.dart';
+import 'package:pilipalaz/common/constants.dart';
+import 'package:pilipalaz/services/diagnostics/diagnostic_record.dart';
+import 'package:pilipalaz/services/diagnostics/diagnostic_report_formatter.dart';
+import 'package:pilipalaz/services/diagnostics/local_diagnostics.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../../services/loggeer.dart';
-import '../../../services/player_diagnostics.dart';
 
 class LogsPage extends StatefulWidget {
-  const LogsPage({super.key});
+  const LogsPage({super.key, this.diagnostics});
+
+  final LocalDiagnostics? diagnostics;
 
   @override
   State<LogsPage> createState() => _LogsPageState();
 }
 
 class _LogsPageState extends State<LogsPage> {
-  late File logsPath;
-  String fileContent = '';
-  String playerFileContent = '';
-  List logsContent = [];
+  late final LocalDiagnostics _diagnostics;
+  List<DiagnosticRecord> _records = const <DiagnosticRecord>[];
+  int _storageBytes = 0;
+  bool _loading = true;
 
   @override
   void initState() {
-    getPath();
     super.initState();
+    _diagnostics = widget.diagnostics ?? LocalDiagnostics.instance;
+    _load();
   }
 
-  void getPath() async {
-    logsPath = await getLogsPath();
-    fileContent = await logsPath.readAsString();
-    playerFileContent = await PlayerDiagnostics.instance.read();
-    logsContent = await parseLogs('$fileContent\n$playerFileContent');
+  Future<void> _load() async {
+    final records = await _diagnostics.readFailures();
+    final storageBytes = await _diagnostics.storageBytes();
     if (!mounted) return;
-    setState(() {});
+    setState(() {
+      _records = records.reversed.toList(growable: false);
+      _storageBytes = storageBytes;
+      _loading = false;
+    });
   }
 
-  Future<List<Map<String, dynamic>>> parseLogs(String fileContent) async {
-    const String splitToken =
-        '======================================================================';
-    List contentList = fileContent.split(splitToken).map((item) {
-      return item
-          .replaceAll(
-            '============================== CATCHER 2 LOG ==============================',
-            'PiliPalaZ错误日志\n********************',
-          )
-          .replaceAll(
-            '========================== PLAYER DIAGNOSTIC LOG ==========================',
-            '播放器诊断日志\n********************',
-          )
-          .replaceAll('DEVICE INFO', '设备信息')
-          .replaceAll('APP INFO', '应用信息')
-          .replaceAll('ERROR', '错误信息')
-          .replaceAll('STACK TRACE', '错误堆栈')
-          .replaceAll('#', '＃');
-    }).toList();
-    List<Map<String, dynamic>> result = [];
-    for (String i in contentList) {
-      dynamic date;
-      String body = i
-          .split("\n")
-          .map((l) {
-            if (l.startsWith("Crash occurred on")) {
-              try {
-                date = DateTime.parse(
-                  l.split("Crash occurred on")[1].trim(), //.split('.')[0],
-                );
-              } catch (e) {
-                debugPrint(e.toString());
-                date = l.toString();
-              }
-              return "";
-            }
-            if (l.startsWith("Diagnostic occurred on")) {
-              try {
-                date = DateTime.parse(
-                  l.split("Diagnostic occurred on")[1].trim(),
-                );
-              } catch (e) {
-                debugPrint(e.toString());
-                date = l.toString();
-              }
-              return "";
-            }
-            return l;
-          })
-          .where((dynamic l) => l.replaceAll("\n", "").trim().isNotEmpty)
-          .join("\n");
-      if (date != null || body != '') {
-        result.add({'date': date, 'body': body, 'expand': false});
-      }
-    }
-    return result.reversed.toList();
-  }
-
-  void copyLogs() async {
-    await Clipboard.setData(
-      ClipboardData(text: '$fileContent\n$playerFileContent'),
+  Future<void> _preview(DiagnosticRecord record) async {
+    var includeDeviceInfo = true;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final report = formatDiagnosticReport(
+            record,
+            includeDeviceInfo: includeDeviceInfo,
+          );
+          return AlertDialog(
+            title: const Text('审阅诊断报告'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CheckboxListTile(
+                    value: includeDeviceInfo,
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('包含设备兼容信息'),
+                    subtitle: const Text('厂商、型号、系统版本和 ABI'),
+                    onChanged: (value) => setDialogState(
+                      () => includeDeviceInfo = value ?? false,
+                    ),
+                  ),
+                  const Divider(),
+                  Flexible(
+                    child: SingleChildScrollView(child: SelectableText(report)),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: report));
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(
+                    this.context,
+                  ).showSnackBar(const SnackBar(content: Text('诊断报告已复制到剪贴板')));
+                },
+                child: const Text('复制'),
+              ),
+              TextButton(
+                onPressed: () => SharePlus.instance.share(
+                  ShareParams(text: report, subject: 'PiliPalaZ 本地诊断'),
+                ),
+                child: const Text('系统分享'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('关闭'),
+              ),
+            ],
+          );
+        },
+      ),
     );
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('复制成功')));
-    }
   }
 
-  void feedback() {
-    launchUrl(
+  Future<void> _clear() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('清空本地诊断'),
+        content: const Text('此操作无法撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('清空'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await _diagnostics.clear();
+    await _load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('本地诊断已清空')));
+  }
+
+  Future<void> _feedback() async {
+    await launchUrl(
       Uri.parse(ProjectLinks.issues),
-      // 系统自带浏览器打开
       mode: LaunchMode.externalApplication,
     );
-  }
-
-  void clearLogsHandle() async {
-    final bool catcherCleared = await clearLogs();
-    bool playerCleared = true;
-    try {
-      await PlayerDiagnostics.instance.clear();
-    } catch (_) {
-      playerCleared = false;
-    }
-    if (catcherCleared && playerCleared) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('已清空')));
-        fileContent = '';
-        playerFileContent = '';
-        logsContent = [];
-        setState(() {});
-      }
-    }
   }
 
   @override
@@ -139,91 +141,112 @@ class _LogsPageState extends State<LogsPage> {
       appBar: AppBar(
         centerTitle: false,
         titleSpacing: 0,
-        title: Text('日志', style: Theme.of(context).textTheme.titleMedium),
+        title: Text('本地诊断', style: Theme.of(context).textTheme.titleMedium),
         actions: [
           PopupMenuButton<String>(
-            onSelected: (String type) {
-              // 处理菜单项选择的逻辑
-              switch (type) {
-                case 'copy':
-                  copyLogs();
-                  break;
+            onSelected: (value) {
+              switch (value) {
                 case 'feedback':
-                  feedback();
-                  break;
+                  _feedback();
                 case 'clear':
-                  clearLogsHandle();
-                  break;
-                default:
+                  _clear();
               }
             },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(value: 'copy', child: Text('复制日志')),
-              const PopupMenuItem<String>(
-                value: 'feedback',
-                child: Text('错误反馈'),
-              ),
-              const PopupMenuItem<String>(value: 'clear', child: Text('清空日志')),
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'feedback', child: Text('前往 GitHub 反馈')),
+              PopupMenuItem(value: 'clear', child: Text('清空本地诊断')),
             ],
           ),
           const SizedBox(width: 6),
         ],
       ),
-      body: logsContent.isNotEmpty
-          ? ListView.builder(
-              itemCount: logsContent.length,
-              itemBuilder: (context, index) {
-                final log = logsContent[index];
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text(
-                            log['date'].toString(),
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: () async {
-                            await Clipboard.setData(
-                              ClipboardData(text: log['body']),
-                            );
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    '已将 ${log['date'].toString()} 复制至剪贴板',
-                                  ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(12),
+                children: [
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.privacy_tip_outlined),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _diagnostics.enabled ? '本地记录已开启' : '本地记录已关闭',
+                                  style: Theme.of(
+                                    context,
+                                  ).textTheme.titleMedium,
                                 ),
-                              );
-                            }
-                          },
-                          icon: const Icon(Icons.copy_outlined, size: 16),
-                          label: const Text('复制'),
-                        ),
-                      ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            '只在故障发生时保存在本设备，PiliPalaZ 不会自动上传。'
+                            '记录最多保留 7 天，合计不超过 1 MiB。',
+                          ),
+                          const SizedBox(height: 8),
+                          Text('当前占用：${_formatBytes(_storageBytes)}'),
+                        ],
+                      ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Card(
-                        elevation: 1,
-                        clipBehavior: Clip.antiAliasWithSaveLayer,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: SelectableText(log['body']),
+                  ),
+                  if (_records.isEmpty)
+                    const SizedBox(
+                      height: 360,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle_outline, size: 72),
+                          SizedBox(height: 16),
+                          Text('没有故障记录'),
+                        ],
+                      ),
+                    )
+                  else
+                    ..._records.map(
+                      (record) => Card(
+                        child: ExpansionTile(
+                          title: Text(record.kind.label),
+                          subtitle: Text(record.timestamp.toLocal().toString()),
+                          childrenPadding: const EdgeInsets.fromLTRB(
+                            16,
+                            0,
+                            16,
+                            12,
+                          ),
+                          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SelectableText(record.message),
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: FilledButton.tonalIcon(
+                                onPressed: () => _preview(record),
+                                icon: const Icon(Icons.preview_outlined),
+                                label: const Text('生成反馈内容'),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                    const Divider(indent: 12, endIndent: 12),
-                  ],
-                );
-              },
-            )
-          : const CustomScrollView(slivers: <Widget>[NoData()]),
+                ],
+              ),
+            ),
     );
   }
+}
+
+String _formatBytes(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  return '${(bytes / 1024).toStringAsFixed(1)} KiB';
 }

@@ -27,8 +27,7 @@ import 'package:pilipalaz/utils/data.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:media_kit/media_kit.dart'; // Provides [Player], [Media], [Playlist] etc.
 import 'package:pilipalaz/utils/recommend_filter.dart';
-import 'package:catcher_2/catcher_2.dart';
-import './services/loggeer.dart';
+import 'package:pilipalaz/services/diagnostics/local_diagnostics.dart';
 import 'package:flex_seed_scheme/flex_seed_scheme.dart';
 // import 'package:flutter/scheduler.dart' show timeDilation;
 
@@ -56,6 +55,8 @@ import 'package:flex_seed_scheme/flex_seed_scheme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  LocalDiagnostics.instance.installGlobalErrorHandlers();
+  await LocalDiagnostics.instance.initialize();
   MediaKit.ensureInitialized();
   await GStorage.init();
   // timeDilation = 10.0;
@@ -93,26 +94,7 @@ void main() async {
   SmartDialog.config.toast = SmartConfigToast(
     displayType: SmartToastType.onlyRefresh,
   );
-  // 异常捕获 logo记录
-  final Catcher2Options debugConfig = Catcher2Options(SilentReportMode(), [
-    FileHandler(await getLogsPath()),
-    ConsoleHandler(
-      enableDeviceParameters: false,
-      enableApplicationParameters: false,
-    ),
-  ]);
-
-  final Catcher2Options releaseConfig = Catcher2Options(SilentReportMode(), [
-    FileHandler(await getLogsPath()),
-  ]);
-
-  Catcher2(
-    debugConfig: debugConfig,
-    releaseConfig: releaseConfig,
-    runAppFunction: () {
-      runApp(const MyApp());
-    },
-  );
+  runApp(const MyApp());
 
   // 小白条、导航栏沉浸
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

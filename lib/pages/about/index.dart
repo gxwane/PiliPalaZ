@@ -188,7 +188,7 @@ class _AboutPageState extends State<AboutPage> {
           ListTile(
             onTap: () => _aboutController.logs(),
             leading: const Icon(Icons.bug_report),
-            title: const Text('错误日志'),
+            title: const Text('本地诊断'),
             trailing: Icon(Icons.arrow_forward_ios, size: 16, color: outline),
           ),
           CacheUsageTile(

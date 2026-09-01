@@ -5,7 +5,6 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:catcher_2/catcher_2.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:easy_debounce/easy_throttle.dart';
 import 'package:fl_pip/fl_pip.dart';
@@ -33,6 +32,8 @@ import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
 import 'package:pilipalaz/plugin/pl_player/player_buffer_policy.dart';
 import 'package:pilipalaz/plugin/pl_player/playback_commands.dart';
 import 'package:pilipalaz/plugin/pl_player/playback_position_guard.dart';
+import 'package:pilipalaz/services/diagnostics/diagnostic_record.dart';
+import 'package:pilipalaz/services/diagnostics/local_diagnostics.dart';
 import 'package:pilipalaz/services/player_diagnostics.dart';
 import 'package:pilipalaz/services/service_locator.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
@@ -550,12 +551,6 @@ class PlPlayerController with WidgetsBindingObserver {
           route.startsWith('/video') || route.startsWith('/live');
       if (!isPlayerRoute && !floatingManager.containsFloating(globalId)) {
         _nativePlayerStale = true;
-        unawaited(
-          PlayerDiagnostics.instance.record(
-            'idle_player_marked_stale',
-            <String, Object?>{'lifecycle': state.name, 'route': route},
-          ),
-        );
       }
     }
   }
@@ -568,12 +563,6 @@ class PlPlayerController with WidgetsBindingObserver {
         route.startsWith('/video') || route.startsWith('/live');
     if (!isPlayerRoute || _videoPlayerController?.state.playing != true) {
       _nativePlayerStale = true;
-      unawaited(
-        PlayerDiagnostics.instance.record(
-          'memory_pressure_player_marked_stale',
-          <String, Object?>{'route': route},
-        ),
-      );
     }
   }
 
@@ -623,6 +612,25 @@ class PlPlayerController with WidgetsBindingObserver {
     // print(_instance!._playerCount.value);
     _videoType.value = videoType;
     return _instance!;
+  }
+
+  Future<void> _recordPlayerFailure(
+    DiagnosticFailureKind kind,
+    Object error,
+    StackTrace? stackTrace, {
+    bool completeSession = false,
+  }) async {
+    final diagnostic = _diagnosticSession;
+    if (diagnostic != null) {
+      await diagnostic.reportFailure(
+        kind,
+        error,
+        stackTrace,
+        completeSession: completeSession,
+      );
+      return;
+    }
+    await LocalDiagnostics.instance.recordFailure(kind, error, stackTrace);
   }
 
   void claimNativeResources(PlayerResourceOwner owner) {
@@ -701,13 +709,6 @@ class PlPlayerController with WidgetsBindingObserver {
       await _diagnosticSession?.complete('session_replaced');
       _diagnosticSession = await PlayerDiagnostics.instance.startSession(
         context: <String, Object?>{
-          'controllerSession': session,
-          'bvid': bvid,
-          'cid': cid,
-          'videoType': videoType.value,
-          'videoSource': dataSource.videoSource,
-          'audioSource': dataSource.audioSource,
-          'autoplay': autoplay,
           'enableHardwareAcceleration': enableHA,
           'hwdec': hwdec,
           'videoSync': setting.get(
@@ -772,16 +773,11 @@ class PlPlayerController with WidgetsBindingObserver {
         'set_data_source_error',
         <String, Object?>{'error': err.toString()},
       );
-      Catcher2.reportCheckedError(
+      await _recordPlayerFailure(
+        DiagnosticFailureKind.playerSetDataSource,
         err,
         stackTrace,
-        extraData: <String, Object?>{
-          'phase': 'player_set_data_source',
-          'controllerSession': session,
-          'diagnosticSession': _diagnosticSession?.id,
-          'bvid': bvid,
-          'cid': cid,
-        },
+        completeSession: true,
       );
       debugPrint(stackTrace.toString());
       print('plPlayer err:  $err');
@@ -1040,16 +1036,10 @@ class PlPlayerController with WidgetsBindingObserver {
           'hardware_decode_source_recovery_error',
           <String, Object?>{'error': err.toString()},
         );
-        Catcher2.reportCheckedError(
+        await _recordPlayerFailure(
+          DiagnosticFailureKind.hardwareDecodeSourceRecovery,
           err,
           stackTrace,
-          extraData: <String, Object?>{
-            'phase': 'hardware_decode_source_recovery',
-            'controllerSession': session,
-            'diagnosticSession': _diagnosticSession?.id,
-            'bvid': _bvid,
-            'cid': _cid,
-          },
         );
       }
     }
@@ -1164,16 +1154,11 @@ class PlPlayerController with WidgetsBindingObserver {
         'hardware_decode_fallback_error',
         <String, Object?>{'error': err.toString()},
       );
-      Catcher2.reportCheckedError(
+      await _recordPlayerFailure(
+        DiagnosticFailureKind.hardwareDecodeFallback,
         err,
         stackTrace,
-        extraData: <String, Object?>{
-          'phase': 'hardware_decode_fallback',
-          'controllerSession': session,
-          'diagnosticSession': _diagnosticSession?.id,
-          'bvid': _bvid,
-          'cid': _cid,
-        },
+        completeSession: true,
       );
       SmartDialog.showToast('软件解码仍然失败，请尝试切换画质或关闭硬解');
     } finally {
@@ -1468,7 +1453,11 @@ class PlPlayerController with WidgetsBindingObserver {
                 displayTime: const Duration(milliseconds: 500),
               );
               if (!await refreshPlayer(expectedSession: session)) {
-                print("failed");
+                await diagnostic?.reportFailure(
+                  DiagnosticFailureKind.playerNativeFailure,
+                  StateError(event),
+                  StackTrace.current,
+                );
               }
             }
           });
@@ -1477,9 +1466,23 @@ class PlPlayerController with WidgetsBindingObserver {
         print('videoPlayerController!.stream.error.listen');
         print(event);
         if (event.startsWith('Could not open codec')) {
+          unawaited(
+            diagnostic?.reportFailure(
+              DiagnosticFailureKind.playerNativeFailure,
+              StateError(event),
+              StackTrace.current,
+            ),
+          );
           SmartDialog.showToast('视频解码失败，请尝试切换画质或关闭硬解');
           return;
         }
+        unawaited(
+          diagnostic?.reportFailure(
+            DiagnosticFailureKind.playerNativeFailure,
+            StateError(event),
+            StackTrace.current,
+          ),
+        );
         SmartDialog.showToast('视频加载错误, $event');
       }),
       // videoPlayerController!.stream.volume.listen((event) {
@@ -2296,17 +2299,20 @@ class PlPlayerController with WidgetsBindingObserver {
         'native_player_release_error',
         <String, Object?>{'error': err.toString()},
       );
-      Catcher2.reportCheckedError(
-        err,
-        stackTrace,
-        extraData: <String, Object?>{
-          'phase': 'native_player_release',
-          'controllerSession': _playbackSession,
-          'diagnosticSession': diagnostic?.id,
-          'bvid': _bvid,
-          'cid': _cid,
-        },
-      );
+      if (diagnostic != null) {
+        await diagnostic.reportFailure(
+          DiagnosticFailureKind.nativePlayerRelease,
+          err,
+          stackTrace,
+          completeSession: true,
+        );
+      } else {
+        await LocalDiagnostics.instance.recordFailure(
+          DiagnosticFailureKind.nativePlayerRelease,
+          err,
+          stackTrace,
+        );
+      }
     } finally {
       operationCompleter.complete();
     }
