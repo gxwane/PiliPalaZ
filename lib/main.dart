@@ -60,10 +60,17 @@ void main() async {
   await GStorage.init();
   // timeDilation = 10.0;
   if (GStorage.setting.get(SettingBoxKey.autoClearCache, defaultValue: false)) {
-    await CacheManage.clearLibraryCache();
+    try {
+      await CacheManage.instance.clearApplicationCache();
+    } catch (error, stackTrace) {
+      debugPrint('Failed to automatically clear application cache: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    }
   }
-  if (GStorage.setting
-      .get(SettingBoxKey.horizontalScreen, defaultValue: false)) {
+  if (GStorage.setting.get(
+    SettingBoxKey.horizontalScreen,
+    defaultValue: false,
+  )) {
     await SystemChrome.setPreferredOrientations(
       //支持竖屏与横屏
       [
@@ -76,33 +83,28 @@ void main() async {
   } else {
     await SystemChrome.setPreferredOrientations(
       //支持竖屏
-      [
-        DeviceOrientation.portraitUp,
-      ],
+      [DeviceOrientation.portraitUp],
     );
   }
   await setupServiceLocator();
   Request();
   await Request.setCookie();
   RecommendFilter();
-  SmartDialog.config.toast =
-      SmartConfigToast(displayType: SmartToastType.onlyRefresh);
+  SmartDialog.config.toast = SmartConfigToast(
+    displayType: SmartToastType.onlyRefresh,
+  );
   // 异常捕获 logo记录
-  final Catcher2Options debugConfig = Catcher2Options(
-    SilentReportMode(),
-    [
-      FileHandler(await getLogsPath()),
-      ConsoleHandler(
-        enableDeviceParameters: false,
-        enableApplicationParameters: false,
-      )
-    ],
-  );
+  final Catcher2Options debugConfig = Catcher2Options(SilentReportMode(), [
+    FileHandler(await getLogsPath()),
+    ConsoleHandler(
+      enableDeviceParameters: false,
+      enableApplicationParameters: false,
+    ),
+  ]);
 
-  final Catcher2Options releaseConfig = Catcher2Options(
-    SilentReportMode(),
-    [FileHandler(await getLogsPath())],
-  );
+  final Catcher2Options releaseConfig = Catcher2Options(SilentReportMode(), [
+    FileHandler(await getLogsPath()),
+  ]);
 
   Catcher2(
     debugConfig: debugConfig,
@@ -114,12 +116,14 @@ void main() async {
 
   // 小白条、导航栏沉浸
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    systemNavigationBarColor: Colors.transparent,
-    systemNavigationBarDividerColor: Colors.transparent,
-    statusBarColor: Colors.transparent,
-    systemNavigationBarContrastEnforced: false,
-  ));
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarDividerColor: Colors.transparent,
+      statusBarColor: Colors.transparent,
+      systemNavigationBarContrastEnforced: false,
+    ),
+  );
   Data.init();
   PiliScheme.init();
 }
@@ -132,20 +136,28 @@ class MyApp extends StatelessWidget {
     Box setting = GStorage.setting;
     // 主题色
     Color defaultColor =
-        colorThemeTypes[setting.get(SettingBoxKey.customColor, defaultValue: 0)]
-            ['color'];
+        colorThemeTypes[setting.get(
+          SettingBoxKey.customColor,
+          defaultValue: 0,
+        )]['color'];
     Color brandColor = defaultColor;
     // 主题模式
     ThemeMode currentThemeValue = ThemeType
-        .values[setting.get(SettingBoxKey.themeMode,
-            defaultValue: ThemeType.system.code)]
+        .values[setting.get(
+          SettingBoxKey.themeMode,
+          defaultValue: ThemeType.system.code,
+        )]
         .toThemeMode;
     // 是否动态取色
-    bool isDynamicColor =
-        setting.get(SettingBoxKey.dynamicColor, defaultValue: true);
+    bool isDynamicColor = setting.get(
+      SettingBoxKey.dynamicColor,
+      defaultValue: true,
+    );
     // 字体缩放大小
-    double textScale =
-        setting.get(SettingBoxKey.defaultTextScale, defaultValue: 1.0);
+    double textScale = setting.get(
+      SettingBoxKey.defaultTextScale,
+      defaultValue: 1.0,
+    );
     FlexSchemeVariant variant = FlexSchemeVariant
         .values[setting.get(SettingBoxKey.schemeVariant, defaultValue: 10)];
 
@@ -157,8 +169,10 @@ class MyApp extends StatelessWidget {
         var storageDisplay = setting.get(SettingBoxKey.displayMode);
         DisplayMode f = DisplayMode.auto;
         if (storageDisplay != null) {
-          f = modes.firstWhere((e) => e.toString() == storageDisplay,
-              orElse: () => f);
+          f = modes.firstWhere(
+            (e) => e.toString() == storageDisplay,
+            orElse: () => f,
+          );
         }
         DisplayMode preferred = modes.toList().firstWhere((el) => el == f);
         FlutterDisplayMode.setPreferredMode(preferred);
@@ -231,8 +245,9 @@ class MyApp extends StatelessWidget {
             return FlutterSmartDialog(
               toastBuilder: (String msg) => CustomToast(msg: msg),
               child: MediaQuery(
-                data: MediaQuery.of(context)
-                    .copyWith(textScaler: TextScaler.linear(textScale)),
+                data: MediaQuery.of(
+                  context,
+                ).copyWith(textScaler: TextScaler.linear(textScale)),
                 child: child!,
               ),
             );
@@ -296,5 +311,4 @@ class MyApp extends StatelessWidget {
       ),
     );
   }
-
 }

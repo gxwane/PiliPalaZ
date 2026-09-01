@@ -1,185 +1,221 @@
-import 'dart:async';
 import 'dart:io';
-import 'package:pilipalaz/utils/storage.dart';
-import 'package:flutter/material.dart';
+
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
-import 'package:get/get.dart';
 
-class CacheManage {
-  CacheManage._internal();
+typedef CacheDirectoryProvider = Future<Directory> Function();
 
-  static final CacheManage cacheManage = CacheManage._internal();
+abstract interface class ApplicationCacheService {
+  int? get cachedApplicationCacheSizeBytes;
 
-  factory CacheManage() => cacheManage;
+  Future<int?> refreshApplicationCacheSize();
 
-  // 获取缓存目录
-  Future<String> loadApplicationCache() async {
-    /// clear all of image in memory
-    // clearMemoryImageCache();
-    /// get ImageCache
-    // var res = getMemoryImageCache();
+  Future<void> clearApplicationCache();
+}
 
-    // 缓存大小
-    double cacheSize = 0;
-    // cached_network_image directory
-    Directory tempDirectory = await getTemporaryDirectory();
-    // get_storage directory
-    Directory docDirectory = await getApplicationDocumentsDirectory();
+class CacheManage implements ApplicationCacheService {
+  CacheManage({
+    CacheDirectoryProvider? temporaryDirectoryProvider,
+    CacheDirectoryProvider? applicationDocumentsDirectoryProvider,
+  }) : _temporaryDirectoryProvider =
+           temporaryDirectoryProvider ?? getTemporaryDirectory,
+       _applicationDocumentsDirectoryProvider =
+           applicationDocumentsDirectoryProvider ??
+           getApplicationDocumentsDirectory;
 
-    // 获取缓存大小
-    if (tempDirectory.existsSync()) {
-      double value = await getTotalSizeOfFilesInDir(tempDirectory);
-      cacheSize += value;
+  static final CacheManage instance = CacheManage();
+
+  final CacheDirectoryProvider _temporaryDirectoryProvider;
+  final CacheDirectoryProvider _applicationDocumentsDirectoryProvider;
+
+  int _generation = 0;
+  int? _cachedApplicationCacheSizeBytes;
+  Future<int?>? _refreshInFlight;
+  Future<void>? _clearInFlight;
+
+  @override
+  int? get cachedApplicationCacheSizeBytes => _cachedApplicationCacheSizeBytes;
+
+  @override
+  Future<int?> refreshApplicationCacheSize() {
+    final clearing = _clearInFlight;
+    if (clearing != null) {
+      return clearing.then((_) => refreshApplicationCacheSize());
     }
 
-    /// 获取缓存大小 dioCache
-    if (docDirectory.existsSync()) {
-      double value = 0;
-      String dioCacheFileName =
-          '${docDirectory.path}${Platform.pathSeparator}DioCache.db';
-      var dioCacheFile = File(dioCacheFileName);
-      if (dioCacheFile.existsSync()) {
-        value = await getTotalSizeOfFilesInDir(dioCacheFile);
-      }
-      cacheSize += value;
+    final inFlight = _refreshInFlight;
+    if (inFlight != null) {
+      return inFlight;
     }
 
-    return formatSize(cacheSize);
+    final generation = _generation;
+    late final Future<int?> operation;
+    operation = _calculateApplicationCacheSize(generation)
+        .then((bytes) {
+          if (bytes == null || generation != _generation) {
+            return null;
+          }
+          _cachedApplicationCacheSizeBytes = bytes;
+          return bytes;
+        })
+        .whenComplete(() {
+          if (identical(_refreshInFlight, operation)) {
+            _refreshInFlight = null;
+          }
+        });
+    _refreshInFlight = operation;
+    return operation;
   }
 
-  // 循环计算文件的大小（递归）
-  Future<double> getTotalSizeOfFilesInDir(final FileSystemEntity file) async {
-    double total = 0;
+  Future<int?> _calculateApplicationCacheSize(int generation) async {
+    final temporaryDirectory = await _temporaryDirectoryProvider();
+    if (generation != _generation) {
+      return null;
+    }
+    final documentsDirectory = await _applicationDocumentsDirectoryProvider();
+    if (generation != _generation) {
+      return null;
+    }
+
+    final temporarySize = await _sizeOfEntity(temporaryDirectory, generation);
+    if (temporarySize == null) {
+      return null;
+    }
+
+    final dioCache = File(
+      '${documentsDirectory.path}${Platform.pathSeparator}DioCache.db',
+    );
+    final dioCacheSize = await _sizeOfEntity(dioCache, generation);
+    if (dioCacheSize == null) {
+      return null;
+    }
+    return temporarySize + dioCacheSize;
+  }
+
+  Future<int?> _sizeOfEntity(FileSystemEntity entity, int generation) async {
+    if (generation != _generation) {
+      return null;
+    }
+
     try {
-      if (file is File) {
-        total = (await file.length()).toDouble();
+      final type = await FileSystemEntity.type(entity.path, followLinks: false);
+      if (generation != _generation) {
+        return null;
       }
-      if (file is Directory) {
-        final List<FileSystemEntity> children = file.listSync();
-        for (final FileSystemEntity child in children) {
-          total += await getTotalSizeOfFilesInDir(child);
+
+      if (type == FileSystemEntityType.notFound ||
+          type == FileSystemEntityType.link) {
+        return 0;
+      }
+      if (type == FileSystemEntityType.file) {
+        final length = await File(entity.path).length();
+        return generation == _generation ? length : null;
+      }
+      if (type != FileSystemEntityType.directory) {
+        return 0;
+      }
+
+      var total = 0;
+      await for (final child in Directory(
+        entity.path,
+      ).list(followLinks: false)) {
+        if (generation != _generation) {
+          return null;
         }
+        final childSize = await _sizeOfEntity(child, generation);
+        if (childSize == null) {
+          return null;
+        }
+        total += childSize;
       }
-    } catch (e) {
-      // 忽略找不到文件的错误
-      if (e is! PathNotFoundException) {
-        print('Error retrieving size for ${file.path}: $e');
-      }
+      return generation == _generation ? total : null;
+    } on PathNotFoundException {
+      return generation == _generation ? 0 : null;
     }
-    return total;
   }
 
-  // 缓存大小格式转换
-  String formatSize(double value) {
-    List<String> unitArr = ['B', 'K', 'M', 'G'];
-    int index = 0;
-    while (value > 1024) {
-      index++;
-      value = value / 1024;
+  @override
+  Future<void> clearApplicationCache() {
+    final inFlight = _clearInFlight;
+    if (inFlight != null) {
+      return inFlight;
     }
-    String size = value.toStringAsFixed(2);
-    return size + unitArr[index];
-  }
 
-  // 清除缓存
-  Future<bool> clearCacheAll(BuildContext context) async {
-    // 是否启动时清除
-    RxBool autoClearCache = RxBool(GStorage.setting
-        .get(SettingBoxKey.autoClearCache, defaultValue: false));
-    bool cleanStatus = await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('提示'),
-          content: const Text('该操作将清除图片及网络请求缓存数据'),
-          actions: [
-            Obx(
-              () => TextButton.icon(
-                onPressed: () {
-                  autoClearCache.value = !autoClearCache.value;
-                  GStorage.setting
-                      .put(SettingBoxKey.autoClearCache, autoClearCache.value);
-                  SmartDialog.showToast(
-                      autoClearCache.value ? '启动时自动清除缓存' : '已关闭');
-                },
-                icon: Icon(autoClearCache.value
-                    ? Icons.check_box
-                    : Icons.check_box_outline_blank),
-                label: const Text(
-                  '自动',
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                Get.back();
-              },
-              child: Text(
-                '取消',
-                style: TextStyle(color: Theme.of(context).colorScheme.outline),
-              ),
-            ),
-            TextButton(
-              autofocus: true,
-              onPressed: () async {
-                Get.back();
-                SmartDialog.showLoading(msg: '正在清除...');
-                try {
-                  await clearLibraryCache();
-                  SmartDialog.dismiss().then((res) {
-                    SmartDialog.showToast('清除成功');
-                  });
-                } catch (err) {
-                  SmartDialog.dismiss();
-                  SmartDialog.showToast(err.toString());
-                }
-              },
-              child: const Text('清除'),
-            )
-          ],
-        );
-      },
-    ).then((res) {
-      return true;
+    _generation++;
+    _cachedApplicationCacheSizeBytes = null;
+    _refreshInFlight = null;
+
+    late final Future<void> operation;
+    operation = _clearApplicationCacheTargets().whenComplete(() {
+      if (identical(_clearInFlight, operation)) {
+        _clearInFlight = null;
+      }
     });
-    return cleanStatus;
+    _clearInFlight = operation;
+    return operation;
   }
 
-  /// 清除 Documents 目录下的 DioCache.db
-  Future clearApplicationCache() async {
-    Directory directory = await getApplicationDocumentsDirectory();
-    if (directory.existsSync()) {
-      String dioCacheFileName =
-          '${directory.path}${Platform.pathSeparator}DioCache.db';
-      var dioCacheFile = File(dioCacheFileName);
-      if (dioCacheFile.existsSync()) {
-        dioCacheFile.delete();
+  Future<void> _clearApplicationCacheTargets() async {
+    Object? firstError;
+    StackTrace? firstStackTrace;
+
+    void recordError(Object error, StackTrace stackTrace) {
+      firstError ??= error;
+      firstStackTrace ??= stackTrace;
+    }
+
+    try {
+      final temporaryDirectory = await _temporaryDirectoryProvider();
+      await _clearDirectoryContents(temporaryDirectory, recordError);
+    } on PathNotFoundException {
+      // The operating system may remove an empty cache directory at any time.
+    } catch (error, stackTrace) {
+      recordError(error, stackTrace);
+    }
+
+    try {
+      final documentsDirectory = await _applicationDocumentsDirectoryProvider();
+      final dioCache = File(
+        '${documentsDirectory.path}${Platform.pathSeparator}DioCache.db',
+      );
+      try {
+        await dioCache.delete();
+      } on PathNotFoundException {
+        // The cache database is optional and may already have been removed.
       }
+    } on PathNotFoundException {
+      // The application documents directory may not exist yet.
+    } catch (error, stackTrace) {
+      recordError(error, stackTrace);
+    }
+
+    if (firstError != null) {
+      Error.throwWithStackTrace(firstError!, firstStackTrace!);
     }
   }
 
-  // 清除 Library/Caches 目录及文件缓存
-  static Future clearLibraryCache() async {
-    var appDocDir = await getTemporaryDirectory();
-    if (appDocDir.existsSync()) {
-      // await appDocDir.delete(recursive: true);
-      final List<FileSystemEntity> children =
-          appDocDir.listSync(recursive: false);
-      for (final FileSystemEntity file in children) {
-        await file.delete(recursive: true);
+  Future<void> _clearDirectoryContents(
+    Directory directory,
+    void Function(Object error, StackTrace stackTrace) recordError,
+  ) async {
+    await for (final child in directory.list(followLinks: false)) {
+      try {
+        await child.delete(recursive: true);
+      } on PathNotFoundException {
+        // Another cache operation may have removed this entry first.
+      } catch (error, stackTrace) {
+        recordError(error, stackTrace);
       }
     }
   }
+}
 
-  /// 递归方式删除目录及文件
-  Future deleteDirectory(FileSystemEntity file) async {
-    if (file is Directory) {
-      final List<FileSystemEntity> children = file.listSync();
-      for (final FileSystemEntity child in children) {
-        await deleteDirectory(child);
-      }
-    }
-    await file.delete();
+String formatCacheSize(int bytes) {
+  const units = <String>['B', 'K', 'M', 'G', 'T'];
+  var value = bytes.toDouble();
+  var unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex++;
   }
+  return '${value.toStringAsFixed(2)}${units[unitIndex]}';
 }

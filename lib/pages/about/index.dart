@@ -10,6 +10,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pilipalaz/pages/setting/controller.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'cache_usage_tile.dart';
 import '../../utils/cache_manage.dart';
 
 class AboutPage extends StatefulWidget {
@@ -21,20 +22,81 @@ class AboutPage extends StatefulWidget {
 
 class _AboutPageState extends State<AboutPage> {
   final AboutController _aboutController = Get.put(AboutController());
-  String cacheSize = '';
 
-  @override
-  void initState() {
-    super.initState();
-    // 读取缓存占用
-    getCacheSize();
+  Future<bool> _clearCache() async {
+    final confirmed = await _showClearCacheConfirmation();
+    if (!confirmed || !mounted) {
+      return false;
+    }
+
+    SmartDialog.showLoading(msg: '正在清除...');
+    Object? clearError;
+    try {
+      await CacheManage.instance.clearApplicationCache();
+    } catch (error, stackTrace) {
+      clearError = error;
+      debugPrint('Failed to clear application cache: $error');
+      debugPrintStack(stackTrace: stackTrace);
+    } finally {
+      await SmartDialog.dismiss();
+    }
+
+    if (clearError == null) {
+      SmartDialog.showToast('清除成功');
+    } else {
+      SmartDialog.showToast('清除失败：$clearError');
+    }
+    return true;
   }
 
-  Future<void> getCacheSize() async {
-    final res = await CacheManage().loadApplicationCache();
-    cacheSize = res;
-    if (!mounted) return;
-    setState(() => {});
+  Future<bool> _showClearCacheConfirmation() async {
+    final autoClearCache = RxBool(
+      GStorage.setting.get(SettingBoxKey.autoClearCache, defaultValue: false),
+    );
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('提示'),
+            content: const Text('该操作将清除图片及网络请求缓存数据'),
+            actions: [
+              Obx(
+                () => TextButton.icon(
+                  onPressed: () {
+                    autoClearCache.value = !autoClearCache.value;
+                    GStorage.setting.put(
+                      SettingBoxKey.autoClearCache,
+                      autoClearCache.value,
+                    );
+                    SmartDialog.showToast(
+                      autoClearCache.value ? '启动时自动清除缓存' : '已关闭',
+                    );
+                  },
+                  icon: Icon(
+                    autoClearCache.value
+                        ? Icons.check_box
+                        : Icons.check_box_outline_blank,
+                  ),
+                  label: const Text('自动'),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(
+                  '取消',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.outline,
+                  ),
+                ),
+              ),
+              TextButton(
+                autofocus: true,
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('清除'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
   @override
@@ -129,14 +191,9 @@ class _AboutPageState extends State<AboutPage> {
             title: const Text('错误日志'),
             trailing: Icon(Icons.arrow_forward_ios, size: 16, color: outline),
           ),
-          ListTile(
-            onTap: () async {
-              await CacheManage().clearCacheAll(context);
-              getCacheSize();
-            },
-            leading: const Icon(Icons.delete),
-            title: const Text('清除缓存'),
-            trailing: Text('图片及网络缓存 $cacheSize', style: subTitleStyle),
+          CacheUsageTile(
+            cacheService: CacheManage.instance,
+            onClear: _clearCache,
           ),
           ListTile(
             title: const Text('导入/导出设置'),

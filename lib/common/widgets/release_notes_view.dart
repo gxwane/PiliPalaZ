@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_html/flutter_html.dart';
+import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:markdown/markdown.dart' as markdown;
 import 'package:pilipalaz/models/github/latest.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'pili_html_widget_factory.dart';
 
 typedef ReleaseNotesLinkOpener = Future<void> Function(Uri uri);
 
@@ -21,47 +23,15 @@ class ReleaseNotesView extends StatelessWidget {
       return const SizedBox.shrink();
     }
     return SelectionArea(
-      child: Html(
-        data: html,
-        onLinkTap: (url, attributes, element) {
+      child: HtmlWidget(
+        html,
+        factoryBuilder: SafeNetworkHtmlWidgetFactory.new,
+        onTapUrl: (url) {
           final uri = resolveReleaseNotesUri(url, release.htmlUrl);
           if (uri != null) {
             unawaited((openLink ?? _openLinkExternally)(uri));
           }
-        },
-        style: <String, Style>{
-          'body': Style(margin: Margins.zero, padding: HtmlPaddings.zero),
-          'a': Style(
-            color: Theme.of(context).colorScheme.primary,
-            textDecoration: TextDecoration.none,
-          ),
-          'p': Style(margin: Margins.only(bottom: 8)),
-          'li': Style(padding: HtmlPaddings.only(bottom: 4)),
-          'li > p': Style(display: Display.inline),
-          'h1,h2': Style(
-            fontSize: FontSize.xLarge,
-            fontWeight: FontWeight.bold,
-            margin: Margins.only(top: 8, bottom: 8),
-          ),
-          'h3,h4,h5,h6': Style(
-            fontSize: FontSize.large,
-            fontWeight: FontWeight.bold,
-            margin: Margins.only(top: 8, bottom: 4),
-          ),
-          'pre': Style(
-            backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-            padding: HtmlPaddings.all(8),
-          ),
-          'blockquote': Style(
-            border: Border(
-              left: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant,
-                width: 4,
-              ),
-            ),
-            margin: Margins.only(left: 4, top: 4, bottom: 4),
-            padding: HtmlPaddings.only(left: 8),
-          ),
+          return true;
         },
       ),
     );

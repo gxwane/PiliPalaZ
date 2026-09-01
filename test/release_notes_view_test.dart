@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_html/flutter_html.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:html/parser.dart' as html_parser;
 import 'package:pilipalaz/common/widgets/release_notes_view.dart';
 import 'package:pilipalaz/models/github/latest.dart';
@@ -72,13 +72,53 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: ReleaseNotesView(release: release)),
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: ReleaseNotesView(release: release),
+          ),
+        ),
       ),
     );
     await tester.pumpAndSettle();
 
-    final html = tester.widget<Html>(find.byType(Html));
-    expect(html.data, contains('第 60 项更新内容'));
+    final html = tester.widget<HtmlWidget>(find.byType(HtmlWidget));
+    expect(html.html, contains('第 60 项更新内容'));
     expect(find.text('…'), findsNothing);
+  });
+
+  testWidgets('opens only resolved web links', (tester) async {
+    final opened = <Uri>[];
+    const release = LatestDataModel(
+      body: '[相对链接](/gxwane/PiliPalaZ/issues/1)',
+      htmlUrl: 'https://github.com/gxwane/PiliPalaZ/releases/tag/v1.3.0',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ReleaseNotesView(
+            release: release,
+            openLink: (uri) async => opened.add(uri),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final html = tester.widget<HtmlWidget>(find.byType(HtmlWidget));
+    expect(
+      await Future<bool>.value(html.onTapUrl!('javascript:alert(1)')),
+      isTrue,
+    );
+    expect(opened, isEmpty);
+
+    expect(
+      await Future<bool>.value(html.onTapUrl!('/gxwane/PiliPalaZ/issues/1')),
+      isTrue,
+    );
+    await tester.pump();
+    expect(opened, <Uri>[
+      Uri.parse('https://github.com/gxwane/PiliPalaZ/issues/1'),
+    ]);
   });
 }

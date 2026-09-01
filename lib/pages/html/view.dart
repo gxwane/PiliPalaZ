@@ -56,35 +56,33 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
 
   void scrollListener() {
     scrollController = _htmlRenderCtr.scrollController;
-    scrollController.addListener(
-      () {
-        // 分页加载
-        if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 300) {
-          EasyThrottle.throttle('replylist', const Duration(seconds: 2), () {
-            _htmlRenderCtr.queryReplyList(reqType: 'onLoad');
-          });
-        }
+    scrollController.addListener(() {
+      // 分页加载
+      if (scrollController.position.pixels >=
+          scrollController.position.maxScrollExtent - 300) {
+        EasyThrottle.throttle('replylist', const Duration(seconds: 2), () {
+          _htmlRenderCtr.queryReplyList(reqType: 'onLoad');
+        });
+      }
 
-        // 标题
-        // if (scrollController.offset > 55 && !_visibleTitle) {
-        //   _visibleTitle = true;
-        //   titleStreamC.add(true);
-        // } else if (scrollController.offset <= 55 && _visibleTitle) {
-        //   _visibleTitle = false;
-        //   titleStreamC.add(false);
-        // }
+      // 标题
+      // if (scrollController.offset > 55 && !_visibleTitle) {
+      //   _visibleTitle = true;
+      //   titleStreamC.add(true);
+      // } else if (scrollController.offset <= 55 && _visibleTitle) {
+      //   _visibleTitle = false;
+      //   titleStreamC.add(false);
+      // }
 
-        // fab按钮
-        final ScrollDirection direction =
-            scrollController.position.userScrollDirection;
-        if (direction == ScrollDirection.forward) {
-          _showFab();
-        } else if (direction == ScrollDirection.reverse) {
-          _hideFab();
-        }
-      },
-    );
+      // fab按钮
+      final ScrollDirection direction =
+          scrollController.position.userScrollDirection;
+      if (direction == ScrollDirection.forward) {
+        _showFab();
+      } else if (direction == ScrollDirection.reverse) {
+        _hideFab();
+      }
+    });
   }
 
   void _showFab() {
@@ -109,10 +107,7 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
         appBar: AppBar(
           titleSpacing: 0,
           centerTitle: false,
-          title: Text(
-            '评论详情',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          title: Text('评论详情', style: Theme.of(context).textTheme.titleMedium),
         ),
         body: VideoReplyReplyPanel(
           oid: oid,
@@ -131,20 +126,20 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
       appBar: AppBar(
         centerTitle: false,
         titleSpacing: 0,
-        title: Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        title: Text(title, style: Theme.of(context).textTheme.titleMedium),
         actions: [
           const SizedBox(width: 4),
           IconButton(
             tooltip: '用内置浏览器打开',
             onPressed: () {
-              Get.toNamed('/webview', parameters: {
-                'url': url.startsWith('http') ? url : 'https:$url',
-                'type': 'url',
-                'pageTitle': title,
-              });
+              Get.toNamed(
+                '/webview',
+                parameters: {
+                  'url': url.startsWith('http') ? url : 'https:$url',
+                  'type': 'url',
+                  'pageTitle': title,
+                },
+              );
             },
             icon: const Icon(Icons.open_in_browser_outlined, size: 19),
           ),
@@ -152,9 +147,7 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
             icon: const Icon(Icons.more_vert),
             itemBuilder: (BuildContext context) => <PopupMenuEntry>[
               PopupMenuItem(
-                onTap: () => {
-                  _htmlRenderCtr.reqHtml(id),
-                },
+                onTap: () => {_htmlRenderCtr.reqHtml(id)},
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -166,11 +159,14 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
               ),
               PopupMenuItem(
                 onTap: () => {
-                  Get.toNamed('/webview', parameters: {
-                    'url': url.startsWith('http') ? url : 'https:$url',
-                    'type': 'url',
-                    'pageTitle': title,
-                  }),
+                  Get.toNamed(
+                    '/webview',
+                    parameters: {
+                      'url': url.startsWith('http') ? url : 'https:$url',
+                      'type': 'url',
+                      'pageTitle': title,
+                    },
+                  ),
                 },
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
@@ -208,139 +204,51 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
               ),
             ],
           ),
-          const SizedBox(width: 6)
+          const SizedBox(width: 6),
         ],
       ),
       body: Stack(
         children: [
-          OrientationBuilder(builder: (context, orientation) {
-            double padding = max(context.width / 2 - Grid.maxRowWidth, 0);
-            return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(
-                  child: SingleChildScrollView(
-                controller: orientation == Orientation.portrait
-                    ? scrollController
-                    : ScrollController(),
-                child: Padding(
-                    padding: orientation == Orientation.portrait
-                        ? EdgeInsets.symmetric(horizontal: padding)
-                        : EdgeInsets.only(left: padding / 2),
-                    child: FutureBuilder(
-                      future: _futureBuilderFuture,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.done &&
-                            snapshot.hasData) {
-                          var data = snapshot.data;
-                          // fabAnimationCtr.forward();
-                          if (data != null && data['status']) {
-                            return Column(
-                              children: [
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(12, 12, 12, 8),
-                                  child: Row(
-                                    children: [
-                                      NetworkImgLayer(
-                                        width: 40,
-                                        height: 40,
-                                        type: 'avatar',
-                                        src: _htmlRenderCtr.response['avatar']!,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(_htmlRenderCtr.response['uname'],
-                                              style: TextStyle(
-                                                fontSize: Theme.of(context)
-                                                    .textTheme
-                                                    .titleSmall!
-                                                    .fontSize,
-                                              )),
-                                          Text(
-                                            _htmlRenderCtr
-                                                .response['updateTime'],
-                                            style: TextStyle(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .outline,
-                                              fontSize: Theme.of(context)
-                                                  .textTheme
-                                                  .labelSmall!
-                                                  .fontSize,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const Spacer(),
-                                    ],
-                                  ),
-                                ),
-                                Padding(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                                  child: LayoutBuilder(
-                                    builder: (context, boxConstraints) {
-                                      return HtmlRender(
-                                        htmlContent:
-                                            _htmlRenderCtr.response['content'],
-                                        constrainedWidth:
-                                            boxConstraints.maxWidth,
-                                      );
-                                    },
-                                  ),
-                                ),
-                                if (orientation == Orientation.portrait) ...[
-                                  Divider(
-                                      thickness: 8,
-                                      color: Theme.of(context)
-                                          .dividerColor
-                                          .withOpacity(0.05)),
-                                  replyHeader(),
-                                  replyList(),
-                                ]
-                              ],
-                            );
-                          } else {
-                            return const Text('error');
-                          }
-                        } else {
-                          // 骨架屏
-                          return const SizedBox();
-                        }
-                      },
-                    )),
-              )),
-              if (orientation == Orientation.landscape) ...[
-                VerticalDivider(
-                    thickness: 8,
-                    color: Theme.of(context).dividerColor.withOpacity(0.05)),
-                Expanded(
-                    child: SingleChildScrollView(
+          OrientationBuilder(
+            builder: (context, orientation) {
+              double padding = max(context.width / 2 - Grid.maxRowWidth, 0);
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: _articlePane(context, orientation, padding)),
+                  if (orientation == Orientation.landscape) ...[
+                    VerticalDivider(
+                      thickness: 8,
+                      color: Theme.of(context).dividerColor.withOpacity(0.05),
+                    ),
+                    Expanded(
+                      child: SingleChildScrollView(
                         controller: scrollController,
                         child: Padding(
-                            padding: EdgeInsets.only(right: padding / 2),
-                            child: Column(
-                              children: [
-                                replyHeader(),
-                                replyList(),
-                              ],
-                            ))))
-              ]
-            ]);
-          }),
+                          padding: EdgeInsets.only(right: padding / 2),
+                          child: Column(children: [replyHeader(), replyList()]),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
           Positioned(
             bottom: MediaQuery.of(context).padding.bottom + 14,
             right: 14,
             child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 2),
-                end: const Offset(0, 0),
-              ).animate(CurvedAnimation(
-                parent: fabAnimationCtr,
-                curve: Curves.easeInOut,
-              )),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 2),
+                    end: const Offset(0, 0),
+                  ).animate(
+                    CurvedAnimation(
+                      parent: fabAnimationCtr,
+                      curve: Curves.easeInOut,
+                    ),
+                  ),
               child: FloatingActionButton(
                 heroTag: null,
                 onPressed: () {
@@ -363,8 +271,8 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
                       if (value != null && value['data'] != null)
                         {
                           _htmlRenderCtr.replyList.insert(0, value['data']),
-                          _htmlRenderCtr.acount.value++
-                        }
+                          _htmlRenderCtr.acount.value++,
+                        },
                     },
                   );
                 },
@@ -375,6 +283,121 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _articlePane(
+    BuildContext context,
+    Orientation orientation,
+    double padding,
+  ) {
+    final outerPadding = orientation == Orientation.portrait
+        ? EdgeInsets.symmetric(horizontal: padding)
+        : EdgeInsets.only(left: padding / 2);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final htmlWidth = max(
+          constraints.maxWidth - outerPadding.horizontal - 24,
+          0.0,
+        );
+        return FutureBuilder(
+          future: _futureBuilderFuture,
+          builder: (context, snapshot) {
+            final slivers = <Widget>[];
+            if (snapshot.connectionState == ConnectionState.done &&
+                snapshot.hasData) {
+              final data = snapshot.data;
+              if (data != null && data['status']) {
+                slivers.addAll([
+                  SliverPadding(
+                    padding: outerPadding.add(
+                      const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                    ),
+                    sliver: SliverToBoxAdapter(child: _articleAuthor(context)),
+                  ),
+                  SliverPadding(
+                    padding: outerPadding.add(
+                      const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                    ),
+                    sliver: HtmlRenderSliver(
+                      htmlContent: _htmlRenderCtr.response['content'],
+                      constrainedWidth: htmlWidth,
+                    ),
+                  ),
+                  if (orientation == Orientation.portrait)
+                    SliverPadding(
+                      padding: outerPadding,
+                      sliver: SliverToBoxAdapter(
+                        child: Column(
+                          children: [
+                            Divider(
+                              thickness: 8,
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withOpacity(0.05),
+                            ),
+                            replyHeader(),
+                            replyList(),
+                          ],
+                        ),
+                      ),
+                    ),
+                ]);
+              } else {
+                slivers.add(
+                  SliverPadding(
+                    padding: outerPadding,
+                    sliver: const SliverToBoxAdapter(child: Text('error')),
+                  ),
+                );
+              }
+            } else {
+              slivers.add(const SliverToBoxAdapter(child: SizedBox()));
+            }
+            return SelectionArea(
+              child: CustomScrollView(
+                controller: orientation == Orientation.portrait
+                    ? scrollController
+                    : null,
+                slivers: slivers,
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _articleAuthor(BuildContext context) {
+    return Row(
+      children: [
+        NetworkImgLayer(
+          width: 40,
+          height: 40,
+          type: 'avatar',
+          src: _htmlRenderCtr.response['avatar']!,
+        ),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _htmlRenderCtr.response['uname'],
+              style: TextStyle(
+                fontSize: Theme.of(context).textTheme.titleSmall!.fontSize,
+              ),
+            ),
+            Text(
+              _htmlRenderCtr.response['updateTime'],
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.outline,
+                fontSize: Theme.of(context).textTheme.labelSmall!.fontSize,
+              ),
+            ),
+          ],
+        ),
+        const Spacer(),
+      ],
     );
   }
 
@@ -397,7 +420,8 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
                 if (index == _htmlRenderCtr.replyList.length) {
                   return Container(
                     padding: EdgeInsets.only(
-                        bottom: MediaQuery.of(context).padding.bottom),
+                      bottom: MediaQuery.of(context).padding.bottom,
+                    ),
                     height: MediaQuery.of(context).padding.bottom + 100,
                     child: Center(
                       child: Obx(
@@ -448,7 +472,7 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
                 ),
               ),
             ),
-          )
+          ),
         ],
       ),
     );
