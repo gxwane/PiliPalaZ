@@ -31,6 +31,7 @@ import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
 import 'package:pilipalaz/plugin/pl_player/player_buffer_policy.dart';
 import 'package:pilipalaz/plugin/pl_player/playback_commands.dart';
+import 'package:pilipalaz/plugin/pl_player/playback_lifecycle.dart';
 import 'package:pilipalaz/plugin/pl_player/playback_position_guard.dart';
 import 'package:pilipalaz/services/diagnostics/diagnostic_record.dart';
 import 'package:pilipalaz/services/diagnostics/local_diagnostics.dart';
@@ -124,7 +125,9 @@ class PlPlayerController with WidgetsBindingObserver {
   final PlaybackPositionGuard _positionGuard = PlaybackPositionGuard();
   Future<void> _sourceOperation = Future<void>.value();
   Timer? _retryTimer;
-  int _playbackSession = 0;
+  final PlaybackLifecycle _playbackLifecycle = PlaybackLifecycle();
+  final Rx<PlaybackLifecycleState> playbackLifecycleState =
+      PlaybackLifecycleState.idle.obs;
   bool _positionCorrectionInFlight = false;
   bool _refreshInFlight = false;
   bool _nativePlayerStale = false;
@@ -213,6 +216,15 @@ class PlPlayerController with WidgetsBindingObserver {
 
   /// [videoPlayerController] instance of Player
   Player? get videoPlayerController => _videoPlayerController;
+
+  int get _playbackSession => _playbackLifecycle.session;
+
+  bool get canControlPlayback =>
+      _playbackLifecycle.canControlPlayback &&
+      _playbackCommands != null &&
+      _videoPlayerController != null;
+
+  bool get isPlaying => canControlPlayback && playerStatus.playing;
 
   /// [videoController] instance of Player
   VideoController? get videoController => _videoController;
@@ -668,7 +680,8 @@ class PlPlayerController with WidgetsBindingObserver {
     HardwareDecodeFailureHandler? onHardwareDecodeFailure,
   }) async {
     _resourceOwnership.claim(owner);
-    final int session = ++_playbackSession;
+    final int session = _playbackLifecycle.beginLoading();
+    playbackLifecycleState.value = _playbackLifecycle.state;
     _hardwareDecodeFallbackGuard.beginSession(
       session,
       enabled:
@@ -759,6 +772,9 @@ class PlPlayerController with WidgetsBindingObserver {
       // listen the video player events
       startListeners(session);
       await _initializePlayer();
+      if (_playbackLifecycle.markReady(session)) {
+        playbackLifecycleState.value = _playbackLifecycle.state;
+      }
       await _diagnosticSession?.checkpoint('playback_initialized');
       if (videoType.value != 'live' && _cid != 0) {
         refreshVideoMetaInfo().then((_) {
@@ -769,6 +785,10 @@ class PlPlayerController with WidgetsBindingObserver {
       }
     } catch (err, stackTrace) {
       dataStatus.status.value = DataStatus.error;
+      if (_playbackLifecycle.isCurrent(session)) {
+        _playbackLifecycle.markIdle();
+        playbackLifecycleState.value = _playbackLifecycle.state;
+      }
       await _diagnosticSession?.checkpoint(
         'set_data_source_error',
         <String, Object?>{'error': err.toString()},
@@ -2285,9 +2305,12 @@ class PlPlayerController with WidgetsBindingObserver {
       } else if (!_resourceOwnership.release(owner!)) {
         return;
       }
-      ++_playbackSession;
+      _playbackLifecycle.beginRelease();
+      playbackLifecycleState.value = _playbackLifecycle.state;
       _retryTimer?.cancel();
       await _disposeNativePlayer();
+      _playbackLifecycle.markIdle();
+      playbackLifecycleState.value = _playbackLifecycle.state;
       _nativePlayerStale = false;
       await diagnostic?.complete('native_player_released');
       if (identical(_diagnosticSession, diagnostic)) {
