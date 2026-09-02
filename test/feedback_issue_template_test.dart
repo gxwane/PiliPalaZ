@@ -5,28 +5,31 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const templateDirectory = '.github/ISSUE_TEMPLATE';
 
-  test('bug report form collects reproducible details with privacy guidance', () {
-    final source = File(
-      '$templateDirectory/bug_report.yml',
-    ).readAsStringSync();
+  test(
+    'bug report form collects reproducible details with privacy guidance',
+    () {
+      final source = File(
+        '$templateDirectory/bug_report.yml',
+      ).readAsStringSync();
 
-    for (final field in <String>[
-      'app_version',
-      'platform',
-      'system',
-      'description',
-      'steps',
-      'expected',
-      'diagnostics',
-      'confirmations',
-    ]) {
-      expect(source, contains('id: $field'));
-    }
+      for (final field in <String>[
+        'app_version',
+        'platform',
+        'system',
+        'description',
+        'steps',
+        'expected',
+        'diagnostics',
+        'confirmations',
+      ]) {
+        expect(source, contains('id: $field'));
+      }
 
-    expect(source, contains('Cookie'));
-    expect(source, contains('令牌'));
-    expect(source, contains('本地诊断'));
-  });
+      expect(source, contains('Cookie'));
+      expect(source, contains('令牌'));
+      expect(source, contains('本地诊断'));
+    },
+  );
 
   test('feature request form documents scope and privacy impact', () {
     final source = File(
