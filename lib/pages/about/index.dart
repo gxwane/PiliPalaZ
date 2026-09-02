@@ -1,5 +1,6 @@
 import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/widgets/app_update_center.dart';
+import 'package:pilipalaz/common/widgets/feedback_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -173,7 +174,7 @@ class _AboutPageState extends State<AboutPage> {
             trailing: Text('github.com/gxwane/PiliPalaZ', style: subTitleStyle),
           ),
           ListTile(
-            onTap: () => _aboutController.feedback(context),
+            onTap: () => showFeedbackDialog(context: context),
             leading: Icon(MdiIcons.chatAlert),
             title: const Text('问题反馈'),
             trailing: Icon(Icons.arrow_forward_ios, size: 16, color: outline),
@@ -353,28 +354,6 @@ class AboutController extends GetxController {
     return launchUrl(
       Uri.parse(ProjectLinks.releases),
       mode: LaunchMode.externalApplication,
-    );
-  }
-
-  // 问题反馈
-  Future<void> feedback(BuildContext context) async {
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return SimpleDialog(
-          title: const Text('问题反馈'),
-          children: [
-            ListTile(
-              title: const Text('GitHub Issue'),
-              onTap: () => launchUrl(
-                Uri.parse(ProjectLinks.issues),
-                // 系统自带浏览器打开
-                mode: LaunchMode.externalApplication,
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 
