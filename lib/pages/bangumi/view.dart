@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/bangumi/list.dart';
 import 'package:pilipalaz/models/common/pgc_type.dart';
 import 'package:pilipalaz/pages/home/index.dart';
@@ -25,8 +26,8 @@ class BangumiPage extends StatefulWidget {
 class _BangumiPageState extends State<BangumiPage>
     with AutomaticKeepAliveClientMixin {
   final BangumiController _bangumiController = Get.put(BangumiController());
-  late Future<dynamic> _catalogFuture;
-  late Future<dynamic> _followFuture;
+  late Future<ApiResult<BangumiListDataModel>> _catalogFuture;
+  late Future<ApiResult<BangumiListDataModel>?> _followFuture;
   late final ScrollController scrollController;
   late final VoidCallback _scrollListener;
 
@@ -75,15 +76,15 @@ class _BangumiPageState extends State<BangumiPage>
   }
 
   Future<void> _refresh() async {
-    final Future<dynamic> catalogFuture = _bangumiController
-        .queryBangumiListFeed();
-    final Future<dynamic> followFuture = _bangumiController
-        .queryBangumiFollow();
+    final Future<ApiResult<BangumiListDataModel>> catalogFuture =
+        _bangumiController.queryBangumiListFeed();
+    final Future<ApiResult<BangumiListDataModel>?> followFuture =
+        _bangumiController.queryBangumiFollow();
     setState(() {
       _catalogFuture = catalogFuture;
       _followFuture = followFuture;
     });
-    await Future.wait<dynamic>(<Future<dynamic>>[catalogFuture, followFuture]);
+    await Future.wait<Object?>(<Future<Object?>>[catalogFuture, followFuture]);
   }
 
   Future<void> _selectCatalog(PgcCatalogType value) async {
@@ -93,12 +94,11 @@ class _BangumiPageState extends State<BangumiPage>
     await _bangumiController.selectCatalog(value);
     if (!mounted) return;
 
-    final Future<dynamic> catalogFuture = _bangumiController
-        .queryBangumiListFeed();
+    final Future<ApiResult<BangumiListDataModel>> catalogFuture =
+        _bangumiController.queryBangumiListFeed();
     final bool followGroupChanged = previousGroup != value.followGroup;
-    final Future<dynamic>? followFuture = followGroupChanged
-        ? _bangumiController.queryBangumiFollow()
-        : null;
+    final Future<ApiResult<BangumiListDataModel>?>? followFuture =
+        followGroupChanged ? _bangumiController.queryBangumiFollow() : null;
     setState(() {
       _catalogFuture = catalogFuture;
       if (followFuture != null) _followFuture = followFuture;
@@ -163,12 +163,13 @@ class _BangumiPageState extends State<BangumiPage>
                   padding: const EdgeInsets.symmetric(
                     horizontal: pgcPageHorizontalPadding,
                   ),
-                  sliver: FutureBuilder<dynamic>(
+                  sliver: FutureBuilder<ApiResult<BangumiListDataModel>>(
                     future: _catalogFuture,
                     builder:
                         (
                           BuildContext context,
-                          AsyncSnapshot<dynamic> snapshot,
+                          AsyncSnapshot<ApiResult<BangumiListDataModel>>
+                          snapshot,
                         ) {
                           final List<BangumiListItemModel> items =
                               _bangumiController.bangumiList.toList(
@@ -176,13 +177,11 @@ class _BangumiPageState extends State<BangumiPage>
                               );
                           final bool waiting =
                               snapshot.connectionState != ConnectionState.done;
-                          final Map<dynamic, dynamic>? result =
-                              snapshot.data is Map
-                              ? snapshot.data as Map<dynamic, dynamic>
-                              : null;
-                          if (!waiting && result?['status'] != true) {
+                          final result = snapshot.data;
+                          if (!waiting &&
+                              result is ApiFailure<BangumiListDataModel>) {
                             return HttpError(
-                              errMsg: result?['msg']?.toString(),
+                              errMsg: result.message,
                               fn: _retryCatalog,
                             );
                           }
@@ -204,35 +203,38 @@ class _BangumiPageState extends State<BangumiPage>
         return const SizedBox.shrink();
       }
       final PgcCatalogType catalogType = _bangumiController.catalogType.value;
-      return FutureBuilder<dynamic>(
+      return FutureBuilder<ApiResult<BangumiListDataModel>?>(
         future: _followFuture,
-        builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-          final List<BangumiListItemModel> items = _bangumiController
-              .bangumiFollowList
-              .toList(growable: false);
-          final bool waiting = snapshot.connectionState != ConnectionState.done;
-          final Map<dynamic, dynamic>? result = snapshot.data is Map
-              ? snapshot.data as Map<dynamic, dynamic>
-              : null;
-          String? errorMessage;
-          if (!waiting && result?['status'] != true) {
-            errorMessage = result?['msg']?.toString() ?? '请求异常';
-          }
-          return PgcContinueSection(
-            title: catalogType.continueSectionLabel,
-            scopeLabel: catalogType.followGroup.continueScopeLabel,
-            items: items,
-            loading: waiting,
-            errorMessage: errorMessage,
-            onRetry: _retryFollow,
-            onTap: (BangumiListItemModel item) {
-              PgcPlaybackCoordinator.open(
-                seasonId: item.seasonId,
-                pic: item.cover,
+        builder:
+            (
+              BuildContext context,
+              AsyncSnapshot<ApiResult<BangumiListDataModel>?> snapshot,
+            ) {
+              final List<BangumiListItemModel> items = _bangumiController
+                  .bangumiFollowList
+                  .toList(growable: false);
+              final bool waiting =
+                  snapshot.connectionState != ConnectionState.done;
+              String? errorMessage;
+              final result = snapshot.data;
+              if (!waiting && result is ApiFailure<BangumiListDataModel>) {
+                errorMessage = result.message;
+              }
+              return PgcContinueSection(
+                title: catalogType.continueSectionLabel,
+                scopeLabel: catalogType.followGroup.continueScopeLabel,
+                items: items,
+                loading: waiting,
+                errorMessage: errorMessage,
+                onRetry: _retryFollow,
+                onTap: (BangumiListItemModel item) {
+                  PgcPlaybackCoordinator.open(
+                    seasonId: item.seasonId,
+                    pic: item.cover,
+                  );
+                },
               );
             },
-          );
-        },
       );
     });
   }

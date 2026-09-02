@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/bangumi/info.dart';
 import 'package:pilipalaz/services/pgc_vip_entitlement_resolver.dart';
 
@@ -50,12 +51,9 @@ void main() {
         loader: ({int? seasonId, int? epId}) async {
           calls += 1;
           await Future<void>.delayed(const Duration(milliseconds: 5));
-          return <String, dynamic>{
-            'status': true,
-            'data': BangumiInfoModel(
-              episodes: <EpisodeItem>[EpisodeItem(status: 2)],
-            ),
-          };
+          return ApiSuccess<BangumiInfoModel>(
+            BangumiInfoModel(episodes: <EpisodeItem>[EpisodeItem(status: 2)]),
+          );
         },
       );
 
@@ -82,12 +80,9 @@ void main() {
           if (active > peak) peak = active;
           await Future<void>.delayed(const Duration(milliseconds: 10));
           active -= 1;
-          return <String, dynamic>{
-            'status': true,
-            'data': BangumiInfoModel(
-              episodes: <EpisodeItem>[EpisodeItem(status: 2)],
-            ),
-          };
+          return ApiSuccess<BangumiInfoModel>(
+            BangumiInfoModel(episodes: <EpisodeItem>[EpisodeItem(status: 2)]),
+          );
         },
       );
 
@@ -106,7 +101,10 @@ void main() {
       final PgcVipEntitlementResolver resolver = PgcVipEntitlementResolver(
         loader: ({int? seasonId, int? epId}) async {
           calls += 1;
-          return <String, dynamic>{'status': false};
+          return const ApiFailure<BangumiInfoModel>(
+            kind: ApiFailureKind.network,
+            message: 'offline',
+          );
         },
       );
 

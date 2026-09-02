@@ -1,4 +1,5 @@
 import 'package:pilipalaz/http/danmaku.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/danmaku/dm.pb.dart';
 
 import '../../utils/storage.dart';
@@ -16,20 +17,27 @@ class PlDanmakuController {
   Map<int, List<DanmakuElem>> dmSegMap = {};
   // 已请求的段落标记
   List<bool> requestedSeg = [];
+  bool _disposed = false;
 
   bool get initiated => requestedSeg.isNotEmpty;
 
   static int segmentLength = 60 * 6 * 1000;
 
   static void refresh() {
-    danmakuWeight =
-        GStorage.setting.get(SettingBoxKey.danmakuWeight, defaultValue: 0);
-    danmakuFilter = GStorage.onlineCache.get(OnlineCacheKey.danmakuFilterRule,
-        defaultValue: []).map<Map<String, dynamic>>((e) {
-      return Map<String, dynamic>.from(e);
-    }).toList();
-    convertToScrollDanmaku = GStorage.setting
-        .get(SettingBoxKey.convertToScrollDanmaku, defaultValue: true);
+    danmakuWeight = GStorage.setting.get(
+      SettingBoxKey.danmakuWeight,
+      defaultValue: 0,
+    );
+    danmakuFilter = GStorage.onlineCache
+        .get(OnlineCacheKey.danmakuFilterRule, defaultValue: [])
+        .map<Map<String, dynamic>>((e) {
+          return Map<String, dynamic>.from(e);
+        })
+        .toList();
+    convertToScrollDanmaku = GStorage.setting.get(
+      SettingBoxKey.convertToScrollDanmaku,
+      defaultValue: true,
+    );
   }
 
   void initiate(int videoDuration, int progress) {
@@ -44,6 +52,7 @@ class PlDanmakuController {
   }
 
   void dispose() {
+    _disposed = true;
     danmakuFilter.clear();
     dmSegMap.clear();
     requestedSeg.clear();
@@ -54,15 +63,23 @@ class PlDanmakuController {
   }
 
   void queryDanmaku(int segmentIndex) async {
-    if (requestedSeg.length <= segmentIndex) {
+    if (_disposed || segmentIndex < 0 || requestedSeg.length <= segmentIndex) {
       return;
     }
     assert(requestedSeg[segmentIndex] == false);
     requestedSeg[segmentIndex] = true;
-    final DmSegMobileReply result = await DanmakaHttp.queryDanmaku(
-        cid: cid, segmentIndex: segmentIndex + 1);
-    if (result.elems.isNotEmpty) {
-      for (var element in result.elems) {
+    final result = await DanmakuApi.instance.queryDanmaku(
+      cid: cid,
+      segmentIndex: segmentIndex + 1,
+    );
+    if (_disposed) return;
+    if (result case ApiFailure<DmSegMobileReply>()) {
+      requestedSeg[segmentIndex] = false;
+      return;
+    }
+    final reply = (result as ApiSuccess<DmSegMobileReply>).data;
+    if (reply.elems.isNotEmpty) {
+      for (var element in reply.elems) {
         int pos = element.progress ~/ 100; //每0.1秒存储一次
         dmSegMap[pos] ??= [];
         int i = dmSegMap[pos]!.indexWhere((e) => element.weight > e.weight);

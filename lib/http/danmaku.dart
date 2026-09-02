@@ -1,109 +1,126 @@
-import 'package:dio/dio.dart';
-import '../models/danmaku/dm.pb.dart';
-import 'index.dart';
+import 'dart:typed_data';
 
-class DanmakaHttp {
-  // 获取视频弹幕
-  static Future<DmSegMobileReply> queryDanmaku({
+import 'package:dio/dio.dart';
+
+import '../models/danmaku/dm.pb.dart';
+import 'api.dart';
+import 'api_client.dart';
+import 'api_decoder.dart';
+import 'api_result.dart';
+import 'http_runtime.dart';
+
+final class DanmakuSendReceipt {
+  const DanmakuSendReceipt(this.data);
+
+  final Object? data;
+}
+
+final class DanmakuApi {
+  DanmakuApi({
+    ApiClient? client,
+    Future<void> Function(Duration duration)? delay,
+  }) : _client = client ?? HttpRuntime.instance.client,
+       _delay = delay ?? Future<void>.delayed;
+
+  static DanmakuApi? _instance;
+
+  static DanmakuApi get instance => _instance ??= DanmakuApi();
+
+  final ApiClient _client;
+  final Future<void> Function(Duration duration) _delay;
+
+  Future<ApiResult<DmSegMobileReply>> queryDanmaku({
     required int cid,
     required int segmentIndex,
-    int maxRetries = 3, // 最大重试次数
+    int maxAttempts = 3,
   }) async {
-    Map<String, int> params = {
-      'type': 1,
-      'oid': cid,
-      'segment_index': segmentIndex,
-    };
-
-    int retryCount = 0;
-    while (retryCount < maxRetries) {
-      var response = await Request().get(
+    final attempts = maxAttempts < 1 ? 1 : maxAttempts;
+    ApiFailure<DmSegMobileReply>? lastFailure;
+    for (var attempt = 0; attempt < attempts; attempt += 1) {
+      final response = await _client.getBytes(
         Api.webDanmaku,
-        data: params,
-        extra: {'resType': ResponseType.bytes},
+        endpoint: 'danmaku.segment',
+        queryParameters: <String, dynamic>{
+          'type': 1,
+          'oid': cid,
+          'segment_index': segmentIndex,
+        },
       );
-
-      if (response.statusCode == 200) {
-        return response.data != null
-            ? DmSegMobileReply.fromBuffer(response.data)
-            : DmSegMobileReply();
+      if (response case ApiSuccess<Uint8List>(:final data, :final statusCode)) {
+        try {
+          return ApiSuccess<DmSegMobileReply>(
+            DmSegMobileReply.fromBuffer(data),
+            statusCode: statusCode,
+          );
+        } catch (_) {
+          return const ApiFailure<DmSegMobileReply>(
+            kind: ApiFailureKind.decoding,
+            message: '弹幕数据无法解析',
+            endpoint: 'danmaku.segment',
+          );
+        }
       }
-      print('第${retryCount + 1}次重试失败, 状态码:${response.statusCode}');
-      retryCount++;
-      await Future.delayed(const Duration(seconds: 1)); // 重试间隔时间
-    }
 
-    print('所有重试失败，返回默认值');
-    return DmSegMobileReply();
+      lastFailure = (response as ApiFailure<Uint8List>)
+          .cast<DmSegMobileReply>();
+      if (!lastFailure.retryable || attempt == attempts - 1) {
+        return lastFailure;
+      }
+      await _delay(const Duration(seconds: 1));
+    }
+    return lastFailure ??
+        const ApiFailure<DmSegMobileReply>(
+          kind: ApiFailureKind.unknown,
+          message: '弹幕加载失败',
+          endpoint: 'danmaku.segment',
+        );
   }
 
-  static Future shootDanmaku({
-    int type = 1, //弹幕类选择(1：视频弹幕 2：漫画弹幕)
-    required int oid, // 视频cid
-    required String msg, //弹幕文本(长度小于 100 字符)
-    int mode =
-        1, // 弹幕类型(1：滚动弹幕 4：底端弹幕 5：顶端弹幕 6：逆向弹幕(不能使用） 7：高级弹幕 8：代码弹幕（不能使用） 9：BAS弹幕（pool必须为2）)
-    // String? aid,// 稿件avid
-    // String? bvid,// bvid与aid必须有一个
+  Future<ApiResult<DanmakuSendReceipt>> shootDanmaku({
+    int type = 1,
+    required int oid,
+    required String message,
+    int mode = 1,
     required String bvid,
-    int? progress, // 弹幕出现在视频内的时间（单位为毫秒，默认为0）
-    int? color, // 弹幕颜色(默认白色，16777215）
-    int? fontsize, // 弹幕字号（默认25）
-    int? pool, // 弹幕池选择（0：普通池 1：字幕池 2：特殊池（代码/BAS弹幕）默认普通池，0）
-    //int? rnd,// 当前时间戳*1000000（若无此项，则发送弹幕冷却时间限制为90s；若有此项，则发送弹幕冷却时间限制为5s）
-    int? colorful, //60001：专属渐变彩色（需要会员）
-    int? checkbox_type, //是否带 UP 身份标识（0：普通；4：带有标识）
-    // String? csrf,//CSRF Token（位于 Cookie）	Cookie 方式必要
-    // String? access_key,//	APP 登录 Token		APP 方式必要
+    int? progress,
+    int? color,
+    int? fontSize,
+    int? pool,
+    int? colorful,
+    int? checkboxType,
   }) async {
-    // 构建参数对象
-    // assert(aid != null || bvid != null);
-    // assert(csrf != null || access_key != null);
-    assert(msg.length < 100);
-    // 构建参数对象
-    var params = <String, dynamic>{
+    if (message.length >= 100) {
+      return const ApiFailure<DanmakuSendReceipt>(
+        kind: ApiFailureKind.apiRejected,
+        message: '弹幕内容不能超过 99 个字符',
+        endpoint: 'danmaku.shoot',
+      );
+    }
+    final params = <String, dynamic>{
       'type': type,
       'oid': oid,
-      'msg': msg,
+      'msg': message,
       'mode': mode,
-      //'aid': aid,
       'bvid': bvid,
       'progress': progress,
       'color': color,
-      'fontsize': fontsize,
+      'fontsize': fontSize,
       'pool': pool,
       'rnd': DateTime.now().microsecondsSinceEpoch,
       'colorful': colorful,
-      'checkbox_type': checkbox_type,
-      'csrf': await Request.getCsrf(),
-      // 'access_key': access_key,
-    }..removeWhere((key, value) => value == null);
+      'checkbox_type': checkboxType,
+      'csrf': await HttpRuntime.instance.getCsrf(),
+    }..removeWhere((_, value) => value == null);
 
-    var response = await Request().post(
+    return _client.postJson<DanmakuSendReceipt>(
       Api.shootDanmaku,
+      endpoint: 'danmaku.shoot',
       data: params,
-      options: Options(
-        contentType: Headers.formUrlEncodedContentType,
+      options: Options(contentType: Headers.formUrlEncodedContentType),
+      decode: (json) => BiliApiDecoder.data<DanmakuSendReceipt>(
+        json,
+        decode: DanmakuSendReceipt.new,
       ),
     );
-    if (response.statusCode != 200) {
-      return {
-        'status': false,
-        'data': [],
-        'msg': '弹幕发送失败，状态码:${response.statusCode}',
-      };
-    }
-    if (response.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': response.data['data'],
-      };
-    } else {
-      return {
-        'status': false,
-        'data': [],
-        'msg': "${response.data['code']}: ${response.data['message']}",
-      };
-    }
   }
 }

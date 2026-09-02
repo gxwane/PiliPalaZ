@@ -2,6 +2,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 
 import '../http/pgc.dart';
+import '../http/api_result.dart';
 import '../models/bangumi/info.dart';
 import '../models/common/pgc_type.dart';
 import '../models/common/search_type.dart';
@@ -68,17 +69,18 @@ class PgcPlaybackCoordinator {
       return false;
     }
     SmartDialog.showLoading(msg: '获取中...');
-    final Map<String, dynamic> result = await PgcHttp.infoWithFollowStatus(
+    final result = await PgcApi.instance.infoWithFollowStatus(
       seasonId: seasonId,
       epId: epId,
     );
     await SmartDialog.dismiss();
-    if (result['status'] != true) {
-      SmartDialog.showToast(result['msg']?.toString() ?? '影视内容获取失败');
+    if (result case final ApiFailure<PgcInfoBundle> failure) {
+      SmartDialog.showToast(failure.message);
       return false;
     }
 
-    final BangumiInfoModel info = result['data'];
+    final BangumiInfoModel info =
+        (result as ApiSuccess<PgcInfoBundle>).data.detail;
     try {
       final EpisodeItem episode = PgcEpisodeSelector.select(
         episodes: info.episodes ?? const <EpisodeItem>[],

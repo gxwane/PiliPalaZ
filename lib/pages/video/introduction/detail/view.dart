@@ -195,13 +195,18 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
   // 用户主页
   onPushMember() {
     feedBack();
-    mid = !loadingStatus
-        ? widget.videoDetail!.owner!.mid
-        : videoItem['owner'].mid;
+    final int? resolvedMid = !loadingStatus
+        ? widget.videoDetail?.owner?.mid
+        : videoItem['owner']?.mid;
+    if (resolvedMid == null) {
+      SmartDialog.showToast('UP 主信息不完整');
+      return;
+    }
+    mid = resolvedMid;
     memberHeroTag = Utils.makeHeroTag(mid);
     String face = !loadingStatus
-        ? widget.videoDetail!.owner!.face
-        : videoItem['owner'].face;
+        ? widget.videoDetail?.owner?.face ?? ''
+        : videoItem['owner']?.face ?? '';
     Get.toNamed('/member?mid=$mid',
         arguments: {'face': face, 'heroTag': memberHeroTag});
   }
@@ -237,7 +242,7 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
                           type: 'avatar',
                           src: loadingStatus
                               ? videoItem['owner']?.face ?? ""
-                              : widget.videoDetail!.owner!.face,
+                              : widget.videoDetail?.owner?.face ?? '',
                           width: 30,
                           height: 30,
                           fadeInDuration: Duration.zero,
@@ -251,7 +256,7 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
                             Text(
                               loadingStatus
                                   ? videoItem['owner']?.name ?? ""
-                                  : widget.videoDetail!.owner!.name,
+                                  : widget.videoDetail?.owner?.name ?? '未知 UP 主',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
@@ -261,9 +266,9 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
                             const SizedBox(height: 0),
                             Obx(() => Text(
                                   Utils.numFormat(videoIntroController
-                                      .userStat.value['follower']),
+                                      .userStat.value.follower ?? '-'),
                                   semanticsLabel:
-                                      "${Utils.numFormat(videoIntroController.userStat.value['follower'])}粉丝",
+                                      "${Utils.numFormat(videoIntroController.userStat.value.follower ?? '-')}粉丝",
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: t.colorScheme.outline,
@@ -445,14 +450,13 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
                 ),
               ),
               Obx(
-                () => videoIntroController.queryVideoIntroData.value["status"]
+                () => videoIntroController.videoIntroFailure.value == null
                     ? const SizedBox()
                     : Center(
                         child: TextButton.icon(
                           icon: const Icon(Icons.refresh),
                           onPressed: () {
-                            videoIntroController
-                                .queryVideoIntroData.value["status"] = true;
+                            videoIntroController.videoIntroFailure.value = null;
                             videoIntroController.queryVideoIntro();
                           },
                           label: const Text("点此重新加载"),

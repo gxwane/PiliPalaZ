@@ -4,7 +4,10 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/widgets/badge.dart';
+import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/http/pgc.dart';
 import 'package:pilipalaz/common/widgets/stat/danmu.dart';
 import 'package:pilipalaz/common/widgets/stat/view.dart';
 import 'package:pilipalaz/models/bangumi/info.dart';
@@ -35,7 +38,7 @@ class _BangumiIntroPanelState extends State<BangumiIntroPanel>
   late BangumiIntroController bangumiIntroController;
   late VideoDetailController videoDetailCtr;
   BangumiInfoModel? bangumiDetail;
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<PgcInfoBundle>> _futureBuilderFuture;
   late int cid;
   late String heroTag;
 
@@ -48,9 +51,9 @@ class _BangumiIntroPanelState extends State<BangumiIntroPanel>
     super.initState();
     // heroTag = Get.arguments['heroTag'];
     heroTag = widget.heroTag;
-    cid = widget.cid!;
     bangumiIntroController = Get.put(BangumiIntroController(), tag: heroTag);
     videoDetailCtr = Get.find<VideoDetailController>(tag: heroTag);
+    cid = widget.cid ?? videoDetailCtr.cid.value;
     bangumiIntroController.bangumiDetail.listen((BangumiInfoModel value) {
       bangumiDetail = value;
     });
@@ -65,34 +68,41 @@ class _BangumiIntroPanelState extends State<BangumiIntroPanel>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return FutureBuilder(
+    return FutureBuilder<ApiResult<PgcInfoBundle>>(
       future: _futureBuilderFuture,
-      builder: (BuildContext context, AsyncSnapshot snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          if (snapshot.data['status']) {
-            // 请求成功
-
-            return BangumiInfo(
-              loadingStatus: false,
-              bangumiDetail: bangumiDetail,
-              cid: cid,
+      builder:
+          (
+            BuildContext context,
+            AsyncSnapshot<ApiResult<PgcInfoBundle>> snapshot,
+          ) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return BangumiInfo(
+                loadingStatus: true,
+                bangumiDetail: bangumiDetail,
+                cid: cid,
+              );
+            }
+            final result = snapshot.data;
+            if (result case ApiSuccess<PgcInfoBundle>(:final data)) {
+              return BangumiInfo(
+                loadingStatus: false,
+                bangumiDetail: data.detail,
+                cid: cid,
+              );
+            }
+            final message = result is ApiFailure<PgcInfoBundle>
+                ? result.message
+                : '影视内容加载失败';
+            return HttpError(
+              errMsg: message,
+              fn: () {
+                setState(() {
+                  _futureBuilderFuture = bangumiIntroController
+                      .queryBangumiIntro();
+                });
+              },
             );
-          } else {
-            // 请求错误
-            // return HttpError(
-            //   errMsg: snapshot.data['msg'],
-            //   fn: () => Get.back(),
-            // );
-            return const SizedBox();
-          }
-        } else {
-          return BangumiInfo(
-            loadingStatus: true,
-            bangumiDetail: bangumiDetail,
-            cid: cid,
-          );
-        }
-      },
+          },
     );
   }
 }
@@ -125,8 +135,11 @@ class _BangumiInfoState extends State<BangumiInfo> {
         ? null
         : () async {
             setState(() => isProcessing = true);
-            await action();
-            setState(() => isProcessing = false);
+            try {
+              await action();
+            } finally {
+              if (mounted) setState(() => isProcessing = false);
+            }
           };
   }
 
@@ -136,7 +149,7 @@ class _BangumiInfoState extends State<BangumiInfo> {
     bangumiIntroController = Get.put(BangumiIntroController(), tag: heroTag);
     videoDetailCtr = Get.find<VideoDetailController>(tag: heroTag);
     bangumiItem = bangumiIntroController.bangumiItem;
-    cid = widget.cid!;
+    cid = widget.cid ?? videoDetailCtr.cid.value;
     print('cid:  $cid');
     videoDetailCtr.cid.listen((p0) {
       cid = p0;
@@ -147,7 +160,7 @@ class _BangumiInfoState extends State<BangumiInfo> {
 
   // 收藏
   showFavBottomSheet() {
-    if (bangumiIntroController.userInfo.mid == null) {
+    if (bangumiIntroController.userInfo?.mid == null) {
       SmartDialog.showToast('账号未登录');
       return;
     }

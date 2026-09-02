@@ -7,6 +7,7 @@ import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/constants.dart';
 import 'package:pilipalaz/http/video.dart';
 import 'package:pilipalaz/http/pgc.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/bangumi/info.dart';
 import 'package:pilipalaz/models/common/pgc_type.dart';
 import 'package:pilipalaz/models/common/search_type.dart';
@@ -143,7 +144,7 @@ class BangumiIntroController extends GetxController {
   }
 
   // 获取番剧简介&选集
-  Future queryBangumiIntro() async {
+  Future<ApiResult<PgcInfoBundle>> queryBangumiIntro() async {
     if (userLogin) {
       // 获取点赞状态
       queryHasLikeVideo();
@@ -152,39 +153,57 @@ class BangumiIntroController extends GetxController {
       // 获取收藏状态
       queryHasFavVideo();
     }
-    Map<String, dynamic> result;
-    String? followSyncError;
+    late ApiResult<PgcInfoBundle> result;
     if (bangumiItem != null) {
-      result = <String, dynamic>{'status': true, 'data': bangumiItem};
+      ApiFailure<UserStatus>? followStatusFailure;
       if (userLogin && bangumiItem!.followedState == null) {
         final int? resolvedSeasonId = bangumiItem!.seasonId ?? seasonId;
         if (resolvedSeasonId == null) {
-          followSyncError = '缺少影视季度信息';
+          followStatusFailure = const ApiFailure<UserStatus>(
+            kind: ApiFailureKind.malformedResponse,
+            message: '缺少影视季度信息',
+            endpoint: 'pgc.followStatus',
+          );
         } else {
-          final Map<String, dynamic> statusResult = await PgcHttp.followStatus(
+          final statusResult = await PgcApi.instance.followStatus(
             seasonId: resolvedSeasonId,
           );
-          if (statusResult['status'] == true) {
-            bangumiItem!.applyFollowStatus(statusResult['data'] as UserStatus);
+          if (statusResult case ApiSuccess<UserStatus>(:final data)) {
+            bangumiItem!.applyFollowStatus(data);
           } else {
-            followSyncError = statusResult['msg']?.toString() ?? '追剧状态同步失败';
+            followStatusFailure = statusResult as ApiFailure<UserStatus>;
           }
         }
       }
+      result = ApiSuccess<PgcInfoBundle>(
+        PgcInfoBundle(
+          detail: bangumiItem!,
+          followStatusFailure: followStatusFailure,
+        ),
+      );
     } else {
-      result = await PgcHttp.infoWithFollowStatus(
+      result = await PgcApi.instance.infoWithFollowStatus(
         seasonId: seasonId,
         epId: epId,
       );
-      followSyncError = result['followStatusError']?.toString();
     }
-    if (result['status']) {
-      _applyBangumiDetail(result['data'] as BangumiInfoModel);
-      if (followSyncError != null) {
+    if (result case ApiSuccess<PgcInfoBundle>(:final data)) {
+      try {
+        _applyBangumiDetail(data.detail);
+      } on PgcEpisodeNotFoundException catch (error) {
+        final failure = ApiFailure<PgcInfoBundle>(
+          kind: ApiFailureKind.apiRejected,
+          message: error.message,
+          endpoint: 'pgc.info',
+        );
+        SmartDialog.showToast(failure.message);
+        return failure;
+      }
+      if (data.followStatusFailure != null) {
         SmartDialog.showToast('追剧状态同步失败，请稍后重试');
       }
     } else {
-      SmartDialog.showToast(result['msg']);
+      SmartDialog.showToast((result as ApiFailure<PgcInfoBundle>).message);
     }
     return result;
   }

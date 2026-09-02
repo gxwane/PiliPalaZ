@@ -2,19 +2,20 @@ import 'dart:async';
 import 'dart:collection';
 
 import '../http/pgc.dart';
+import '../http/api_result.dart';
 import '../models/bangumi/info.dart';
 
 enum PgcVipEntitlement { unrestricted, restricted }
 
 typedef PgcSeasonInfoLoader =
-    Future<Map<String, dynamic>> Function({int? seasonId, int? epId});
+    Future<ApiResult<BangumiInfoModel>> Function({int? seasonId, int? epId});
 
 class PgcVipEntitlementResolver {
   PgcVipEntitlementResolver({
     PgcSeasonInfoLoader? loader,
     this.maxConcurrent = 4,
   }) : assert(maxConcurrent > 0),
-       _loader = loader ?? PgcHttp.info;
+       _loader = loader ?? PgcApi.instance.info;
 
   final PgcSeasonInfoLoader _loader;
   final int maxConcurrent;
@@ -55,9 +56,8 @@ class PgcVipEntitlementResolver {
   ) async {
     PgcVipEntitlement? entitlement;
     try {
-      final Map<String, dynamic> result = await _loader(seasonId: seasonId);
-      final dynamic data = result['data'];
-      if (result['status'] == true && data is BangumiInfoModel) {
+      final result = await _loader(seasonId: seasonId);
+      if (result case ApiSuccess<BangumiInfoModel>(:final data)) {
         entitlement = fromInfo(data);
         if (entitlement != null) _cache[seasonId] = entitlement;
       }

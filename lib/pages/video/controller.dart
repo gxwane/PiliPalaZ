@@ -4,7 +4,8 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/constants.dart';
-import 'package:pilipalaz/http/video.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/http/video_api.dart';
 import 'package:pilipalaz/http/pgc.dart';
 import 'package:pilipalaz/models/common/search_type.dart';
 import 'package:pilipalaz/models/common/video_source_type.dart';
@@ -148,12 +149,12 @@ class VideoDetailController extends GetxController
       );
     }
     if (videoItem['pic']?.isEmpty != false) {
-      VideoHttp.videoIntro(bvid: bvid).then((value) {
-        if (value['status']) {
-          videoItem['pic'] = value['data'].pic;
+      VideoApi.instance.detail(bvid: bvid).then((result) {
+        if (result case ApiSuccess(:final data)) {
+          videoItem['pic'] = data.pic;
           isShowCover.refresh();
         } else {
-          SmartDialog.showToast("视频封面获取失败：${value['msg']}");
+          SmartDialog.showToast('视频封面获取失败：${(result as ApiFailure).message}');
         }
       });
     }
@@ -490,11 +491,11 @@ class VideoDetailController extends GetxController
       if (sourceType.isPgc && epId == null) {
         return fail('缺少影视剧集 ep_id，无法加载播放地址');
       }
-      var result = sourceType.isPgc
-          ? await PgcHttp.playUrl(epId: epId!, cid: cid.value)
-          : await VideoHttp.videoUrl(cid: cid.value, bvid: bvid);
-      if (result['status']) {
-        data = result['data'];
+      final ApiResult<PlayUrlModel> result = sourceType.isPgc
+          ? await PgcApi.instance.playUrl(epId: epId!, cid: cid.value)
+          : await VideoApi.instance.playUrl(cid: cid.value, bvid: bvid);
+      if (result case ApiSuccess<PlayUrlModel>(data: final playData)) {
+        data = playData;
         if (data.isDrm) {
           return fail(PgcPlaybackRestriction.messageFor(isDrm: true));
         }
@@ -536,7 +537,7 @@ class VideoDetailController extends GetxController
             autoplay: autoPlay.value,
           );
           playbackSuccess(showPreviewNotice: showPreviewNotice);
-          return result;
+          return <String, dynamic>{'status': true, 'data': data};
         }
         if (data.dash == null) {
           return fail('视频资源不存在');
@@ -660,20 +661,21 @@ class VideoDetailController extends GetxController
         await playerInit(autoplay: autoPlay.value);
         playbackSuccess(showPreviewNotice: showPreviewNotice);
       } else {
-        final String resultMessage = result['msg']?.toString() ?? '';
+        final failure = result as ApiFailure<PlayUrlModel>;
+        final String resultMessage = failure.message;
         final String message = sourceType.isPgc
             ? PgcPlaybackRestriction.messageFor(
-                errorCode: result['code'],
+                errorCode: failure.apiCode,
                 message: resultMessage,
               )
-            : result['code'] == -404
+            : failure.apiCode == -404
             ? '视频不存在或已被删除'
-            : result['code'] == 87008
-            ? "当前视频可能是专属视频，可能需包月充电观看(${result['msg']})"
+            : failure.apiCode == 87008
+            ? '当前视频可能是专属视频，可能需包月充电观看($resultMessage)'
             : (resultMessage.isEmpty ? '视频加载失败，请重试' : resultMessage);
-        return fail(message, code: result['code']);
+        return fail(message, code: failure.apiCode);
       }
-      return result;
+      return <String, dynamic>{'status': true, 'data': data};
     } catch (error, stackTrace) {
       return fail('视频加载失败，请重试', error: error, stackTrace: stackTrace);
     }

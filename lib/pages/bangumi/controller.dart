@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/pgc.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/bangumi/list.dart';
 import 'package:pilipalaz/models/common/pgc_type.dart';
 import 'package:pilipalaz/models/user/info.dart';
@@ -41,7 +42,7 @@ class BangumiController extends GetxController {
     userLogin.value = userInfo != null;
   }
 
-  Future<Map<String, dynamic>> queryBangumiListFeed({
+  Future<ApiResult<BangumiListDataModel>> queryBangumiListFeed({
     String type = 'init',
   }) async {
     if (type == 'init') {
@@ -49,13 +50,13 @@ class BangumiController extends GetxController {
       _hasNext = true;
     }
     if (type != 'init' && (isLoadingMore || !_hasNext)) {
-      return <String, dynamic>{'status': true};
+      return ApiSuccess<BangumiListDataModel>(BangumiListDataModel());
     }
     if (type != 'init') isLoadingMore = true;
     final PgcCatalogType requestedType = catalogType.value;
     final PgcCatalogOrder requestedOrder = catalogOrder.value;
     final int requestedPage = _currentPage;
-    final Map<String, dynamic> result = await PgcHttp.catalog(
+    final result = await PgcApi.instance.catalog(
       type: requestedType,
       order: requestedOrder,
       page: requestedPage,
@@ -63,10 +64,9 @@ class BangumiController extends GetxController {
     if (requestedType != catalogType.value ||
         requestedOrder != catalogOrder.value) {
       if (type != 'init') isLoadingMore = false;
-      return <String, dynamic>{'status': true};
+      return ApiSuccess<BangumiListDataModel>(BangumiListDataModel());
     }
-    if (result['status']) {
-      final BangumiListDataModel data = result['data'];
+    if (result case ApiSuccess<BangumiListDataModel>(:final data)) {
       final List<BangumiListItemModel> list = List<BangumiListItemModel>.from(
         data.list ?? const [],
       );
@@ -84,27 +84,27 @@ class BangumiController extends GetxController {
   }
 
   // 上拉加载
-  Future<Map<String, dynamic>> onLoad() async {
+  Future<ApiResult<BangumiListDataModel>> onLoad() async {
     return queryBangumiListFeed(type: 'onLoad');
   }
 
   // 我的订阅
-  Future<Map<String, dynamic>?> queryBangumiFollow() async {
+  Future<ApiResult<BangumiListDataModel>?> queryBangumiFollow() async {
     userInfo ??= userInfoCache.get('userInfoCache') as UserInfoData?;
     if (userInfo == null) {
       return null;
     }
     final PgcFollowGroup requestedGroup = catalogType.value.followGroup;
-    final Map<String, dynamic> result = await PgcHttp.follow(
+    final result = await PgcApi.instance.follow(
       mid: userInfo!.mid!,
       group: requestedGroup,
     );
     if (requestedGroup != catalogType.value.followGroup) {
-      return <String, dynamic>{'status': true};
+      return ApiSuccess<BangumiListDataModel>(BangumiListDataModel());
     }
-    if (result['status']) {
+    if (result case ApiSuccess<BangumiListDataModel>(:final data)) {
       bangumiFollowList.value = List<BangumiListItemModel>.from(
-        result['data'].list ?? const [],
+        data.list ?? const [],
       );
     }
     return result;

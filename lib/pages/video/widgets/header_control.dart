@@ -22,6 +22,7 @@ import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:pilipalaz/http/danmaku.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/services/shutdown_timer_service.dart';
 import '../../../../models/video/play/CDN.dart';
 import '../../../../models/video_detail_res.dart';
@@ -563,18 +564,19 @@ class _HeaderControlState extends State<HeaderControl> {
                         });
                         //修改按钮文字
                         // SmartDialog.showToast('弹幕发送中,\n$msg');
-                        final dynamic res = await DanmakaHttp.shootDanmaku(
+                        final result = await DanmakuApi.instance.shootDanmaku(
                           oid: widget.videoDetailCtr!.cid.value,
-                          msg: textController.text,
+                          message: textController.text,
                           bvid: widget.videoDetailCtr!.bvid,
                           progress:
                               widget.controller!.position.value.inMilliseconds,
                           type: 1,
                         );
+                        if (!context.mounted) return;
                         setState(() {
                           isSending = false; // 发送结束，更新状态
                         });
-                        if (res['status']) {
+                        if (result is ApiSuccess<DanmakuSendReceipt>) {
                           Get.back();
                           SmartDialog.showToast('发送成功');
                           // 发送成功，自动预览该弹幕，避免重新请求
@@ -585,7 +587,9 @@ class _HeaderControlState extends State<HeaderControl> {
                                   type: DanmakuItemType.scroll,
                                   selfSend: true));
                         } else {
-                          SmartDialog.showToast('发送失败，错误信息为${res['msg']}');
+                          final failure =
+                              result as ApiFailure<DanmakuSendReceipt>;
+                          SmartDialog.showToast('发送失败：${failure.message}');
                         }
                       },
                 child: Text(isSending ? '发送中...' : '发送'),

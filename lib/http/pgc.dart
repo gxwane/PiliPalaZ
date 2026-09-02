@@ -1,201 +1,219 @@
-import 'package:hive/hive.dart';
-
 import '../models/bangumi/info.dart';
 import '../models/bangumi/list.dart';
 import '../models/common/pgc_type.dart';
 import '../models/video/play/url.dart';
 import '../pages/mine/controller.dart';
 import '../utils/storage.dart';
-import 'index.dart';
+import 'api.dart';
+import 'api_client.dart';
+import 'api_decoder.dart';
+import 'api_result.dart';
+import 'http_runtime.dart';
 
-class PgcHttp {
-  static Box setting = GStorage.setting;
-  static Box userInfoCache = GStorage.userInfo;
+final class PgcInfoBundle {
+  const PgcInfoBundle({required this.detail, this.followStatusFailure});
 
-  static Future<Map<String, dynamic>> catalog({
+  final BangumiInfoModel detail;
+  final ApiFailure<UserStatus>? followStatusFailure;
+}
+
+final class PgcApi {
+  PgcApi({ApiClient? client}) : _client = client ?? HttpRuntime.instance.client;
+
+  static PgcApi? _instance;
+
+  static PgcApi get instance => _instance ??= PgcApi();
+
+  final ApiClient _client;
+
+  Future<ApiResult<BangumiListDataModel>> catalog({
     required PgcCatalogType type,
     required PgcCatalogOrder order,
     required int page,
-  }) async {
-    try {
-      final dynamic res = await Request().get(
-        Api.pgcCatalog,
-        data: <String, dynamic>{
-          'st': 1,
-          'order': order.apiValue,
-          'season_version': -1,
-          'spoken_language_type': -1,
-          'area': -1,
-          'is_finish': -1,
-          'copyright': -1,
-          'season_status': -1,
-          'season_month': -1,
-          'year': -1,
-          'style_id': -1,
-          'sort': 0,
-          'page': page,
-          'season_type': type.apiValue,
-          'pagesize': 20,
-          'type': 1,
-        },
-      );
-      if (res.data['code'] == 0) {
-        return <String, dynamic>{
-          'status': true,
-          'data': BangumiListDataModel.fromJson(res.data['data']),
-        };
-      }
-      return _failure(res.data);
-    } catch (error) {
-      return _failure(<String, dynamic>{'message': error.toString()});
-    }
+  }) {
+    return _client.getJson<BangumiListDataModel>(
+      Api.pgcCatalog,
+      endpoint: 'pgc.catalog',
+      queryParameters: <String, dynamic>{
+        'st': 1,
+        'order': order.apiValue,
+        'season_version': -1,
+        'spoken_language_type': -1,
+        'area': -1,
+        'is_finish': -1,
+        'copyright': -1,
+        'season_status': -1,
+        'season_month': -1,
+        'year': -1,
+        'style_id': -1,
+        'sort': 0,
+        'page': page,
+        'season_type': type.apiValue,
+        'pagesize': 20,
+        'type': 1,
+      },
+      decode: (json) => BiliApiDecoder.data<BangumiListDataModel>(
+        json,
+        decode: (value) => BangumiListDataModel.fromJson(
+          BiliApiDecoder.object(value, field: 'data'),
+        ),
+      ),
+    );
   }
 
-  static Future<Map<String, dynamic>> follow({
+  Future<ApiResult<BangumiListDataModel>> follow({
     required int mid,
     required PgcFollowGroup group,
-  }) async {
-    try {
-      final dynamic res = await Request().get(
-        Api.pgcFollow,
-        data: <String, dynamic>{
-          'type': group.apiValue,
-          'follow_status': 0,
-          'pn': 1,
-          'ps': 15,
-          'vmid': mid,
-          'ts': DateTime.now().millisecondsSinceEpoch,
-        },
-      );
-      if (res.data['code'] == 0) {
-        return <String, dynamic>{
-          'status': true,
-          'data': BangumiListDataModel.fromJson(res.data['data']),
-        };
-      }
-      return _failure(res.data);
-    } catch (error) {
-      return _failure(<String, dynamic>{'message': error.toString()});
-    }
+  }) {
+    return _client.getJson<BangumiListDataModel>(
+      Api.pgcFollow,
+      endpoint: 'pgc.follow',
+      queryParameters: <String, dynamic>{
+        'type': group.apiValue,
+        'follow_status': 0,
+        'pn': 1,
+        'ps': 15,
+        'vmid': mid,
+        'ts': DateTime.now().millisecondsSinceEpoch,
+      },
+      decode: (json) => BiliApiDecoder.data<BangumiListDataModel>(
+        json,
+        decode: (value) => BangumiListDataModel.fromJson(
+          BiliApiDecoder.object(value, field: 'data'),
+        ),
+      ),
+    );
   }
 
-  static Future<Map<String, dynamic>> info({int? seasonId, int? epId}) async {
+  Future<ApiResult<BangumiInfoModel>> info({int? seasonId, int? epId}) {
     if (seasonId == null && epId == null) {
-      return _failure(<String, dynamic>{'message': '缺少影视剧集信息'});
-    }
-    try {
-      final dynamic res = await Request().get(
-        Api.bangumiInfo,
-        data: <String, dynamic>{
-          if (seasonId != null) 'season_id': seasonId,
-          if (epId != null) 'ep_id': epId,
-        },
+      return Future<ApiResult<BangumiInfoModel>>.value(
+        const ApiFailure<BangumiInfoModel>(
+          kind: ApiFailureKind.apiRejected,
+          message: '缺少影视剧集信息',
+          endpoint: 'pgc.info',
+        ),
       );
-      if (res.data['code'] == 0) {
-        return <String, dynamic>{
-          'status': true,
-          'data': BangumiInfoModel.fromJson(res.data['result']),
-        };
-      }
-      return _failure(res.data);
-    } catch (error) {
-      return _failure(<String, dynamic>{'message': error.toString()});
     }
+    return _client.getJson<BangumiInfoModel>(
+      Api.bangumiInfo,
+      endpoint: 'pgc.info',
+      queryParameters: <String, dynamic>{
+        if (seasonId != null) 'season_id': seasonId,
+        if (epId != null) 'ep_id': epId,
+      },
+      decode: (json) => BiliApiDecoder.result<BangumiInfoModel>(
+        json,
+        decode: (value) => BangumiInfoModel.fromJson(
+          BiliApiDecoder.object(value, field: 'result'),
+        ),
+      ),
+    );
   }
 
-  static Future<Map<String, dynamic>> followStatus({
-    required int seasonId,
-  }) async {
-    if (userInfoCache.get('userInfoCache') == null ||
+  Future<ApiResult<UserStatus>> followStatus({required int seasonId}) {
+    if (GStorage.userInfo.get('userInfoCache') == null ||
         MineController.anonymity) {
-      return _failure(<String, dynamic>{'message': '账号追剧状态暂不可用'});
-    }
-    try {
-      final dynamic res = await Request().get(
-        Api.pgcFollowStatus,
-        data: <String, dynamic>{'season_id': seasonId},
+      return Future<ApiResult<UserStatus>>.value(
+        const ApiFailure<UserStatus>(
+          kind: ApiFailureKind.apiRejected,
+          message: '账号追剧状态暂不可用',
+          endpoint: 'pgc.followStatus',
+        ),
       );
-      final dynamic rawStatus = res.data['result'];
-      if (res.data['code'] == 0 && rawStatus is Map) {
-        return <String, dynamic>{
-          'status': true,
-          'data': UserStatus.fromJson(Map<String, dynamic>.from(rawStatus)),
-        };
-      }
-      return _failure(res.data);
-    } catch (error) {
-      return _failure(<String, dynamic>{'message': error.toString()});
     }
+    return _client.getJson<UserStatus>(
+      Api.pgcFollowStatus,
+      endpoint: 'pgc.followStatus',
+      queryParameters: <String, dynamic>{'season_id': seasonId},
+      decode: (json) => BiliApiDecoder.result<UserStatus>(
+        json,
+        decode: (value) =>
+            UserStatus.fromJson(BiliApiDecoder.object(value, field: 'result')),
+      ),
+    );
   }
 
-  static Future<Map<String, dynamic>> infoWithFollowStatus({
+  Future<ApiResult<PgcInfoBundle>> infoWithFollowStatus({
     int? seasonId,
     int? epId,
   }) async {
-    final bool shouldResolve =
-        userInfoCache.get('userInfoCache') != null && !MineController.anonymity;
-    final Future<Map<String, dynamic>>? statusFuture =
-        shouldResolve && seasonId != null
+    final shouldResolve =
+        GStorage.userInfo.get('userInfoCache') != null &&
+        !MineController.anonymity;
+    final pendingStatus = shouldResolve && seasonId != null
         ? followStatus(seasonId: seasonId)
         : null;
-    final Map<String, dynamic> infoResult = await info(
-      seasonId: seasonId,
-      epId: epId,
-    );
-    if (infoResult['status'] != true || !shouldResolve) return infoResult;
+    final infoResult = await info(seasonId: seasonId, epId: epId);
+    if (infoResult case final ApiFailure<BangumiInfoModel> failure) {
+      return failure.cast<PgcInfoBundle>();
+    }
 
-    final BangumiInfoModel detail = infoResult['data'] as BangumiInfoModel;
-    final int? resolvedSeasonId = detail.seasonId ?? seasonId;
+    final infoSuccess = infoResult as ApiSuccess<BangumiInfoModel>;
+    final detail = infoSuccess.data;
+    if (!shouldResolve) {
+      return ApiSuccess<PgcInfoBundle>(
+        PgcInfoBundle(detail: detail),
+        statusCode: infoSuccess.statusCode,
+      );
+    }
+
+    final resolvedSeasonId = detail.seasonId ?? seasonId;
     if (resolvedSeasonId == null) {
-      infoResult['followStatusError'] = '缺少影视季度信息';
-      return infoResult;
+      return ApiSuccess<PgcInfoBundle>(
+        PgcInfoBundle(
+          detail: detail,
+          followStatusFailure: const ApiFailure<UserStatus>(
+            kind: ApiFailureKind.malformedResponse,
+            message: '缺少影视季度信息',
+            endpoint: 'pgc.followStatus',
+          ),
+        ),
+        statusCode: infoSuccess.statusCode,
+      );
     }
-    final Map<String, dynamic> statusResult =
-        await (statusFuture ?? followStatus(seasonId: resolvedSeasonId));
-    if (statusResult['status'] == true) {
-      detail.applyFollowStatus(statusResult['data'] as UserStatus);
+
+    final statusResult =
+        await (pendingStatus ?? followStatus(seasonId: resolvedSeasonId));
+    ApiFailure<UserStatus>? statusFailure;
+    if (statusResult case ApiSuccess<UserStatus>(:final data)) {
+      detail.applyFollowStatus(data);
     } else {
-      infoResult['followStatusError'] =
-          statusResult['msg']?.toString() ?? '追剧状态同步失败';
+      statusFailure = statusResult as ApiFailure<UserStatus>;
     }
-    return infoResult;
+    return ApiSuccess<PgcInfoBundle>(
+      PgcInfoBundle(detail: detail, followStatusFailure: statusFailure),
+      statusCode: infoSuccess.statusCode,
+    );
   }
 
-  static Future<Map<String, dynamic>> playUrl({
+  Future<ApiResult<PlayUrlModel>> playUrl({
     required int epId,
     int? cid,
     int? qn,
-  }) async {
-    final Map<String, dynamic> data = <String, dynamic>{
+  }) {
+    final data = <String, dynamic>{
       'ep_id': epId,
       if (cid != null) 'cid': cid,
       'qn': qn ?? 80,
       'fnval': 4048,
       'fourk': 1,
     };
-    if ((userInfoCache.get('userInfoCache') == null ||
+    if ((GStorage.userInfo.get('userInfoCache') == null ||
             MineController.anonymity) &&
-        setting.get(SettingBoxKey.p1080, defaultValue: true)) {
+        GStorage.setting.get(SettingBoxKey.p1080, defaultValue: true)) {
       data['try_look'] = 1;
     }
-
-    try {
-      final dynamic res = await Request().get(Api.bangumiVideoUrl, data: data);
-      if (res.data['code'] == 0 && res.data['result'] != null) {
-        return <String, dynamic>{
-          'status': true,
-          'data': PlayUrlModel.fromJson(res.data['result']),
-        };
-      }
-      return <String, dynamic>{..._failure(res.data), 'code': res.data['code']};
-    } catch (error) {
-      return _failure(<String, dynamic>{'message': error.toString()});
-    }
+    return _client.getJson<PlayUrlModel>(
+      Api.bangumiVideoUrl,
+      endpoint: 'pgc.playUrl',
+      queryParameters: data,
+      decode: (json) => BiliApiDecoder.result<PlayUrlModel>(
+        json,
+        decode: (value) => PlayUrlModel.fromJson(
+          BiliApiDecoder.object(value, field: 'result'),
+        ),
+      ),
+    );
   }
-
-  static Map<String, dynamic> _failure(Map data) => <String, dynamic>{
-    'status': false,
-    'data': <dynamic>[],
-    'msg': data['message']?.toString() ?? '请求失败',
-  };
 }

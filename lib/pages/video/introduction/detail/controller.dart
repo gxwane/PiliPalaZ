@@ -7,9 +7,12 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/constants.dart';
-import 'package:pilipalaz/http/user.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/http/user_api.dart';
 import 'package:pilipalaz/http/video.dart';
+import 'package:pilipalaz/http/video_api.dart';
 import 'package:pilipalaz/models/user/fav_folder.dart';
+import 'package:pilipalaz/models/user/stat.dart';
 import 'package:pilipalaz/models/video_detail_res.dart';
 import 'package:pilipalaz/pages/video/controller.dart';
 import 'package:pilipalaz/pages/video/reply/index.dart';
@@ -43,8 +46,7 @@ class VideoIntroController extends GetxController {
   Rx<VideoDetailData> videoDetail = VideoDetailData().obs;
 
   // up主粉丝数
-  Rx<Map<String, dynamic>> userStat =
-      Rx<Map<String, dynamic>>({'follower': '-'});
+  Rx<UserStat> userStat = UserStat().obs;
 
   // 是否点赞
   RxBool hasLike = false.obs;
@@ -71,8 +73,8 @@ class VideoIntroController extends GetxController {
   Timer? timer;
   bool isPaused = false;
   String heroTag = '';
-  Rx<Map<String, dynamic>> queryVideoIntroData =
-      Rx<Map<String, dynamic>>({"status": true});
+  Rxn<ApiFailure<VideoDetailData>> videoIntroFailure =
+      Rxn<ApiFailure<VideoDetailData>>();
 
   @override
   void onInit() {
@@ -179,10 +181,11 @@ class VideoIntroController extends GetxController {
   }
 
   // 获取视频简介&分p
-  void queryVideoIntro() async {
-    var result = await VideoHttp.videoIntro(bvid: bvid);
-    if (result['status']) {
-      videoDetail.value = result['data']!;
+  Future<void> queryVideoIntro() async {
+    videoIntroFailure.value = null;
+    final result = await VideoApi.instance.detail(bvid: bvid);
+    if (result case ApiSuccess<VideoDetailData>(:final data)) {
+      videoDetail.value = data;
       if (videoDetail.value.pages != null &&
           videoDetail.value.pages!.isNotEmpty &&
           lastPlayCid.value == 0) {
@@ -195,10 +198,10 @@ class VideoIntroController extends GetxController {
       // 获取到粉丝数再返回
       await queryUserStat();
     } else {
-      SmartDialog.showToast(
-          "${result['code']} ${result['msg']} ${result['data']}");
+      final failure = result as ApiFailure<VideoDetailData>;
+      videoIntroFailure.value = failure;
+      SmartDialog.showToast(failure.message);
     }
-    queryVideoIntroData.value = result;
     if (userLogin) {
       // 获取点赞状态
       queryHasLikeVideo();
@@ -213,10 +216,14 @@ class VideoIntroController extends GetxController {
 
   // 获取up主粉丝数
   Future queryUserStat() async {
-    var result = await UserHttp.userStat(mid: videoDetail.value.owner!.mid!);
-    if (result['status']) {
-      print(result['data']);
-      userStat.value = result['data'];
+    final mid = videoDetail.value.owner?.mid;
+    if (mid == null) {
+      userStat.value = UserStat();
+      return;
+    }
+    final result = await UserApi.instance.stat(mid: mid);
+    if (result case ApiSuccess<UserStat>(:final data)) {
+      userStat.value = data;
       userStat.refresh();
     }
   }
@@ -449,7 +456,7 @@ class VideoIntroController extends GetxController {
                     await SharePlus.instance.share(
                       ShareParams(
                         text: '${videoDetail.value.title} '
-                            'UP主: ${videoDetail.value.owner!.name!}'
+                            'UP主: ${videoDetail.value.owner?.name ?? '未知'}'
                             ' - $videoUrl',
                       ),
                     );
@@ -489,10 +496,11 @@ class VideoIntroController extends GetxController {
 
   // 查询关注状态
   Future queryFollowStatus() async {
-    if (videoDetail.value.owner == null) {
+    final mid = videoDetail.value.owner?.mid;
+    if (mid == null) {
       return;
     }
-    var result = await VideoHttp.hasFollow(mid: videoDetail.value.owner!.mid!);
+    var result = await VideoHttp.hasFollow(mid: mid);
     if (result['status']) {
       followStatus.value = result['data'];
     }
@@ -506,7 +514,11 @@ class VideoIntroController extends GetxController {
       return;
     }
     feedBack();
-    final int mid = videoDetail.value.owner!.mid!;
+    final int? mid = videoDetail.value.owner?.mid;
+    if (mid == null) {
+      SmartDialog.showToast('UP 主信息不完整');
+      return;
+    }
     final MemberController memberController = Get.put<MemberController>(
       MemberController(mid: mid),
       tag: mid.toString(),
@@ -725,19 +737,13 @@ class VideoIntroController extends GetxController {
     return true;
   }
 
-  // 设置关注分组
-  // void setFollowGroup() {
-  //   MyDialog.showCorner(
-  //       context, GroupPanel(mid: videoDetail.value.owner!.mid!));
-  // }
-
   // ai总结
   Future aiConclusion() async {
     SmartDialog.showLoading(msg: '正在查询AI总结');
     final res = await VideoHttp.aiConclusion(
       bvid: bvid,
       cid: lastPlayCid.value,
-      upMid: videoDetail.value.owner!.mid!,
+      upMid: videoDetail.value.owner?.mid,
     );
     SmartDialog.dismiss();
     if (!res['status']) {

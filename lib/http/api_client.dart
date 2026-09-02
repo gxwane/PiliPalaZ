@@ -225,6 +225,13 @@ final class ApiClient {
           endpoint: endpoint,
           statusCode: statusCode,
         );
+      } catch (_) {
+        return ApiFailure<T>(
+          kind: ApiFailureKind.decoding,
+          message: '响应数据无法解析',
+          endpoint: endpoint,
+          statusCode: statusCode,
+        );
       }
     } on DioException catch (error) {
       return _fromDioException<T>(error, endpoint);
