@@ -1,6 +1,7 @@
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/msg.dart';
+import 'package:pilipalaz/http/api_result.dart';
 
 import '../../../models/msg/msgfeed_sys_msg.dart';
 
@@ -18,14 +19,12 @@ class SysMsgController extends GetxController {
     var resUnifiedNotify = await MsgHttp.msgFeedSysUnifiedNotify();
     isLoading = false;
     List<SystemNotifyList> systemNotifyList = [];
-    if (resUserNotify['status']) {
-      MsgFeedSysMsg data = MsgFeedSysMsg.fromJson(resUserNotify['data']);
+    if (resUserNotify case ApiSuccess<MsgFeedSysMsg>(:final data)) {
       if (data.systemNotifyList != null) {
         systemNotifyList.addAll(data.systemNotifyList!);
       }
     }
-    if (resUnifiedNotify['status']) {
-      MsgFeedSysMsg data = MsgFeedSysMsg.fromJson(resUnifiedNotify['data']);
+    if (resUnifiedNotify case ApiSuccess<MsgFeedSysMsg>(:final data)) {
       if (data.systemNotifyList != null) {
         systemNotifyList.addAll(data.systemNotifyList!);
       }
@@ -35,21 +34,29 @@ class SysMsgController extends GetxController {
       msgFeedSysMsgList.assignAll(systemNotifyList);
       msgSysUpdateCursor(msgFeedSysMsgList.first.cursor!);
     } else {
+      final userMessage = resUserNotify is ApiFailure<MsgFeedSysMsg>
+          ? resUserNotify.message
+          : '无系统消息';
+      final unifiedMessage = resUnifiedNotify is ApiFailure<MsgFeedSysMsg>
+          ? resUnifiedNotify.message
+          : '无统一通知';
       SmartDialog.showToast(
-          "UserNotify: ${resUserNotify['msg']} UnifiedNotify: ${resUnifiedNotify['msg']}");
+        'UserNotify: $userMessage UnifiedNotify: $unifiedMessage',
+      );
     }
   }
 
   Future msgSysUpdateCursor(int cursor) async {
     var res = await MsgHttp.msgSysUpdateCursor(cursor);
-    if (res['status']) {
+    if (res is ApiSuccess<void>) {
       SmartDialog.showToast('已读成功');
       return true;
     } else {
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast((res as ApiFailure<void>).message);
       return false;
     }
   }
+
   Future onLoad() async {
     if (isEnd) return;
     queryMsgFeedSysMsg();

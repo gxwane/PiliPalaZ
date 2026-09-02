@@ -8,6 +8,7 @@ import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/skeleton/video_card_v.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/common/widgets/video_card_v.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/rcmd_video_item.dart';
 import 'package:pilipalaz/pages/home/index.dart';
 import 'package:pilipalaz/pages/main/index.dart';
@@ -25,7 +26,7 @@ class RcmdPage extends StatefulWidget {
 class _RcmdPageState extends State<RcmdPage>
     with AutomaticKeepAliveClientMixin {
   final RcmdController _rcmdController = Get.put(RcmdController());
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<List<RcmdVideoItem>>> _futureBuilderFuture;
 
   @override
   bool get wantKeepAlive => true;
@@ -99,13 +100,13 @@ class _RcmdPageState extends State<RcmdPage>
                 0,
                 0,
               ),
-              sliver: FutureBuilder(
+              sliver: FutureBuilder<ApiResult<List<RcmdVideoItem>>>(
                 future: _futureBuilderFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.done &&
                       snapshot.data != null) {
-                    Map data = snapshot.data as Map;
-                    if (data['status']) {
+                    final result = snapshot.data!;
+                    if (result is ApiSuccess<List<RcmdVideoItem>>) {
                       return Obx(
                         () => _buildContentGrid(
                           _rcmdController.videoList,
@@ -114,7 +115,8 @@ class _RcmdPageState extends State<RcmdPage>
                       );
                     } else {
                       return HttpError(
-                        errMsg: data['msg'],
+                        errMsg:
+                            (result as ApiFailure<List<RcmdVideoItem>>).message,
                         fn: () {
                           setState(() {
                             _futureBuilderFuture = _rcmdController

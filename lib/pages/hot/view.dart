@@ -7,6 +7,8 @@ import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/skeleton/video_card_h.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/common/widgets/video_card_h.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/model_hot_video_item.dart';
 import 'package:pilipalaz/pages/home/index.dart';
 import 'package:pilipalaz/pages/hot/controller.dart';
 import 'package:pilipalaz/pages/main/index.dart';
@@ -23,7 +25,7 @@ class HotPage extends StatefulWidget {
 class _HotPageState extends State<HotPage> with AutomaticKeepAliveClientMixin {
   final HotController _hotController = Get.put(HotController());
   List videoList = [];
-  Future? _futureBuilderFuture;
+  Future<ApiResult<List<HotVideoItemModel>>>? _futureBuilderFuture;
   late ScrollController scrollController;
 
   @override
@@ -38,27 +40,25 @@ class _HotPageState extends State<HotPage> with AutomaticKeepAliveClientMixin {
         Get.find<MainController>().bottomBarStream;
     StreamController<bool> searchBarStream =
         Get.find<HomeController>().searchBarStream;
-    scrollController.addListener(
-      () {
-        if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 200) {
-          if (!_hotController.isLoadingMore) {
-            _hotController.isLoadingMore = true;
-            _hotController.onLoad();
-          }
+    scrollController.addListener(() {
+      if (scrollController.position.pixels >=
+          scrollController.position.maxScrollExtent - 200) {
+        if (!_hotController.isLoadingMore) {
+          _hotController.isLoadingMore = true;
+          _hotController.onLoad();
         }
+      }
 
-        final ScrollDirection direction =
-            scrollController.position.userScrollDirection;
-        if (direction == ScrollDirection.forward) {
-          mainStream.add(true);
-          searchBarStream.add(true);
-        } else if (direction == ScrollDirection.reverse) {
-          mainStream.add(false);
-          searchBarStream.add(false);
-        }
-      },
-    );
+      final ScrollDirection direction =
+          scrollController.position.userScrollDirection;
+      if (direction == ScrollDirection.forward) {
+        mainStream.add(true);
+        searchBarStream.add(true);
+      } else if (direction == ScrollDirection.reverse) {
+        mainStream.add(false);
+        searchBarStream.add(false);
+      }
+    });
   }
 
   @override
@@ -84,21 +84,26 @@ class _HotPageState extends State<HotPage> with AutomaticKeepAliveClientMixin {
           SliverPadding(
             // 单列布局 EdgeInsets.zero
             padding: const EdgeInsets.fromLTRB(
-                StyleString.safeSpace, StyleString.safeSpace - 5, 0, 0),
-            sliver: FutureBuilder(
+              StyleString.safeSpace,
+              StyleString.safeSpace - 5,
+              0,
+              0,
+            ),
+            sliver: FutureBuilder<ApiResult<List<HotVideoItemModel>>>(
               future: _futureBuilderFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.done) {
-                  Map data = snapshot.data as Map;
-                  if (data['status']) {
+                  final result = snapshot.data;
+                  if (result is ApiSuccess<List<HotVideoItemModel>>) {
                     return Obx(
                       () => SliverGrid(
                         gridDelegate: SliverGridDelegateWithExtentAndRatio(
-                            mainAxisSpacing: StyleString.safeSpace,
-                            crossAxisSpacing: StyleString.safeSpace,
-                            maxCrossAxisExtent: Grid.maxRowWidth * 2,
-                            childAspectRatio: StyleString.aspectRatio * 2.4,
-                            mainAxisExtent: 0),
+                          mainAxisSpacing: StyleString.safeSpace,
+                          crossAxisSpacing: StyleString.safeSpace,
+                          maxCrossAxisExtent: Grid.maxRowWidth * 2,
+                          childAspectRatio: StyleString.aspectRatio * 2.4,
+                          mainAxisExtent: 0,
+                        ),
                         delegate: SliverChildBuilderDelegate((context, index) {
                           return VideoCardH(
                             videoItem: _hotController.videoList[index],
@@ -107,13 +112,16 @@ class _HotPageState extends State<HotPage> with AutomaticKeepAliveClientMixin {
                         }, childCount: _hotController.videoList.length),
                       ),
                     );
-                  } else {
+                  } else if (result case ApiFailure<List<HotVideoItemModel>>(
+                    :final message,
+                  )) {
                     return HttpError(
-                      errMsg: data['msg'],
+                      errMsg: message,
                       fn: () {
                         setState(() {
-                          _futureBuilderFuture =
-                              _hotController.queryHotFeed('init');
+                          _futureBuilderFuture = _hotController.queryHotFeed(
+                            'init',
+                          );
                         });
                       },
                     );
@@ -122,26 +130,25 @@ class _HotPageState extends State<HotPage> with AutomaticKeepAliveClientMixin {
                   // 骨架屏
                   return SliverGrid(
                     gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-                        mainAxisSpacing: StyleString.cardSpace,
-                        crossAxisSpacing: StyleString.cardSpace,
-                        maxCrossAxisExtent: Grid.maxRowWidth * 2,
-                        childAspectRatio: StyleString.aspectRatio * 2.4),
+                      mainAxisSpacing: StyleString.cardSpace,
+                      crossAxisSpacing: StyleString.cardSpace,
+                      maxCrossAxisExtent: Grid.maxRowWidth * 2,
+                      childAspectRatio: StyleString.aspectRatio * 2.4,
+                    ),
                     delegate: SliverChildBuilderDelegate((context, index) {
                       return const VideoCardHSkeleton();
                     }, childCount: 10),
                   );
                 }
+                return const SliverToBoxAdapter(child: SizedBox());
               },
             ),
           ),
           SliverToBoxAdapter(
-            child: SizedBox(
-              height: MediaQuery.of(context).padding.bottom + 10,
-            ),
-          )
+            child: SizedBox(height: MediaQuery.of(context).padding.bottom + 10),
+          ),
         ],
       ),
     );
   }
-
 }

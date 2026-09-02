@@ -125,7 +125,6 @@ class _ExtraSettingState extends State<ExtraSetting> {
                 setting.put(SettingBoxKey.systemProxyHost, systemProxyHost);
                 setting.put(SettingBoxKey.systemProxyPort, systemProxyPort);
                 Get.back();
-                // Request.dio;
               },
               child: const Text('确认'),
             ),

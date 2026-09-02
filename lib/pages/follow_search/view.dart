@@ -3,6 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/follow/result.dart';
 import 'package:pilipalaz/pages/follow_search/index.dart';
 
 import '../follow/widgets/follow_item.dart';
@@ -15,26 +17,28 @@ class FollowSearchPage extends StatefulWidget {
 }
 
 class _FollowSearchPageState extends State<FollowSearchPage> {
-  final FollowSearchController _followSearchController =
-      Get.put(FollowSearchController());
-  late Future? _futureBuilder;
+  final FollowSearchController _followSearchController = Get.put(
+    FollowSearchController(),
+  );
+  late Future<ApiResult<FollowDataModel>> _futureBuilder;
   final ScrollController scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _futureBuilder = _followSearchController.searchFollow();
-    scrollController.addListener(
-      () {
-        if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 200) {
-          EasyThrottle.throttle(
-              'my-throttler', const Duration(milliseconds: 500), () {
+    scrollController.addListener(() {
+      if (scrollController.position.pixels >=
+          scrollController.position.maxScrollExtent - 200) {
+        EasyThrottle.throttle(
+          'my-throttler',
+          const Duration(milliseconds: 500),
+          () {
             _followSearchController.onLoad();
-          });
-        }
-      },
-    );
+          },
+        );
+      }
+    });
   }
 
   void reRequest() {
@@ -79,46 +83,52 @@ class _FollowSearchPageState extends State<FollowSearchPage> {
           onSubmitted: (String value) => reRequest(),
         ),
       ),
-      body: FutureBuilder(
-          future: _futureBuilder,
-          builder: (BuildContext context, AsyncSnapshot snapshot) {
-            if (snapshot.connectionState == ConnectionState.done) {
-              var data = snapshot.data;
-              if (data == null) {
-                return CustomScrollView(
-                  slivers: [
-                    HttpError(errMsg: snapshot.data['msg'], fn: reRequest)
-                  ],
-                );
-              }
-              if (data['status']) {
-                RxList followList = _followSearchController.followList;
-                return Obx(
-                  () => followList.isNotEmpty
-                      ? ListView.builder(
-                          controller: scrollController,
-                          itemCount: followList.length,
-                          itemBuilder: ((context, index) {
-                            return FollowItem(
-                              item: followList[index],
-                            );
-                          }),
-                        )
-                      : CustomScrollView(
-                          slivers: [HttpError(errMsg: '未搜索到结果', fn: reRequest)],
-                        ),
-                );
+      body: FutureBuilder<ApiResult<FollowDataModel>>(
+        future: _futureBuilder,
+        builder:
+            (
+              BuildContext context,
+              AsyncSnapshot<ApiResult<FollowDataModel>> snapshot,
+            ) {
+              if (snapshot.connectionState == ConnectionState.done) {
+                final result = snapshot.data;
+                if (result == null) {
+                  return CustomScrollView(
+                    slivers: [HttpError(errMsg: '请求异常', fn: reRequest)],
+                  );
+                }
+                if (result is ApiSuccess<FollowDataModel>) {
+                  RxList followList = _followSearchController.followList;
+                  return Obx(
+                    () => followList.isNotEmpty
+                        ? ListView.builder(
+                            controller: scrollController,
+                            itemCount: followList.length,
+                            itemBuilder: ((context, index) {
+                              return FollowItem(item: followList[index]);
+                            }),
+                          )
+                        : CustomScrollView(
+                            slivers: [
+                              HttpError(errMsg: '未搜索到结果', fn: reRequest),
+                            ],
+                          ),
+                  );
+                } else {
+                  return CustomScrollView(
+                    slivers: [
+                      HttpError(
+                        errMsg: (result as ApiFailure<FollowDataModel>).message,
+                        fn: reRequest,
+                      ),
+                    ],
+                  );
+                }
               } else {
-                return CustomScrollView(
-                  slivers: [
-                    HttpError(errMsg: snapshot.data['msg'], fn: reRequest)
-                  ],
-                );
+                return const SizedBox();
               }
-            } else {
-              return const SizedBox();
-            }
-          }),
+            },
+      ),
     );
   }
 }

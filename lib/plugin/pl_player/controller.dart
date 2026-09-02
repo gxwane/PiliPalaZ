@@ -24,6 +24,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:pilipalaz/http/video.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/pages/mine/controller.dart';
 import 'package:pilipalaz/plugin/pl_player/external_audio_command.dart';
 import 'package:pilipalaz/plugin/pl_player/hardware_decode_fallback_guard.dart';
@@ -2436,14 +2437,23 @@ class PlPlayerController with WidgetsBindingObserver {
 
   Future refreshVideoMetaInfo() async {
     _vttSubtitles.clear();
-    Map res = await VideoHttp.videoMetaInfo(bvid: _bvid, cid: _cid);
-    if (!res["status"]) {
-      SmartDialog.showToast('查询视频元信息（字幕、防挡、章节等）错误，${res["msg"]}');
-    }
-    if (res["data"].length == 0) {
+    final metadata = await VideoHttp.videoMetaInfo(bvid: _bvid, cid: _cid);
+    if (metadata case ApiFailure<List<VideoSubtitleSource>> failure) {
+      SmartDialog.showToast('查询视频元信息（字幕、防挡、章节等）错误，${failure.message}');
       return;
     }
-    _vttSubtitles.value = await VideoHttp.vttSubtitles(res["data"]);
+    final sources = (metadata as ApiSuccess<List<VideoSubtitleSource>>).data;
+    if (sources.isEmpty) {
+      return;
+    }
+    final subtitles = await VideoHttp.vttSubtitles(sources);
+    if (subtitles case ApiSuccess<List<Map<String, String>>>(:final data)) {
+      _vttSubtitles.value = data;
+    } else {
+      SmartDialog.showToast(
+        (subtitles as ApiFailure<List<Map<String, String>>>).message,
+      );
+    }
     // if (_vttSubtitles.isEmpty) {
     //   SmartDialog.showToast('字幕均加载失败');
     // }

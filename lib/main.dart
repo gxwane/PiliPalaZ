@@ -38,8 +38,6 @@ import 'package:flex_seed_scheme/flex_seed_scheme.dart';
 //   MediaKit.ensureInitialized();
 //   await GStorage.init();
 //   await setupServiceLocator();
-//   Request();
-//   await Request.setCookie();
 //   runApp(
 //     ClipRRect(
 //       borderRadius: BorderRadius.circular(12),

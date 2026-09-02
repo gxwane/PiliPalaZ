@@ -1,6 +1,7 @@
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/member.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/member/seasons.dart';
 
 class MemberSeasonsAndSeriesController extends GetxController {
@@ -20,20 +21,23 @@ class MemberSeasonsAndSeriesController extends GetxController {
   // }
 
   // 请求专栏
-  Future getMemberSeasonsAndSeries(String type) async {
+  Future<ApiResult<MemberSeasonsAndSeriesDataModel>> getMemberSeasonsAndSeries(
+    String type,
+  ) async {
     var res = await MemberHttp.getMemberSeasonsAndSeries(mid, pn, ps);
-    if (!res['status']) {
-      SmartDialog.showToast("用户专栏请求异常：${res['msg']}");
-    } else {
-      if (res['data'].seasonsList.isNotEmpty) {
-        seasonsList.addAll(res['data'].seasonsList);
+    if (res case ApiFailure<MemberSeasonsAndSeriesDataModel> failure) {
+      SmartDialog.showToast("用户专栏请求异常：${failure.message}");
+    } else if (res case ApiSuccess<MemberSeasonsAndSeriesDataModel>(
+      :final data,
+    )) {
+      if (data.seasonsList?.isNotEmpty == true) {
+        seasonsList.addAll(data.seasonsList!);
       }
-      if (res['data'].seriesList.isNotEmpty) {
-        seriesList.addAll(res['data'].seriesList);
+      if (data.seriesList?.isNotEmpty == true) {
+        seriesList.addAll(data.seriesList!);
       }
-      if (res['data'].page?.total != null && res['data'].page!.total! > 0) {
-        total = res['data'].page!.total!;
-        print("getMemberSeasonsAndSeries total: $total");
+      if ((data.page?.total ?? 0) > 0) {
+        total = data.page!.total!;
       }
       currentTotal = seasonsList.length + seriesList.length;
     }
@@ -47,7 +51,7 @@ class MemberSeasonsAndSeriesController extends GetxController {
     return await getMemberSeasonsAndSeries('onLoad');
   }
 
-  Future onRefresh() async {
+  Future<ApiResult<MemberSeasonsAndSeriesDataModel>> onRefresh() async {
     pn = 1;
     seasonsList.clear();
     seriesList.clear();

@@ -7,8 +7,11 @@ import 'package:flutter/rendering.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/skeleton/video_reply.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/http/html.dart';
 import 'package:pilipalaz/models/common/reply_type.dart';
 import 'package:pilipalaz/models/dynamics/result.dart';
+import 'package:pilipalaz/models/video/reply/data.dart';
 import 'package:pilipalaz/pages/dynamics/detail/index.dart';
 import 'package:pilipalaz/pages/dynamics/widgets/author_panel.dart';
 import 'package:pilipalaz/pages/video/reply/widgets/reply_item.dart';
@@ -32,7 +35,7 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
     with TickerProviderStateMixin {
   late DynamicDetailController _dynamicDetailController;
   late AnimationController fabAnimationCtr;
-  Future? _futureBuilderFuture;
+  Future<ApiResult<ReplyData>?>? _futureBuilderFuture;
   late StreamController<bool> titleStreamC; // appBar title
   late ScrollController scrollController;
   bool _visibleTitle = false;
@@ -89,9 +92,19 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
           if (opusId != null) {
             isOpusId = true;
             _dynamicDetailController = Get.put(
-                DynamicDetailController(oid, replyType),
-                tag: opusId.toString());
-            await _dynamicDetailController.reqHtmlByOpusId(opusId!);
+              DynamicDetailController(oid, replyType),
+              tag: opusId.toString(),
+            );
+            final result = await _dynamicDetailController.reqHtmlByOpusId(
+              opusId!,
+            );
+            if (result is ApiFailure<HtmlArticleData>) {
+              _futureBuilderFuture = Future.value(result.cast<ReplyData>());
+              if (mounted) {
+                setState(() {});
+              }
+              return;
+            }
             setState(() {});
           }
         } else {
@@ -100,11 +113,14 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
       } catch (_) {}
     }
     if (!isOpusId) {
-      _dynamicDetailController =
-          Get.put(DynamicDetailController(oid, replyType), tag: oid.toString());
+      _dynamicDetailController = Get.put(
+        DynamicDetailController(oid, replyType),
+        tag: oid.toString(),
+      );
     }
-    _futureBuilderFuture =
-        _dynamicDetailController.queryReplyList(reqType: 'init');
+    _futureBuilderFuture = _dynamicDetailController.queryReplyList(
+      reqType: 'init',
+    );
   }
 
   // 查看二级评论
@@ -116,10 +132,7 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
         appBar: AppBar(
           titleSpacing: 0,
           centerTitle: false,
-          title: Text(
-            '评论详情',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          title: Text('评论详情', style: Theme.of(context).textTheme.titleMedium),
         ),
         body: VideoReplyReplyPanel(
           oid: oid,
@@ -135,35 +148,33 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
   // 滑动事件监听
   void scrollListener() {
     scrollController = _dynamicDetailController.scrollController;
-    scrollController.addListener(
-      () {
-        // 分页加载
-        if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 300) {
-          EasyThrottle.throttle('replylist', const Duration(seconds: 2), () {
-            _dynamicDetailController.queryReplyList(reqType: 'onLoad');
-          });
-        }
+    scrollController.addListener(() {
+      // 分页加载
+      if (scrollController.position.pixels >=
+          scrollController.position.maxScrollExtent - 300) {
+        EasyThrottle.throttle('replylist', const Duration(seconds: 2), () {
+          _dynamicDetailController.queryReplyList(reqType: 'onLoad');
+        });
+      }
 
-        // 标题
-        if (scrollController.offset > 55 && !_visibleTitle) {
-          _visibleTitle = true;
-          titleStreamC.add(true);
-        } else if (scrollController.offset <= 55 && _visibleTitle) {
-          _visibleTitle = false;
-          titleStreamC.add(false);
-        }
+      // 标题
+      if (scrollController.offset > 55 && !_visibleTitle) {
+        _visibleTitle = true;
+        titleStreamC.add(true);
+      } else if (scrollController.offset <= 55 && _visibleTitle) {
+        _visibleTitle = false;
+        titleStreamC.add(false);
+      }
 
-        // fab按钮
-        final ScrollDirection direction =
-            scrollController.position.userScrollDirection;
-        if (direction == ScrollDirection.forward) {
-          _showFab();
-        } else if (direction == ScrollDirection.reverse) {
-          _hideFab();
-        }
-      },
-    );
+      // fab按钮
+      final ScrollDirection direction =
+          scrollController.position.userScrollDirection;
+      if (direction == ScrollDirection.forward) {
+        _showFab();
+      } else if (direction == ScrollDirection.reverse) {
+        _hideFab();
+      }
+    });
   }
 
   void _showFab() {
@@ -225,57 +236,67 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
                     cacheExtent: 3500,
                     controller: scrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      SliverToBoxAdapter(
-                        child: DynamicPanel(
-                          item: _dynamicDetailController.item,
-                          source: 'detail',
-                        ),
-                      ),
-                      replyPersistentHeader(context),
-                      replyList(),
-                    ]
-                        .map<Widget>((e) => SliverPadding(
-                            padding: EdgeInsets.symmetric(horizontal: padding),
-                            sliver: e))
-                        .toList(),
+                    slivers:
+                        [
+                              SliverToBoxAdapter(
+                                child: DynamicPanel(
+                                  item: _dynamicDetailController.item,
+                                  source: 'detail',
+                                ),
+                              ),
+                              replyPersistentHeader(context),
+                              replyList(),
+                            ]
+                            .map<Widget>(
+                              (e) => SliverPadding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: padding,
+                                ),
+                                sliver: e,
+                              ),
+                            )
+                            .toList(),
                   );
                 } else {
                   return Row(
                     children: [
                       Expanded(
                         child: CustomScrollView(
-                            cacheExtent: 3500,
-                            controller: ScrollController(),
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            slivers: [
-                              SliverPadding(
-                                  padding: EdgeInsets.only(left: padding / 2),
-                                  sliver: SliverToBoxAdapter(
-                                    child: DynamicPanel(
-                                      item: _dynamicDetailController.item,
-                                      source: 'detail',
-                                    ),
-                                  )),
-                            ]),
+                          cacheExtent: 3500,
+                          controller: ScrollController(),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          slivers: [
+                            SliverPadding(
+                              padding: EdgeInsets.only(left: padding / 2),
+                              sliver: SliverToBoxAdapter(
+                                child: DynamicPanel(
+                                  item: _dynamicDetailController.item,
+                                  source: 'detail',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       Expanded(
                         child: CustomScrollView(
-                            cacheExtent: 3500,
-                            controller: scrollController,
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            slivers: [
-                              SliverPadding(
-                                  padding: EdgeInsets.only(right: padding / 2),
-                                  sliver: replyPersistentHeader(context)),
-                              SliverPadding(
-                                  padding: EdgeInsets.only(right: padding / 2),
-                                  sliver: replyList()),
-                            ]
-                            // .map<Widget>(
-                            //     (e) => SliverPadding(padding: padding, sliver: e))
-                            // .toList(),
+                          cacheExtent: 3500,
+                          controller: scrollController,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          slivers: [
+                            SliverPadding(
+                              padding: EdgeInsets.only(right: padding / 2),
+                              sliver: replyPersistentHeader(context),
                             ),
+                            SliverPadding(
+                              padding: EdgeInsets.only(right: padding / 2),
+                              sliver: replyList(),
+                            ),
+                          ],
+                          // .map<Widget>(
+                          //     (e) => SliverPadding(padding: padding, sliver: e))
+                          // .toList(),
+                        ),
                       ),
                     ],
                   );
@@ -286,13 +307,16 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
               bottom: MediaQuery.of(context).padding.bottom + 14,
               right: 14,
               child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 2),
-                  end: const Offset(0, 0),
-                ).animate(CurvedAnimation(
-                  parent: fabAnimationCtr,
-                  curve: Curves.easeInOut,
-                )),
+                position:
+                    Tween<Offset>(
+                      begin: const Offset(0, 2),
+                      end: const Offset(0, 0),
+                    ).animate(
+                      CurvedAnimation(
+                        parent: fabAnimationCtr,
+                        curve: Curves.easeInOut,
+                      ),
+                    ),
                 child: FloatingActionButton(
                   heroTag: null,
                   onPressed: () {
@@ -303,7 +327,8 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
                       isDismissible: false,
                       builder: (BuildContext context) {
                         return VideoReplyNewDialog(
-                          oid: _dynamicDetailController.oid ??
+                          oid:
+                              _dynamicDetailController.oid ??
                               IdUtils.bv2av(Get.parameters['bvid']!),
                           root: 0,
                           parent: 0,
@@ -315,10 +340,11 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
                         // 完成评论，数据添加
                         if (value != null && value['data'] != null)
                           {
-                            _dynamicDetailController.replyList
-                                .add(value['data']),
-                            _dynamicDetailController.acount.value++
-                          }
+                            _dynamicDetailController.replyList.add(
+                              value['data'],
+                            ),
+                            _dynamicDetailController.acount.value++,
+                          },
                       },
                     );
                   },
@@ -355,8 +381,8 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
                   duration: const Duration(milliseconds: 400),
                   transitionBuilder:
                       (Widget child, Animation<double> animation) {
-                    return ScaleTransition(scale: animation, child: child);
-                  },
+                        return ScaleTransition(scale: animation, child: child);
+                      },
                   child: Text(
                     '${_dynamicDetailController.acount.value}条回复',
                     key: ValueKey<int>(_dynamicDetailController.acount.value),
@@ -369,12 +395,14 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
                 child: TextButton.icon(
                   onPressed: () => _dynamicDetailController.queryBySort(),
                   icon: const Icon(Icons.sort, size: 16),
-                  label: Obx(() => Text(
-                        _dynamicDetailController.sortTypeLabel.value,
-                        style: const TextStyle(fontSize: 13),
-                      )),
+                  label: Obx(
+                    () => Text(
+                      _dynamicDetailController.sortTypeLabel.value,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -383,17 +411,18 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
     );
   }
 
-  FutureBuilder<dynamic> replyList() {
-    return FutureBuilder(
+  FutureBuilder<ApiResult<ReplyData>?> replyList() {
+    return FutureBuilder<ApiResult<ReplyData>?>(
       future: _futureBuilderFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.done &&
             snapshot.hasData) {
-          Map data = snapshot.data as Map;
-          if (snapshot.data['status']) {
+          final result = snapshot.data!;
+          if (result is ApiSuccess<ReplyData>) {
             // 请求成功
             return Obx(
-              () => _dynamicDetailController.replyList.isEmpty &&
+              () =>
+                  _dynamicDetailController.replyList.isEmpty &&
                       _dynamicDetailController.isLoadingMore
                   ? SliverList(
                       delegate: SliverChildBuilderDelegate((context, index) {
@@ -407,8 +436,8 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
                               _dynamicDetailController.replyList.length) {
                             return Container(
                               padding: EdgeInsets.only(
-                                  bottom:
-                                      MediaQuery.of(context).padding.bottom),
+                                bottom: MediaQuery.of(context).padding.bottom,
+                              ),
                               height:
                                   MediaQuery.of(context).padding.bottom + 100,
                               child: Center(
@@ -417,8 +446,9 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
                                     _dynamicDetailController.noMore.value,
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color:
-                                          Theme.of(context).colorScheme.outline,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.outline,
                                     ),
                                   ),
                                 ),
@@ -434,7 +464,8 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
                               replyType: ReplyType.values[replyType],
                               addReply: (replyItem) {
                                 _dynamicDetailController
-                                    .replyList[index].replies!
+                                    .replyList[index]
+                                    .replies!
                                     .add(replyItem);
                               },
                             );
@@ -448,8 +479,13 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
           } else {
             // 请求错误
             return HttpError(
-              errMsg: data['msg'],
-              fn: () => setState(() {}),
+              errMsg: (result as ApiFailure<ReplyData>).message,
+              fn: () {
+                setState(() {
+                  _futureBuilderFuture = _dynamicDetailController
+                      .queryReplyList(reqType: 'init');
+                });
+              },
             );
           }
         } else {
@@ -474,7 +510,10 @@ class _MySliverPersistentHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     //创建child子组件
     //shrinkOffset：child偏移值minExtent~maxExtent
     //overlapsContent：SliverPersistentHeader覆盖其他子组件返回true，否则返回false

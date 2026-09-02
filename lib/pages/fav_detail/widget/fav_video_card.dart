@@ -5,6 +5,8 @@ import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/widgets/stat/danmu.dart';
 import 'package:pilipalaz/common/widgets/stat/view.dart';
 import 'package:pilipalaz/http/video.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/video_detail_res.dart';
 import 'package:pilipalaz/services/pgc_playback_coordinator.dart';
 import 'package:pilipalaz/utils/id_utils.dart';
 import 'package:pilipalaz/utils/utils.dart';
@@ -43,10 +45,12 @@ class FavVideoCardH extends StatelessWidget {
         String? epId;
         if (videoItem.page == 0 || videoItem.page > 1) {
           var result = await VideoHttp.videoIntro(bvid: bvid);
-          if (result['status']) {
-            epId = result['data'].epId?.toString();
+          if (result case ApiSuccess<VideoDetailData>(:final data)) {
+            epId = data.epId?.toString();
           } else {
-            SmartDialog.showToast(result['msg']);
+            SmartDialog.showToast(
+              (result as ApiFailure<VideoDetailData>).message,
+            );
           }
         }
 

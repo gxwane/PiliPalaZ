@@ -9,6 +9,8 @@ import 'package:get/get.dart';
 import 'package:pilipalaz/common/skeleton/video_reply.dart';
 import 'package:pilipalaz/common/widgets/html_render.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/http/html.dart';
 import 'package:pilipalaz/models/common/reply_type.dart';
 import 'package:pilipalaz/pages/video/reply/widgets/reply_item.dart';
 import 'package:pilipalaz/pages/video/reply_new/index.dart';
@@ -34,7 +36,7 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
   late String dynamicType;
   late int type;
   bool _isFabVisible = true;
-  late final Future _futureBuilderFuture;
+  late final Future<ApiResult<HtmlArticleData>> _futureBuilderFuture;
   late ScrollController scrollController;
   late AnimationController fabAnimationCtr;
 
@@ -306,8 +308,8 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
             final slivers = <Widget>[];
             if (snapshot.connectionState == ConnectionState.done &&
                 snapshot.hasData) {
-              final data = snapshot.data;
-              if (data != null && data['status']) {
+              final result = snapshot.data;
+              if (result is ApiSuccess<HtmlArticleData>) {
                 slivers.addAll([
                   SliverPadding(
                     padding: outerPadding.add(
@@ -320,7 +322,7 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
                       const EdgeInsets.fromLTRB(12, 8, 12, 8),
                     ),
                     sliver: HtmlRenderSliver(
-                      htmlContent: _htmlRenderCtr.response['content'],
+                      htmlContent: _htmlRenderCtr.response.content,
                       constrainedWidth: htmlWidth,
                     ),
                   ),
@@ -347,7 +349,13 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
                 slivers.add(
                   SliverPadding(
                     padding: outerPadding,
-                    sliver: const SliverToBoxAdapter(child: Text('error')),
+                    sliver: SliverToBoxAdapter(
+                      child: Text(
+                        result is ApiFailure<HtmlArticleData>
+                            ? result.message
+                            : '专栏加载失败',
+                      ),
+                    ),
                   ),
                 );
               }
@@ -375,20 +383,20 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
           width: 40,
           height: 40,
           type: 'avatar',
-          src: _htmlRenderCtr.response['avatar']!,
+          src: _htmlRenderCtr.response.avatar,
         ),
         const SizedBox(width: 10),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _htmlRenderCtr.response['uname'],
+              _htmlRenderCtr.response.userName,
               style: TextStyle(
                 fontSize: Theme.of(context).textTheme.titleSmall!.fontSize,
               ),
             ),
             Text(
-              _htmlRenderCtr.response['updateTime'],
+              _htmlRenderCtr.response.updateTime,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.outline,
                 fontSize: Theme.of(context).textTheme.labelSmall!.fontSize,

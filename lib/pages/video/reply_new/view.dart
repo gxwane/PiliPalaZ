@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/video.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/common/reply_type.dart';
 import 'package:pilipalaz/models/video/reply/emote.dart';
 import 'package:pilipalaz/models/video/reply/item.dart';
@@ -83,26 +84,26 @@ class _VideoReplyNewDialogState extends State<VideoReplyNewDialog>
           ? ' 回复 @${widget.replyItem!.member!.uname!} : $message'
           : message,
     );
-    if (result['status']) {
-      SmartDialog.showToast(result['data']['success_toast']);
-      Get.back(result: {
-        'data': ReplyItemModel.fromJson(result['data']['reply'], ''),
-      });
+    if (result case ApiSuccess<VideoReplyCreation>(:final data)) {
+      SmartDialog.showToast(data.successToast);
+      Get.back(result: {'data': ReplyItemModel.fromJson(data.reply, '')});
     } else {
-      SmartDialog.showToast(result['msg']);
+      SmartDialog.showToast((result as ApiFailure<VideoReplyCreation>).message);
     }
   }
 
   void onChooseEmote(Packages package, Emote emote) {
     final int cursorPosition = _replyContentController.selection.baseOffset;
     final String currentText = _replyContentController.text;
-    final String newText = currentText.substring(0, cursorPosition) +
+    final String newText =
+        currentText.substring(0, cursorPosition) +
         emote.text! +
         currentText.substring(cursorPosition);
     _replyContentController.value = TextEditingValue(
       text: newText,
-      selection:
-          TextSelection.collapsed(offset: cursorPosition + emote.text!.length),
+      selection: TextSelection.collapsed(
+        offset: cursorPosition + emote.text!.length,
+      ),
     );
   }
 
@@ -114,12 +115,15 @@ class _VideoReplyNewDialogState extends State<VideoReplyNewDialog>
       if (!mounted) return;
       // 键盘高度
       final viewInsets = EdgeInsets.fromViewPadding(
-          View.of(context).viewInsets, View.of(context).devicePixelRatio);
+        View.of(context).viewInsets,
+        View.of(context).devicePixelRatio,
+      );
       _debouncer.run(() {
         if (!mounted) return;
         if (keyboardHeight == 0 && emoteHeight == 0) {
-          emoteHeight = keyboardHeight =
-              keyboardHeight == 0.0 ? viewInsets.bottom : keyboardHeight;
+          emoteHeight = keyboardHeight = keyboardHeight == 0.0
+              ? viewInsets.bottom
+              : keyboardHeight;
           if (emoteHeight < 200) emoteHeight = 200;
           setState(() {});
         }
@@ -139,8 +143,9 @@ class _VideoReplyNewDialogState extends State<VideoReplyNewDialog>
   @override
   Widget build(BuildContext context) {
     double keyboardHeight = EdgeInsets.fromViewPadding(
-            View.of(context).viewInsets, View.of(context).devicePixelRatio)
-        .bottom;
+      View.of(context).viewInsets,
+      View.of(context).devicePixelRatio,
+    ).bottom;
     return Container(
       clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
@@ -154,13 +159,14 @@ class _VideoReplyNewDialogState extends State<VideoReplyNewDialog>
         mainAxisSize: MainAxisSize.min,
         children: [
           ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxHeight: 200,
-              minHeight: 120,
-            ),
+            constraints: const BoxConstraints(maxHeight: 200, minHeight: 120),
             child: Container(
               padding: const EdgeInsets.only(
-                  top: 12, right: 15, left: 15, bottom: 10),
+                top: 12,
+                right: 15,
+                left: 15,
+                bottom: 10,
+              ),
               child: SingleChildScrollView(
                 child: Form(
                   key: _formKey,
@@ -172,11 +178,10 @@ class _VideoReplyNewDialogState extends State<VideoReplyNewDialog>
                     autofocus: false,
                     focusNode: replyContentFocusNode,
                     decoration: const InputDecoration(
-                        hintText: "输入回复内容",
-                        border: InputBorder.none,
-                        hintStyle: TextStyle(
-                          fontSize: 14,
-                        )),
+                      hintText: "输入回复内容",
+                      border: InputBorder.none,
+                      hintStyle: TextStyle(fontSize: 14),
+                    ),
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ),
@@ -224,28 +229,32 @@ class _VideoReplyNewDialogState extends State<VideoReplyNewDialog>
                 ),
                 const Spacer(),
                 TextButton(
-                    onPressed: () => Get.back(),
-                    child: Text('取消',
-                        style: TextStyle(
-                            color: Theme.of(context).colorScheme.secondary))),
+                  onPressed: () => Get.back(),
+                  child: Text(
+                    '取消',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 10),
                 TextButton(
-                    onPressed: () => submitReplyAdd(), child: const Text('发送'))
+                  onPressed: () => submitReplyAdd(),
+                  child: const Text('发送'),
+                ),
               ],
             ),
           ),
           SizedBox(
             width: double.infinity,
             height: toolbarType == 'input' ? keyboardHeight : emoteHeight,
-            child: EmotePanel(
-              onChoose: onChooseEmote,
-            ),
+            child: EmotePanel(onChoose: onChooseEmote),
           ),
           if (toolbarType == 'input' && keyboardHeight == 0.0)
             SizedBox(
               width: double.infinity,
               height: MediaQuery.of(context).padding.bottom,
-            )
+            ),
         ],
       ),
     );

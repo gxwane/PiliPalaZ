@@ -11,6 +11,7 @@ import 'package:pilipalaz/http/user.dart';
 import 'package:pilipalaz/http/video.dart';
 import 'package:pilipalaz/models/common/business_type.dart';
 import 'package:pilipalaz/models/live/item.dart';
+import 'package:pilipalaz/models/video_detail_res.dart';
 import 'package:pilipalaz/pages/history_search/index.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
 import 'package:pilipalaz/utils/id_utils.dart';
@@ -80,9 +81,9 @@ class HistoryItem extends StatelessWidget {
         } else if (videoItem.history.business == BusinessType.pgc.type) {
           int? epId = int.tryParse(videoItem.history.epid?.toString() ?? '');
           if (epId == null && bvid.isNotEmpty) {
-            final Map result = await VideoHttp.videoIntro(bvid: bvid);
-            if (result['status']) {
-              epId = result['data'].epId;
+            final result = await VideoHttp.videoIntro(bvid: bvid);
+            if (result case ApiSuccess<VideoDetailData>(:final data)) {
+              epId = int.tryParse(data.epId?.toString() ?? '');
             }
           }
           if (epId == null) {

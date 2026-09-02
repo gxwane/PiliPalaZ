@@ -49,14 +49,7 @@ class NetworkImgLayer extends StatelessWidget {
     if (src?.isEmpty != false) {
       res = placeholder(context);
     } else {
-      String srcUrl = src!;
-      if (srcUrl.startsWith('http://')) {
-        srcUrl = srcUrl.substring(5);
-      }
-      if (srcUrl.startsWith('//')) {
-        srcUrl = 'https:$srcUrl';
-      }
-      print(srcUrl);
+      final srcUrl = normalizeUrl(src!);
       res = ClipRRect(
         clipBehavior: Clip.antiAlias,
         borderRadius: BorderRadius.circular(
@@ -67,7 +60,7 @@ class NetworkImgLayer extends StatelessWidget {
               : StyleString.imgRadius.x,
         ),
         child: CachedNetworkImage(
-          imageUrl: '$srcUrl@${quality ?? defaultImgQuality}q.webp',
+          imageUrl: _qualityUrl(srcUrl, quality ?? defaultImgQuality),
           width: width,
           height: ignoreHeight == null || ignoreHeight == false ? height : null,
           memCacheWidth: memCacheWidth,
@@ -87,6 +80,28 @@ class NetworkImgLayer extends StatelessWidget {
       return Semantics(label: semanticsLabel, child: res);
     }
     return res;
+  }
+
+  static String normalizeUrl(String source) {
+    final value = source.trim();
+    if (value.startsWith('//')) {
+      return 'https:$value';
+    }
+    final uri = Uri.tryParse(value);
+    if (uri?.scheme == 'http') {
+      return uri!.replace(scheme: 'https').toString();
+    }
+    return value;
+  }
+
+  static String _qualityUrl(String source, int quality) {
+    final uri = Uri.tryParse(source);
+    if (uri == null ||
+        !(uri.host.endsWith('hdslb.com') || uri.host.endsWith('biliimg.com')) ||
+        uri.path.contains('@')) {
+      return source;
+    }
+    return uri.replace(path: '${uri.path}@${quality}q.webp').toString();
   }
 
   Widget placeholder(BuildContext context) {

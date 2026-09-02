@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/member/tags.dart';
 import 'controller.dart';
 import 'widgets/follow_list.dart';
 import 'widgets/owner_follow_list.dart';
@@ -42,7 +44,7 @@ class _FollowPageState extends State<FollowPage> {
           IconButton(
             onPressed: () => Get.toNamed('/followSearch?mid=$mid'),
             icon: const Icon(Icons.search_outlined),
-            tooltip: '搜索'
+            tooltip: '搜索',
           ),
           PopupMenuButton(
             icon: const Icon(Icons.more_vert),
@@ -57,7 +59,7 @@ class _FollowPageState extends State<FollowPage> {
                     Text('黑名单管理'),
                   ],
                 ),
-              )
+              ),
             ],
           ),
           const SizedBox(width: 6),
@@ -70,32 +72,36 @@ class _FollowPageState extends State<FollowPage> {
                 future: _followController.followUpTags(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.done) {
-                    var data = snapshot.data;
-                    if (data['status']) {
+                    final result = snapshot.data;
+                    if (result is ApiSuccess<List<MemberTagItemModel>>) {
+                      final data = result.data;
                       return Column(
                         children: [
                           TabBar(
-                              controller: _followController.tabController,
-                              isScrollable: true,
-                              tabAlignment: TabAlignment.start,
-                              tabs: [
-                                for (var i in data['data']) ...[
-                                  Tab(text: i.name),
-                                ]
-                              ]),
+                            controller: _followController.tabController,
+                            isScrollable: true,
+                            tabAlignment: TabAlignment.start,
+                            tabs: [
+                              for (final item in data) ...[
+                                Tab(text: item.name),
+                              ],
+                            ],
+                          ),
                           Expanded(
                             child: TabBarView(
                               physics: const CustomTabBarViewScrollPhysics(),
                               controller: _followController.tabController,
                               children: [
-                                for (var i = 0;
-                                    i < _followController.tabController.length;
-                                    i++) ...[
+                                for (
+                                  var i = 0;
+                                  i < _followController.tabController.length;
+                                  i++
+                                ) ...[
                                   OwnerFollowList(
                                     ctr: _followController,
                                     tagItem: _followController.followTags[i],
-                                  )
-                                ]
+                                  ),
+                                ],
                               ],
                             ),
                           ),

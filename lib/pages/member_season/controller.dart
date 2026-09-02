@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/member.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/member/seasons.dart';
 
 class MemberSeasonController extends GetxController {
@@ -22,7 +23,7 @@ class MemberSeasonController extends GetxController {
   }
 
   // 获取合集详情
-  Future getSeasonDetail(type) async {
+  Future<ApiResult<MemberSeasonsList>> getSeasonDetail(type) async {
     if (type == 'onRefresh') {
       pn = 1;
     }
@@ -33,11 +34,13 @@ class MemberSeasonController extends GetxController {
       ps: ps,
       sortReverse: false,
     );
-    if (res['status']) {
-      seasonsList.addAll(res['data'].archives);
-      page = res['data'].page;
+    if (res case ApiSuccess<MemberSeasonsList>(:final data)) {
+      seasonsList.addAll(data.archives ?? <MemberArchiveItem>[]);
+      page = data.page ?? <String, dynamic>{};
       pn += 1;
-      meta.value = res['data'].meta;
+      if (data.meta != null) {
+        meta.value = data.meta!;
+      }
     }
     return res;
   }

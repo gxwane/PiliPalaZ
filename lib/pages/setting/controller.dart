@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
-import 'package:pilipalaz/http/init.dart';
+import 'package:pilipalaz/http/http_runtime.dart';
 import 'package:pilipalaz/models/common/theme_type.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
 import 'package:pilipalaz/utils/login.dart';
@@ -33,21 +33,35 @@ class SettingController extends GetxController {
     super.onInit();
     userInfo = userInfoCache.get('userInfoCache');
     userLogin.value = userInfo != null;
-    hiddenSettingUnlocked.value =
-        setting.get(SettingBoxKey.hiddenSettingUnlocked, defaultValue: false);
-    feedBackEnable.value =
-        setting.get(SettingBoxKey.feedBackEnable, defaultValue: false);
-    toastOpacity.value =
-        setting.get(SettingBoxKey.defaultToastOp, defaultValue: 1.0).toDouble();
-    picQuality.value =
-        setting.get(SettingBoxKey.defaultPicQa, defaultValue: 10);
-    themeType.value = ThemeType.values[setting.get(SettingBoxKey.themeMode,
-        defaultValue: ThemeType.system.code)];
-    dynamicBadgeType.value = DynamicBadgeMode.values[setting.get(
-        SettingBoxKey.dynamicBadgeMode,
-        defaultValue: DynamicBadgeMode.number.code)];
-    defaultHomePage.value =
-        setting.get(SettingBoxKey.defaultHomePage, defaultValue: 0);
+    hiddenSettingUnlocked.value = setting.get(
+      SettingBoxKey.hiddenSettingUnlocked,
+      defaultValue: false,
+    );
+    feedBackEnable.value = setting.get(
+      SettingBoxKey.feedBackEnable,
+      defaultValue: false,
+    );
+    toastOpacity.value = setting
+        .get(SettingBoxKey.defaultToastOp, defaultValue: 1.0)
+        .toDouble();
+    picQuality.value = setting.get(
+      SettingBoxKey.defaultPicQa,
+      defaultValue: 10,
+    );
+    themeType.value =
+        ThemeType.values[setting.get(
+          SettingBoxKey.themeMode,
+          defaultValue: ThemeType.system.code,
+        )];
+    dynamicBadgeType.value =
+        DynamicBadgeMode.values[setting.get(
+          SettingBoxKey.dynamicBadgeMode,
+          defaultValue: DynamicBadgeMode.number.code,
+        )];
+    defaultHomePage.value = setting.get(
+      SettingBoxKey.defaultHomePage,
+      defaultValue: 0,
+    );
   }
 
   loginOut(BuildContext context) async {
@@ -58,19 +72,19 @@ class SettingController extends GetxController {
           title: const Text('提示'),
           content: const Text('确认要退出登录吗'),
           actions: [
-            TextButton(
-              onPressed: () => Get.back(),
-              child: const Text('点错了'),
-            ),
+            TextButton(onPressed: () => Get.back(), child: const Text('点错了')),
             TextButton(
               onPressed: () async {
                 // 清空cookie
-                await Request.cookieManager.cookieJar.deleteAll();
-                Request.dio.options.headers['cookie'] = '';
+                await HttpRuntime.instance.cookieJar.deleteAll();
+                HttpRuntime.instance.dio.options.headers['cookie'] = '';
                 // 清空本地存储的用户标识
                 userInfoCache.put('userInfoCache', null);
-                localCache.put(LocalCacheKey.accessKey,
-                    {'mid': -1, 'value': '', 'refresh': ''});
+                localCache.put(LocalCacheKey.accessKey, {
+                  'mid': -1,
+                  'value': '',
+                  'refresh': '',
+                });
                 try {
                   final WebViewController controller = WebViewController();
                   controller.clearCache();
@@ -88,7 +102,7 @@ class SettingController extends GetxController {
                 Get.back();
               },
               child: const Text('确认'),
-            )
+            ),
           ],
         );
       },
@@ -134,11 +148,12 @@ class SettingController extends GetxController {
       context: context,
       builder: (context) {
         return SelectDialog<int>(
-            title: '首页启动页',
-            value: defaultHomePage.value,
-            values: defaultNavigationBars.map((e) {
-              return {'title': e['label'], 'value': e['id']};
-            }).toList());
+          title: '首页启动页',
+          value: defaultHomePage.value,
+          values: defaultNavigationBars.map((e) {
+            return {'title': e['label'], 'value': e['id']};
+          }).toList(),
+        );
       },
     );
     if (result != null) {

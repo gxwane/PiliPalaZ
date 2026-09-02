@@ -79,8 +79,11 @@ class FavSearchController extends GetxController {
 
   onCancelFav(int id) async {
     var result = await VideoHttp.favVideo(
-        aid: id, addIds: '', delIds: mediaId.toString());
-    if (result['status']) {
+      aid: id,
+      addIds: '',
+      delIds: mediaId.toString(),
+    );
+    if (result is ApiSuccess<void>) {
       List dataList = favList;
       for (var i in dataList) {
         if (i.id == id) {

@@ -2,6 +2,7 @@ import 'package:easy_debounce/easy_throttle.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/video_card_h.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/utils/utils.dart';
 import '../../common/constants.dart';
 import '../../common/widgets/http_error.dart';
@@ -19,7 +20,7 @@ class MemberArchivePage extends StatefulWidget {
 
 class _MemberArchivePageState extends State<MemberArchivePage> {
   late MemberArchiveController _memberArchivesController;
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<MemberArchiveDataModel>> _futureBuilderFuture;
   late int mid;
 
   @override
@@ -27,8 +28,10 @@ class _MemberArchivePageState extends State<MemberArchivePage> {
     super.initState();
     mid = widget.mid;
     final String heroTag = Utils.makeHeroTag(mid);
-    _memberArchivesController =
-        Get.put(MemberArchiveController(mid: mid), tag: heroTag);
+    _memberArchivesController = Get.put(
+      MemberArchiveController(mid: mid),
+      tag: heroTag,
+    );
     _futureBuilderFuture = _memberArchivesController.getMemberArchive('init');
   }
 
@@ -44,9 +47,12 @@ class _MemberArchivePageState extends State<MemberArchivePage> {
                     200)) {
           // 触发分页加载
           EasyThrottle.throttle(
-              'member_archives', const Duration(milliseconds: 500), () {
-            _memberArchivesController.onLoad();
-          });
+            'member_archives',
+            const Duration(milliseconds: 500),
+            () {
+              _memberArchivesController.onLoad();
+            },
+          );
         }
         return true;
       },
@@ -59,27 +65,31 @@ class _MemberArchivePageState extends State<MemberArchivePage> {
           physics: const ClampingScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
-              child: Row(children: [
-                TextButton.icon(
-                  icon: const Icon(Icons.play_circle_outline, size: 20),
-                  onPressed: _memberArchivesController.episodicButton,
-                  label: Text(_memberArchivesController.episodicButtonText),
-                ),
-                const Spacer(),
-                Obx(
-                  () => TextButton.icon(
-                    icon: const Icon(Icons.sort, size: 20),
-                    onPressed: _memberArchivesController.toggleSort,
-                    label:
-                        Text(_memberArchivesController.currentOrder['label']!),
+              child: Row(
+                children: [
+                  TextButton.icon(
+                    icon: const Icon(Icons.play_circle_outline, size: 20),
+                    onPressed: _memberArchivesController.episodicButton,
+                    label: Text(_memberArchivesController.episodicButtonText),
                   ),
-                ),
-              ]),
+                  const Spacer(),
+                  Obx(
+                    () => TextButton.icon(
+                      icon: const Icon(Icons.sort, size: 20),
+                      onPressed: _memberArchivesController.toggleSort,
+                      label: Text(
+                        _memberArchivesController.currentOrder['label']!,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             SliverPadding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: StyleString.safeSpace),
-              sliver: FutureBuilder(
+              padding: const EdgeInsets.symmetric(
+                horizontal: StyleString.safeSpace,
+              ),
+              sliver: FutureBuilder<ApiResult<MemberArchiveDataModel>>(
                 future: _futureBuilderFuture,
                 builder: (BuildContext context, snapshot) {
                   if (snapshot.connectionState != ConnectionState.done) {
@@ -87,41 +97,44 @@ class _MemberArchivePageState extends State<MemberArchivePage> {
                   }
                   if (snapshot.data == null) {
                     return HttpError(
-                        errMsg: "投稿页出现错误",
-                        fn: _memberArchivesController.onRefresh);
+                      errMsg: "投稿页出现错误",
+                      fn: _memberArchivesController.onRefresh,
+                    );
                   }
-                  Map data = snapshot.data as Map;
+                  final result = snapshot.data!;
                   List<VListItemModel> list =
                       _memberArchivesController.archivesList;
-                  if (!data['status']) {
+                  if (result is ApiFailure<MemberArchiveDataModel>) {
                     return HttpError(
-                        errMsg: snapshot.data['msg'],
-                        fn: _memberArchivesController.onRefresh);
+                      errMsg: result.message,
+                      fn: _memberArchivesController.onRefresh,
+                    );
                   }
                   return Obx(() {
                     if (list.isEmpty) return const SliverToBoxAdapter();
                     return SliverGrid(
                       gridDelegate: SliverGridDelegateWithExtentAndRatio(
-                          mainAxisSpacing: StyleString.safeSpace,
-                          crossAxisSpacing: StyleString.safeSpace,
-                          maxCrossAxisExtent: Grid.maxRowWidth * 2,
-                          childAspectRatio: StyleString.aspectRatio * 2.4,
-                          mainAxisExtent: 0),
-                      delegate: SliverChildBuilderDelegate(
-                        (BuildContext context, index) {
-                          return VideoCardH(
-                            videoItem: list[index],
-                            showOwner: false,
-                            showPubdate: true,
-                          );
-                        },
-                        childCount: list.length,
+                        mainAxisSpacing: StyleString.safeSpace,
+                        crossAxisSpacing: StyleString.safeSpace,
+                        maxCrossAxisExtent: Grid.maxRowWidth * 2,
+                        childAspectRatio: StyleString.aspectRatio * 2.4,
+                        mainAxisExtent: 0,
                       ),
+                      delegate: SliverChildBuilderDelegate((
+                        BuildContext context,
+                        index,
+                      ) {
+                        return VideoCardH(
+                          videoItem: list[index],
+                          showOwner: false,
+                          showPubdate: true,
+                        );
+                      }, childCount: list.length),
                     );
                   });
                 },
               ),
-            )
+            ),
           ],
         ),
       ),

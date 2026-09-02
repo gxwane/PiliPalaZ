@@ -1,280 +1,197 @@
 import 'dart:math';
+
 import 'package:dio/dio.dart';
 
 import '../models/msg/account.dart';
+import '../models/msg/msgfeed_at_me.dart';
+import '../models/msg/msgfeed_like_me.dart';
+import '../models/msg/msgfeed_reply_me.dart';
+import '../models/msg/msgfeed_sys_msg.dart';
+import '../models/msg/msgfeed_unread.dart';
 import '../models/msg/session.dart';
 import '../utils/wbi_sign.dart';
 import 'api.dart';
-import 'init.dart';
+import 'api_client.dart';
+import 'api_decoder.dart';
+import 'api_result.dart';
+import 'http_runtime.dart';
 
-class MsgHttp {
-  static Future msgFeedReplyMe({int cursor = -1, int cursorTime = -1}) async {
-    var res = await Request().get(Api.msgFeedReply, data: {
-      'id': cursor == -1 ? null : cursor,
-      'reply_time': cursorTime == -1 ? null : cursorTime,
-    });
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': res.data['data'],
-      };
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': res.data['message'],
-      };
-    }
+abstract final class MsgHttp {
+  static ApiClient get _client => HttpRuntime.instance.client;
+
+  static Future<ApiResult<MsgFeedReplyMe>> msgFeedReplyMe({
+    int cursor = -1,
+    int cursorTime = -1,
+  }) {
+    return _getData<MsgFeedReplyMe>(
+      Api.msgFeedReply,
+      endpoint: 'message.replyFeed',
+      parameters: <String, dynamic>{
+        'id': cursor == -1 ? null : cursor,
+        'reply_time': cursorTime == -1 ? null : cursorTime,
+      },
+      decode: MsgFeedReplyMe.fromJson,
+    );
   }
 
-  static Future msgFeedAtMe({int cursor = -1, int cursorTime = -1}) async {
-    var res = await Request().get(Api.msgFeedAt, data: {
-      'id': cursor == -1 ? null : cursor,
-      'at_time': cursorTime == -1 ? null : cursorTime,
-    });
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': res.data['data'],
-      };
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': res.data['message'],
-      };
-    }
+  static Future<ApiResult<MsgFeedAtMe>> msgFeedAtMe({
+    int cursor = -1,
+    int cursorTime = -1,
+  }) {
+    return _getData<MsgFeedAtMe>(
+      Api.msgFeedAt,
+      endpoint: 'message.atFeed',
+      parameters: <String, dynamic>{
+        'id': cursor == -1 ? null : cursor,
+        'at_time': cursorTime == -1 ? null : cursorTime,
+      },
+      decode: MsgFeedAtMe.fromJson,
+    );
   }
 
-  static Future msgFeedLikeMe({int cursor = -1, int cursorTime = -1}) async {
-    var res = await Request().get(Api.msgFeedLike, data: {
-      'id': cursor == -1 ? null : cursor,
-      'like_time': cursorTime == -1 ? null : cursorTime,
-    });
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': res.data['data'],
-      };
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': res.data['message'],
-      };
-    }
+  static Future<ApiResult<MsgFeedLikeMe>> msgFeedLikeMe({
+    int cursor = -1,
+    int cursorTime = -1,
+  }) {
+    return _getData<MsgFeedLikeMe>(
+      Api.msgFeedLike,
+      endpoint: 'message.likeFeed',
+      parameters: <String, dynamic>{
+        'id': cursor == -1 ? null : cursor,
+        'like_time': cursorTime == -1 ? null : cursorTime,
+      },
+      decode: MsgFeedLikeMe.fromJson,
+    );
   }
 
-  static Future msgFeedSysUserNotify() async {
-    String csrf = await Request.getCsrf();
-    var res = await Request().get(Api.msgSysUserNotify, data: {
-      'csrf': csrf,
-      'page_size': 20,
-    });
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': res.data['data'],
-      };
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': res.data['message'],
-      };
-    }
+  static Future<ApiResult<MsgFeedSysMsg>> msgFeedSysUserNotify() async {
+    return _getData<MsgFeedSysMsg>(
+      Api.msgSysUserNotify,
+      endpoint: 'message.systemUserFeed',
+      parameters: <String, dynamic>{
+        'csrf': await HttpRuntime.instance.getCsrf(),
+        'page_size': 20,
+      },
+      decode: MsgFeedSysMsg.fromJson,
+    );
   }
 
-  static Future msgFeedSysUnifiedNotify() async {
-    String csrf = await Request.getCsrf();
-    var res = await Request().get(Api.msgSysUnifiedNotify, data: {
-      'csrf': csrf,
-      'page_size': 10,
-    });
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': res.data['data'],
-      };
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': res.data['message'],
-      };
-    }
+  static Future<ApiResult<MsgFeedSysMsg>> msgFeedSysUnifiedNotify() async {
+    return _getData<MsgFeedSysMsg>(
+      Api.msgSysUnifiedNotify,
+      endpoint: 'message.systemUnifiedFeed',
+      parameters: <String, dynamic>{
+        'csrf': await HttpRuntime.instance.getCsrf(),
+        'page_size': 10,
+      },
+      decode: MsgFeedSysMsg.fromJson,
+    );
   }
 
-  static Future msgSysUpdateCursor(int cursor) async {
-    String csrf = await Request.getCsrf();
-    var res = await Request().get(Api.msgSysUpdateCursor, data: {
-      'csrf': csrf,
-      'cursor': cursor,
-    });
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-      };
-    } else {
-      return {
-        'status': false,
-        'msg': res.data['message'],
-      };
-    }
+  static Future<ApiResult<void>> msgSysUpdateCursor(int cursor) async {
+    return _client.getJson<void>(
+      Api.msgSysUpdateCursor,
+      queryParameters: <String, dynamic>{
+        'csrf': await HttpRuntime.instance.getCsrf(),
+        'cursor': cursor,
+      },
+      endpoint: 'message.updateSystemCursor',
+      decode: BiliApiDecoder.success,
+    );
   }
 
-  static Future msgFeedUnread() async {
-    var res = await Request().get(Api.msgFeedUnread);
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': res.data['data'],
-      };
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': res.data['message'],
-      };
-    }
+  static Future<ApiResult<MsgFeedUnread>> msgFeedUnread() {
+    return _getData<MsgFeedUnread>(
+      Api.msgFeedUnread,
+      endpoint: 'message.unread',
+      decode: MsgFeedUnread.fromJson,
+    );
   }
 
-  // 会话列表
-  static Future sessionList({int? endTs}) async {
-    Map<String, dynamic> params = {
-      'session_type': 1,
-      'group_fold': 1,
-      'unfollow_fold': 0,
-      'sort_rule': 2,
-      'build': 0,
-      'mobi_app': 'web',
-    };
-    if (endTs != null) {
-      params['end_ts'] = endTs;
-    }
-
-    Map signParams = await WbiSign().makSign(params);
-    var res = await Request().get(Api.sessionList, data: signParams);
-    if (res.data['code'] == 0) {
-      try {
-        return {
-          'status': true,
-          'data': SessionDataModel.fromJson(res.data['data']),
-        };
-      } catch (err) {
-        return {
-          'status': false,
-          'date': [],
-          'msg': err.toString(),
-        };
-      }
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': res.data['message'],
-      };
-    }
+  static Future<ApiResult<SessionDataModel>> sessionList({int? endTs}) {
+    return _getSigned<SessionDataModel>(
+      Api.sessionList,
+      endpoint: 'message.sessions',
+      parameters: <String, dynamic>{
+        'session_type': 1,
+        'group_fold': 1,
+        'unfollow_fold': 0,
+        'sort_rule': 2,
+        'build': 0,
+        'mobi_app': 'web',
+        if (endTs != null) 'end_ts': endTs,
+      },
+      decode: SessionDataModel.fromJson,
+    );
   }
 
-  static Future accountList(uids) async {
-    var res = await Request().get(Api.sessionAccountList, data: {
-      'uids': uids,
-      'build': 0,
-      'mobi_app': 'web',
-    });
-    if (res.data['code'] == 0) {
-      try {
-        return {
-          'status': true,
-          'data': res.data['data']
-              .map<AccountListModel>((e) => AccountListModel.fromJson(e))
-              .toList(),
-        };
-      } catch (err) {
-        print('err🔟: $err');
-      }
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': res.data['message'],
-      };
-    }
+  static Future<ApiResult<List<AccountListModel>>> accountList(String uids) {
+    return _client.getJson<List<AccountListModel>>(
+      Api.sessionAccountList,
+      queryParameters: <String, dynamic>{
+        'uids': uids,
+        'build': 0,
+        'mobi_app': 'web',
+      },
+      endpoint: 'message.accounts',
+      decode: (json) => BiliApiDecoder.data<List<AccountListModel>>(
+        json,
+        decode: (value) =>
+            BiliApiDecoder.list(value, field: 'data').map((item) {
+              return AccountListModel.fromJson(
+                BiliApiDecoder.object(item, field: 'data[]'),
+              );
+            }).toList(),
+      ),
+    );
   }
 
-  static Future sessionMsg({
-    int? talkerId,
-  }) async {
-    Map params = await WbiSign().makSign({
-      'talker_id': talkerId,
-      'session_type': 1,
-      'size': 20,
-      'sender_device_id': 1,
-      'build': 0,
-      'mobi_app': 'web',
-    });
-    var res = await Request().get(Api.sessionMsg, data: params);
-    if (res.data['code'] == 0) {
-      try {
-        return {
-          'status': true,
-          'data': SessionMsgDataModel.fromJson(res.data['data']),
-        };
-      } catch (err) {
-        print(err);
-      }
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': res.data['message'],
-      };
-    }
+  static Future<ApiResult<SessionMsgDataModel>> sessionMsg({int? talkerId}) {
+    return _getSigned<SessionMsgDataModel>(
+      Api.sessionMsg,
+      endpoint: 'message.sessionDetail',
+      parameters: <String, dynamic>{
+        'talker_id': talkerId,
+        'session_type': 1,
+        'size': 20,
+        'sender_device_id': 1,
+        'build': 0,
+        'mobi_app': 'web',
+      },
+      decode: SessionMsgDataModel.fromJson,
+    );
   }
 
-  // 消息标记已读
-  static Future ackSessionMsg({
+  static Future<ApiResult<void>> ackSessionMsg({
     int? talkerId,
     int? ackSeqno,
   }) async {
-    String csrf = await Request.getCsrf();
-    Map params = await WbiSign().makSign({
-      'talker_id': talkerId,
-      'session_type': 1,
-      'ack_seqno': ackSeqno,
-      'build': 0,
-      'mobi_app': 'web',
-      'csrf_token': csrf,
-      'csrf': csrf
-    });
-    var res = await Request().get(Api.ackSessionMsg, data: params);
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': res.data['data'],
-      };
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': "message: ${res.data['message']},"
-            " msg: ${res.data['msg']},"
-            " code: ${res.data['code']}",
-      };
-    }
+    final csrf = await HttpRuntime.instance.getCsrf();
+    return _getSigned<void>(
+      Api.ackSessionMsg,
+      endpoint: 'message.ackSession',
+      parameters: <String, dynamic>{
+        'talker_id': talkerId,
+        'session_type': 1,
+        'ack_seqno': ackSeqno,
+        'build': 0,
+        'mobi_app': 'web',
+        'csrf_token': csrf,
+        'csrf': csrf,
+      },
+      decode: (_) {},
+    );
   }
 
-  // 发送私信
-  static Future sendMsg({
+  static Future<ApiResult<void>> sendMsg({
     int? senderUid,
     int? receiverId,
     int? receiverType,
     int? msgType,
-    dynamic content,
+    Object? content,
   }) async {
-    String csrf = await Request.getCsrf();
-    Map<String, dynamic> base = {
+    final csrf = await HttpRuntime.instance.getCsrf();
+    final body = <String, dynamic>{
       'msg[sender_uid]': senderUid,
       'msg[receiver_id]': receiverId,
       'msg[receiver_type]': receiverType ?? 1,
@@ -290,34 +207,28 @@ class MsgHttp {
       'csrf_token': csrf,
       'csrf': csrf,
     };
-    Map<String, dynamic> params = await WbiSign().makSign(base);
-    var res = await Request().post(Api.sendMsg,
-        queryParameters: <String, dynamic>{
-          'w_sender_uid': params['msg[sender_uid]'],
-          'w_receiver_id': params['msg[receiver_id]'],
-          'w_dev_id': params['msg[dev_id]'],
-          'w_rid': params['w_rid'],
-          'wts': params['wts'],
-        },
-        data: FormData.fromMap(base));
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': res.data['data'],
-      };
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': "message: ${res.data['message']},"
-            " msg: ${res.data['msg']},"
-            " code: ${res.data['code']}",
-      };
+    final signed = await WbiSign().sign(body);
+    if (signed case ApiFailure<Map<String, dynamic>> failure) {
+      return failure.cast<void>();
     }
+    final parameters = (signed as ApiSuccess<Map<String, dynamic>>).data;
+    return _client.postJson<void>(
+      Api.sendMsg,
+      queryParameters: <String, dynamic>{
+        'w_sender_uid': parameters['msg[sender_uid]'],
+        'w_receiver_id': parameters['msg[receiver_id]'],
+        'w_dev_id': parameters['msg[dev_id]'],
+        'w_rid': parameters['w_rid'],
+        'wts': parameters['wts'],
+      },
+      data: FormData.fromMap(body),
+      endpoint: 'message.send',
+      decode: BiliApiDecoder.success,
+    );
   }
 
   static String getDevId() {
-    final List<String> b = [
+    const characters = <String>[
       '0',
       '1',
       '2',
@@ -333,20 +244,52 @@ class MsgHttp {
       'C',
       'D',
       'E',
-      'F'
+      'F',
     ];
-    final List<String> s = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".split('');
-    for (int i = 0; i < s.length; i++) {
-      if ('-' == s[i] || '4' == s[i]) {
+    final result = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.split('');
+    final random = Random();
+    for (var index = 0; index < result.length; index++) {
+      if (result[index] == '-' || result[index] == '4') {
         continue;
       }
-      final int randomInt = Random().nextInt(16);
-      if ('x' == s[i]) {
-        s[i] = b[randomInt];
-      } else {
-        s[i] = b[3 & randomInt | 8];
-      }
+      final value = random.nextInt(16);
+      result[index] = characters[result[index] == 'x' ? value : 3 & value | 8];
     }
-    return s.join();
+    return result.join();
+  }
+
+  static Future<ApiResult<T>> _getData<T>(
+    String url, {
+    required String endpoint,
+    Map<String, dynamic>? parameters,
+    required T Function(Map<String, dynamic> value) decode,
+  }) {
+    return _client.getJson<T>(
+      url,
+      queryParameters: parameters,
+      endpoint: endpoint,
+      decode: (json) => BiliApiDecoder.data<T>(
+        json,
+        decode: (value) => decode(BiliApiDecoder.object(value, field: 'data')),
+      ),
+    );
+  }
+
+  static Future<ApiResult<T>> _getSigned<T>(
+    String url, {
+    required String endpoint,
+    required Map<String, dynamic> parameters,
+    required T Function(Map<String, dynamic> value) decode,
+  }) async {
+    final signed = await WbiSign().sign(parameters);
+    if (signed case ApiFailure<Map<String, dynamic>> failure) {
+      return failure.cast<T>();
+    }
+    return _getData<T>(
+      url,
+      endpoint: endpoint,
+      parameters: (signed as ApiSuccess<Map<String, dynamic>>).data,
+      decode: decode,
+    );
   }
 }

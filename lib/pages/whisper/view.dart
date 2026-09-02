@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/msg/session.dart';
 import 'package:pilipalaz/utils/utils.dart';
 
 import 'controller.dart';
@@ -15,9 +17,10 @@ class WhisperPage extends StatefulWidget {
 }
 
 class _WhisperPageState extends State<WhisperPage> {
-  late final WhisperController _whisperController =
-      Get.put(WhisperController());
-  late Future _futureBuilderFuture;
+  late final WhisperController _whisperController = Get.put(
+    WhisperController(),
+  );
+  late Future<ApiResult<SessionDataModel>?> _futureBuilderFuture;
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -31,11 +34,13 @@ class _WhisperPageState extends State<WhisperPage> {
   Future _scrollListener() async {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      EasyThrottle.throttle('my-throttler', const Duration(milliseconds: 800),
-          () async {
-        await _whisperController.onLoad();
-        _whisperController.isLoading = true;
-      });
+      EasyThrottle.throttle(
+        'my-throttler',
+        const Duration(milliseconds: 800),
+        () async {
+          await _whisperController.onLoad();
+        },
+      );
     }
   }
 
@@ -46,18 +51,23 @@ class _WhisperPageState extends State<WhisperPage> {
         title: const Text('消息'),
         actions: [
           IconButton(
-            icon: Icon(Icons.open_in_browser_outlined,
-                color: Theme.of(context).colorScheme.primary),
+            icon: Icon(
+              Icons.open_in_browser_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             tooltip: '用浏览器打开',
             onPressed: () {
-              Get.toNamed('/webview', parameters: {
-                'url': 'https://message.bilibili.com',
-                'type': 'whisper',
-                'pageTitle': '消息中心',
-              });
+              Get.toNamed(
+                '/webview',
+                parameters: {
+                  'url': 'https://message.bilibili.com',
+                  'type': 'whisper',
+                  'pageTitle': '消息中心',
+                },
+              );
             },
           ),
-          const SizedBox(width: 12)
+          const SizedBox(width: 12),
         ],
       ),
       body: RefreshIndicator(
@@ -72,80 +82,96 @@ class _WhisperPageState extends State<WhisperPage> {
           child: Column(
             children: [
               LayoutBuilder(
-                  builder: (BuildContext context, BoxConstraints constraints) {
-                // 在这里根据父级容器的约束条件构建小部件树
-                return Padding(
-                  padding: const EdgeInsets.only(left: 20, right: 20),
-                  child: SizedBox(
-                    height: 90,
-                    child: Obx(
-                      () => Row(
-                        children: Iterable<int>.generate(
-                                _whisperController.msgFeedTop.length)
-                            .map((idx) {
-                          return Expanded(
-                              child: GestureDetector(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Badge(
-                                  isLabelVisible: _whisperController
-                                          .msgFeedTop[idx]['value'] >
-                                      0,
-                                  backgroundColor:
-                                      Theme.of(context).colorScheme.primary,
-                                  textColor: Theme.of(context)
-                                      .colorScheme
-                                      .onInverseSurface,
-                                  label: Text(
-                                      " ${_whisperController.msgFeedTop[idx]['value']} "),
-                                  alignment: Alignment.topRight,
-                                  child: CircleAvatar(
-                                    radius: 22,
-                                    backgroundColor: Theme.of(context)
-                                        .colorScheme
-                                        .onInverseSurface,
-                                    child: Icon(
-                                      _whisperController.msgFeedTop[idx]
-                                          ['icon'],
-                                      size: 20,
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  // 在这里根据父级容器的约束条件构建小部件树
+                  return Padding(
+                    padding: const EdgeInsets.only(left: 20, right: 20),
+                    child: SizedBox(
+                      height: 90,
+                      child: Obx(
+                        () => Row(
+                          children:
+                              Iterable<int>.generate(
+                                _whisperController.msgFeedTop.length,
+                              ).map((idx) {
+                                return Expanded(
+                                  child: GestureDetector(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Badge(
+                                          isLabelVisible:
+                                              _whisperController
+                                                  .msgFeedTop[idx]['value'] >
+                                              0,
+                                          backgroundColor: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                          textColor: Theme.of(
+                                            context,
+                                          ).colorScheme.onInverseSurface,
+                                          label: Text(
+                                            " ${_whisperController.msgFeedTop[idx]['value']} ",
+                                          ),
+                                          alignment: Alignment.topRight,
+                                          child: CircleAvatar(
+                                            radius: 22,
+                                            backgroundColor: Theme.of(
+                                              context,
+                                            ).colorScheme.onInverseSurface,
+                                            child: Icon(
+                                              _whisperController
+                                                  .msgFeedTop[idx]['icon'],
+                                              size: 20,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          _whisperController
+                                              .msgFeedTop[idx]['name'],
+                                          style: const TextStyle(fontSize: 13),
+                                        ),
+                                      ],
                                     ),
+                                    onTap: () {
+                                      if (!_whisperController
+                                          .msgFeedTop[idx]['enabled']) {
+                                        SmartDialog.showToast('已禁用');
+                                        return;
+                                      }
+                                      setState(() {
+                                        _whisperController
+                                                .msgFeedTop[idx]['value'] =
+                                            0;
+                                      });
+                                      Get.toNamed(
+                                        _whisperController
+                                            .msgFeedTop[idx]['route'],
+                                      );
+                                    },
                                   ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(_whisperController.msgFeedTop[idx]['name'],
-                                    style: const TextStyle(fontSize: 13))
-                              ],
-                            ),
-                            onTap: () {
-                              if (!_whisperController.msgFeedTop[idx]
-                                  ['enabled']) {
-                                SmartDialog.showToast('已禁用');
-                                return;
-                              }
-                              setState(() {
-                                _whisperController.msgFeedTop[idx]['value'] = 0;
-                              });
-                              Get.toNamed(
-                                  _whisperController.msgFeedTop[idx]['route']);
-                            },
-                          ));
-                        }).toList(),
+                                );
+                              }).toList(),
+                        ),
                       ),
                     ),
-                  ),
-                );
-              }),
-              FutureBuilder(
+                  );
+                },
+              ),
+              FutureBuilder<ApiResult<SessionDataModel>?>(
                 future: _futureBuilderFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.done &&
                       snapshot.data != null) {
-                    Map data = snapshot.data as Map;
-                    if (data['status']) {
+                    final result = snapshot.data!;
+                    if (result is ApiSuccess<SessionDataModel>) {
                       List sessionList = _whisperController.sessionList;
                       return Obx(
                         () => sessionList.isEmpty
@@ -160,7 +186,8 @@ class _WhisperPageState extends State<WhisperPage> {
                                   if (content == null || content == "") {
                                     content = '不支持的消息类型';
                                   } else {
-                                    content = content['text'] ??
+                                    content =
+                                        content['text'] ??
                                         content['content'] ??
                                         content['title'] ??
                                         content['reply_content'] ??
@@ -174,16 +201,13 @@ class _WhisperPageState extends State<WhisperPage> {
                                       Get.toNamed(
                                         '/whisperDetail',
                                         parameters: {
-                                          'talkerId': sessionList[i]
-                                              .talkerId
+                                          'talkerId': sessionList[i].talkerId
                                               .toString(),
                                           'name':
                                               sessionList[i].accountInfo.name,
                                           'face':
                                               sessionList[i].accountInfo.face,
-                                          'mid': sessionList[i]
-                                              .accountInfo
-                                              .mid
+                                          'mid': sessionList[i].accountInfo.mid
                                               .toString(),
                                         },
                                       );
@@ -191,62 +215,74 @@ class _WhisperPageState extends State<WhisperPage> {
                                     leading: Badge(
                                       isLabelVisible:
                                           sessionList[i].unreadCount > 0,
-                                      backgroundColor:
-                                          Theme.of(context).colorScheme.primary,
-                                      textColor: Theme.of(context)
-                                          .colorScheme
-                                          .onInverseSurface,
+                                      backgroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      textColor: Theme.of(
+                                        context,
+                                      ).colorScheme.onInverseSurface,
                                       label: Text(
-                                          " ${sessionList[i].unreadCount.toString()} "),
+                                        " ${sessionList[i].unreadCount.toString()} ",
+                                      ),
                                       alignment: Alignment.topRight,
                                       child: NetworkImgLayer(
                                         width: 45,
                                         height: 45,
                                         type: 'avatar',
-                                        src: sessionList[i].accountInfo?.face ?? "",
+                                        src:
+                                            sessionList[i].accountInfo?.face ??
+                                            "",
                                       ),
                                     ),
                                     title: Text(
-                                        sessionList[i].accountInfo?.name ?? ""),
-                                    subtitle: Text(content,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelMedium!
-                                            .copyWith(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .outline)),
+                                      sessionList[i].accountInfo?.name ?? "",
+                                    ),
+                                    subtitle: Text(
+                                      content,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium!
+                                          .copyWith(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.outline,
+                                          ),
+                                    ),
                                     trailing: Text(
                                       Utils.dateFormat(
-                                          sessionList[i].lastMsg.timestamp,
-                                          formatType: "day"),
+                                        sessionList[i].lastMsg.timestamp,
+                                        formatType: "day",
+                                      ),
                                       style: Theme.of(context)
                                           .textTheme
                                           .labelSmall!
                                           .copyWith(
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .outline),
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.outline,
+                                          ),
                                     ),
                                   );
                                 },
                                 separatorBuilder:
                                     (BuildContext context, int index) {
-                                  return Divider(
-                                    indent: 72,
-                                    endIndent: 20,
-                                    height: 6,
-                                    color: Colors.grey.withOpacity(0.1),
-                                  );
-                                },
+                                      return Divider(
+                                        indent: 72,
+                                        endIndent: 20,
+                                        height: 6,
+                                        color: Colors.grey.withOpacity(0.1),
+                                      );
+                                    },
                               ),
                       );
                     } else {
                       // 请求错误
                       return Center(
-                        child: Text(data['msg'] ?? '请求异常'),
+                        child: Text(
+                          (result as ApiFailure<SessionDataModel>).message,
+                        ),
                       );
                     }
                   } else {
@@ -254,7 +290,7 @@ class _WhisperPageState extends State<WhisperPage> {
                     return const SizedBox();
                   }
                 },
-              )
+              ),
             ],
           ),
         ),

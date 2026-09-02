@@ -1,7 +1,7 @@
 // ignore_for_file: avoid_print
 
 import 'package:get/get.dart';
-import 'package:pilipalaz/http/init.dart';
+import 'package:pilipalaz/http/http_runtime.dart';
 import 'package:pilipalaz/utils/event_bus.dart';
 import 'package:pilipalaz/utils/id_utils.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -29,7 +29,7 @@ class WebviewController extends GetxController {
 
   webviewInit({String uaType = 'mob'}) {
     controller
-      ..setUserAgent(Request().headerUa(type: uaType))
+      ..setUserAgent(HttpRuntime.instance.headerUa(type: uaType))
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..enableZoom(true)
       ..setNavigationDelegate(
@@ -58,15 +58,19 @@ class WebviewController extends GetxController {
             if (type.value == 'liveRoom') {
               print("adding");
               //注入js
-              controller.runJavaScriptReturningResult('''
+              controller
+                  .runJavaScriptReturningResult('''
                 document.styleSheets[0].insertRule('div.open-app-btn.bili-btn-warp {display:none;}', 0);
                 document.styleSheets[0].insertRule('#app__display-area > div.control-panel {display:none;}', 0);
-                ''').then((value) => print(value));
+                ''')
+                  .then((value) => print(value));
             } else if (type.value == 'whisper') {
-              controller.runJavaScriptReturningResult('''
+              controller
+                  .runJavaScriptReturningResult('''
                 document.querySelector('#internationalHeader').remove();
                 document.querySelector('#message-navbar').remove();
-              ''').then((value) => print(value));
+              ''')
+                  .then((value) => print(value));
             }
           },
           // 加载完成
@@ -92,5 +96,4 @@ class WebviewController extends GetxController {
       )
       ..loadRequest(Uri.parse(url));
   }
-
 }

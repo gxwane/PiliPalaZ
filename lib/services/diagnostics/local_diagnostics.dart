@@ -89,13 +89,15 @@ class LocalDiagnostics {
     _hooksInstalled = true;
     _previousFlutterHandler = FlutterError.onError;
     FlutterError.onError = (details) {
-      unawaited(
-        recordFailure(
-          DiagnosticFailureKind.flutterFramework,
-          details.exception,
-          details.stack,
-        ),
-      );
+      if (shouldPersistFlutterError(details)) {
+        unawaited(
+          recordFailure(
+            DiagnosticFailureKind.flutterFramework,
+            details.exception,
+            details.stack,
+          ),
+        );
+      }
       final previous = _previousFlutterHandler;
       if (previous != null) {
         previous(details);
@@ -246,6 +248,10 @@ class LocalDiagnostics {
       } catch (_) {}
     }
   }
+}
+
+bool shouldPersistFlutterError(FlutterErrorDetails details) {
+  return details.library != 'image resource service';
 }
 
 class _PendingFailure {

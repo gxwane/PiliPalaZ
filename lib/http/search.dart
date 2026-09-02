@@ -21,6 +21,24 @@ final class SearchPageData {
 class SearchHttp {
   static Box<dynamic> get _onlineCache => GStorage.onlineCache;
 
+  static Future<ApiResult<String>> defaultKeyword() {
+    return HttpRuntime.instance.client.getJson<String>(
+      Api.searchDefault,
+      endpoint: 'search.defaultKeyword',
+      decode: (json) => BiliApiDecoder.data<String>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          final name = data['name'];
+          if (name is! String) {
+            throw const MalformedApiResponseException('data.name 字段不是文本');
+          }
+          return name;
+        },
+      ),
+    );
+  }
+
   static Future<ApiResult<HotSearchModel>> hotSearchList() {
     return HttpRuntime.instance.client.getJson<HotSearchModel>(
       Api.hotSearchList,

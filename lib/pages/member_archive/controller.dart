@@ -2,6 +2,7 @@ import 'package:pilipalaz/utils/app_scheme.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/member.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/member/archive.dart';
 
 class MemberArchiveController extends GetxController {
@@ -26,7 +27,7 @@ class MemberArchiveController extends GetxController {
   }
 
   // 获取用户投稿
-  Future getMemberArchive(type) async {
+  Future<ApiResult<MemberArchiveDataModel>> getMemberArchive(type) async {
     if (type == 'init' || type == 'refresh') {
       pn = 1;
     }
@@ -38,19 +39,21 @@ class MemberArchiveController extends GetxController {
       pn: pn,
       order: currentOrder['type']!,
     );
-    if (res['status']) {
-      episodicButtonText = res['data'].episodicButton?.text ?? "";
-      episodicButtonUri = res['data'].episodicButton?.uri ?? "";
+    if (res case ApiSuccess<MemberArchiveDataModel>(:final data)) {
+      episodicButtonText = data.episodicButton?.text ?? "";
+      episodicButtonUri = data.episodicButton?.uri ?? "";
       if (type == 'init' || type == 'refresh') {
-        archivesList.value = res['data'].list.vlist;
+        archivesList.value = data.list?.vlist ?? <VListItemModel>[];
       }
       if (type == 'onLoad') {
-        archivesList.addAll(res['data'].list.vlist);
+        archivesList.addAll(data.list?.vlist ?? <VListItemModel>[]);
       }
-      count = res['data'].page['count'];
+      count = data.page?['count'] as int? ?? 0;
       pn += 1;
     } else {
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast(
+        (res as ApiFailure<MemberArchiveDataModel>).message,
+      );
     }
     return res;
   }

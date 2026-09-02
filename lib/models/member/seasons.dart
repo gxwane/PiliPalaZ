@@ -13,11 +13,13 @@ class MemberSeasonsAndSeriesDataModel {
     page = json['page'] != null
         ? MemberSeasonsAndSeriesPage.fromJson(json['page'])
         : null;
-    seasonsList = (json['seasons_list'] as List<dynamic>?)
+    seasonsList =
+        (json['seasons_list'] as List<dynamic>?)
             ?.map((e) => MemberSeasonsList.fromJson(e))
             .toList() ??
         [];
-    seriesList = (json['series_list'] as List<dynamic>?)
+    seriesList =
+        (json['series_list'] as List<dynamic>?)
             ?.map((e) => MemberSeriesList.fromJson(e))
             .toList() ??
         [];
@@ -25,17 +27,11 @@ class MemberSeasonsAndSeriesDataModel {
 }
 
 class MemberSeasonsAndSeriesPage {
-  MemberSeasonsAndSeriesPage({
-    this.pageNum,
-    this.pageSize,
-    this.total,
-  });
+  MemberSeasonsAndSeriesPage({this.pageNum, this.pageSize, this.total});
   int? pageNum;
   int? pageSize;
   int? total;
   MemberSeasonsAndSeriesPage.fromJson(Map<String, dynamic> json) {
-    print("bbbb");
-    print(json);
     pageNum = json['page_num'];
     pageSize = json['page_size'];
     total = json['total'];
@@ -67,7 +63,8 @@ class MemberSeasonsList extends SeasonsOrSeriesList<SeasonMeta> {
     super.meta,
   });
   MemberSeasonsList.fromJson(Map<String, dynamic> json) {
-    archives = (json['archives'] as List<dynamic>?)
+    archives =
+        (json['archives'] as List<dynamic>?)
             ?.map((e) => MemberArchiveItem.fromJson(e))
             .toList() ??
         [];
@@ -87,7 +84,8 @@ class MemberSeriesList extends SeasonsOrSeriesList<SeriesMeta> {
     super.meta,
   });
   MemberSeriesList.fromJson(Map<String, dynamic> json) {
-    archives = (json['archives'] as List<dynamic>?)
+    archives =
+        (json['archives'] as List<dynamic>?)
             ?.map((e) => MemberArchiveItem.fromJson(e))
             .toList() ??
         [];

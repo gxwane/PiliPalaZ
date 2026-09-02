@@ -1,6 +1,7 @@
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/msg.dart';
+import 'package:pilipalaz/http/api_result.dart';
 
 import '../../../models/msg/msgfeed_reply_me.dart';
 
@@ -14,10 +15,12 @@ class ReplyMeController extends GetxController {
   Future queryMsgFeedReplyMe() async {
     if (isLoading) return;
     isLoading = true;
-    var res = await MsgHttp.msgFeedReplyMe(cursor: cursor, cursorTime: cursorTime);
+    var res = await MsgHttp.msgFeedReplyMe(
+      cursor: cursor,
+      cursorTime: cursorTime,
+    );
     isLoading = false;
-    if (res['status']) {
-      MsgFeedReplyMe data = MsgFeedReplyMe.fromJson(res['data']);
+    if (res case ApiSuccess<MsgFeedReplyMe>(:final data)) {
       isEnd = data.cursor?.isEnd ?? false;
       if (cursor == -1) {
         msgFeedReplyMeList.assignAll(data.items!);
@@ -27,7 +30,7 @@ class ReplyMeController extends GetxController {
       cursor = data.cursor?.id ?? -1;
       cursorTime = data.cursor?.time ?? -1;
     } else {
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast((res as ApiFailure<MsgFeedReplyMe>).message);
     }
   }
 
@@ -41,5 +44,4 @@ class ReplyMeController extends GetxController {
     cursorTime = -1;
     queryMsgFeedReplyMe();
   }
-
 }

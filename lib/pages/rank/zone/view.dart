@@ -7,6 +7,8 @@ import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/skeleton/video_card_h.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/common/widgets/video_card_h.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/model_hot_video_item.dart';
 import 'package:pilipalaz/pages/home/index.dart';
 import 'package:pilipalaz/pages/main/index.dart';
 import 'package:pilipalaz/pages/rank/zone/index.dart';
@@ -15,8 +17,7 @@ import '../../../utils/grid.dart';
 
 class ZonePage extends StatefulWidget {
   const ZonePage({super.key, this.rid, this.tid})
-      : assert(
-            rid != null || tid != null, 'Either rid or tid must be provided');
+    : assert(rid != null || tid != null, 'Either rid or tid must be provided');
 
   final int? rid;
   final int? tid;
@@ -28,7 +29,7 @@ class ZonePage extends StatefulWidget {
 class _ZonePageState extends State<ZonePage>
     with AutomaticKeepAliveClientMixin {
   late ZoneController _zoneController;
-  Future? _futureBuilderFuture;
+  Future<ApiResult<List<HotVideoItemModel>>>? _futureBuilderFuture;
   late ScrollController scrollController;
 
   @override
@@ -37,36 +38,39 @@ class _ZonePageState extends State<ZonePage>
   @override
   void initState() {
     super.initState();
-    _zoneController =
-        Get.put(ZoneController(), tag: (widget.rid ?? widget.tid).toString());
-    _futureBuilderFuture =
-        _zoneController.queryRankFeed('init', widget.rid, widget.tid);
+    _zoneController = Get.put(
+      ZoneController(),
+      tag: (widget.rid ?? widget.tid).toString(),
+    );
+    _futureBuilderFuture = _zoneController.queryRankFeed(
+      'init',
+      widget.rid,
+      widget.tid,
+    );
     scrollController = _zoneController.scrollController;
     StreamController<bool> mainStream =
         Get.find<MainController>().bottomBarStream;
     StreamController<bool> searchBarStream =
         Get.find<HomeController>().searchBarStream;
-    scrollController.addListener(
-      () {
-        if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 200) {
-          if (!_zoneController.isLoadingMore) {
-            _zoneController.isLoadingMore = true;
-            _zoneController.onLoad();
-          }
+    scrollController.addListener(() {
+      if (scrollController.position.pixels >=
+          scrollController.position.maxScrollExtent - 200) {
+        if (!_zoneController.isLoadingMore) {
+          _zoneController.isLoadingMore = true;
+          _zoneController.onLoad();
         }
+      }
 
-        final ScrollDirection direction =
-            scrollController.position.userScrollDirection;
-        if (direction == ScrollDirection.forward) {
-          mainStream.add(true);
-          searchBarStream.add(true);
-        } else if (direction == ScrollDirection.reverse) {
-          mainStream.add(false);
-          searchBarStream.add(false);
-        }
-      },
-    );
+      final ScrollDirection direction =
+          scrollController.position.userScrollDirection;
+      if (direction == ScrollDirection.forward) {
+        mainStream.add(true);
+        searchBarStream.add(true);
+      } else if (direction == ScrollDirection.reverse) {
+        mainStream.add(false);
+        searchBarStream.add(false);
+      }
+    });
   }
 
   @override
@@ -91,21 +95,27 @@ class _ZonePageState extends State<ZonePage>
           SliverPadding(
             // 单列布局 EdgeInsets.zero
             padding: const EdgeInsets.fromLTRB(
-                StyleString.cardSpace, StyleString.safeSpace, 0, 0),
-            sliver: FutureBuilder(
+              StyleString.cardSpace,
+              StyleString.safeSpace,
+              0,
+              0,
+            ),
+            sliver: FutureBuilder<ApiResult<List<HotVideoItemModel>>>(
               future: _futureBuilderFuture,
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
-                  Map data = snapshot.data as Map;
-                  if (data['status']) {
+                if (snapshot.connectionState == ConnectionState.done &&
+                    snapshot.hasData) {
+                  final result = snapshot.data!;
+                  if (result is ApiSuccess<List<HotVideoItemModel>>) {
                     return Obx(
                       () => SliverGrid(
                         gridDelegate: SliverGridDelegateWithExtentAndRatio(
-                            mainAxisSpacing: StyleString.safeSpace,
-                            crossAxisSpacing: StyleString.safeSpace,
-                            maxCrossAxisExtent: Grid.maxRowWidth * 2,
-                            childAspectRatio: StyleString.aspectRatio * 2.4,
-                            mainAxisExtent: 13),
+                          mainAxisSpacing: StyleString.safeSpace,
+                          crossAxisSpacing: StyleString.safeSpace,
+                          maxCrossAxisExtent: Grid.maxRowWidth * 2,
+                          childAspectRatio: StyleString.aspectRatio * 2.4,
+                          mainAxisExtent: 13,
+                        ),
                         delegate: SliverChildBuilderDelegate((context, index) {
                           return VideoCardH(
                             videoItem: _zoneController.videoList[index],
@@ -116,11 +126,15 @@ class _ZonePageState extends State<ZonePage>
                     );
                   } else {
                     return HttpError(
-                      errMsg: data['msg'],
+                      errMsg: (result as ApiFailure<List<HotVideoItemModel>>)
+                          .message,
                       fn: () {
                         setState(() {
                           _futureBuilderFuture = _zoneController.queryRankFeed(
-                              'init', widget.rid, widget.tid);
+                            'init',
+                            widget.rid,
+                            widget.tid,
+                          );
                         });
                       },
                     );
@@ -129,11 +143,12 @@ class _ZonePageState extends State<ZonePage>
                   // 骨架屏
                   return SliverGrid(
                     gridDelegate: SliverGridDelegateWithExtentAndRatio(
-                        mainAxisSpacing: StyleString.safeSpace,
-                        crossAxisSpacing: StyleString.safeSpace,
-                        maxCrossAxisExtent: Grid.maxRowWidth * 2,
-                        childAspectRatio: StyleString.aspectRatio * 2.4,
-                        mainAxisExtent: 0),
+                      mainAxisSpacing: StyleString.safeSpace,
+                      crossAxisSpacing: StyleString.safeSpace,
+                      maxCrossAxisExtent: Grid.maxRowWidth * 2,
+                      childAspectRatio: StyleString.aspectRatio * 2.4,
+                      mainAxisExtent: 0,
+                    ),
                     delegate: SliverChildBuilderDelegate((context, index) {
                       return const VideoCardHSkeleton();
                     }, childCount: 10),
@@ -143,10 +158,8 @@ class _ZonePageState extends State<ZonePage>
             ),
           ),
           SliverToBoxAdapter(
-            child: SizedBox(
-              height: MediaQuery.of(context).padding.bottom + 10,
-            ),
-          )
+            child: SizedBox(height: MediaQuery.of(context).padding.bottom + 10),
+          ),
         ],
       ),
     );

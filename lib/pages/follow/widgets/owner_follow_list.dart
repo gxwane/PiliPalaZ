@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/common/widgets/no_data.dart';
 import 'package:pilipalaz/http/member.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/follow/result.dart';
 import 'package:pilipalaz/models/member/tags.dart';
 import 'package:pilipalaz/pages/follow/index.dart';
@@ -21,7 +22,7 @@ class OwnerFollowList extends StatefulWidget {
 class _OwnerFollowListState extends State<OwnerFollowList>
     with AutomaticKeepAliveClientMixin {
   late int? mid;
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<List<FollowItemModel>>> _futureBuilderFuture;
   final ScrollController scrollController = ScrollController();
   int pn = 1;
   int ps = 20;
@@ -37,30 +38,28 @@ class _OwnerFollowListState extends State<OwnerFollowList>
     mid = widget.ctr.mid;
     tagItem = widget.tagItem!;
     _futureBuilderFuture = followUpGroup('init');
-    scrollController.addListener(
-      () async {
-        if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 200) {
-          EasyThrottle.throttle('follow', const Duration(seconds: 1), () {
-            followUpGroup('onLoad');
-          });
-        }
-      },
-    );
+    scrollController.addListener(() async {
+      if (scrollController.position.pixels >=
+          scrollController.position.maxScrollExtent - 200) {
+        EasyThrottle.throttle('follow', const Duration(seconds: 1), () {
+          followUpGroup('onLoad');
+        });
+      }
+    });
   }
 
   // 获取分组下up
-  Future followUpGroup(type) async {
+  Future<ApiResult<List<FollowItemModel>>> followUpGroup(String type) async {
     if (type == 'init') {
       pn = 1;
     }
     var res = await MemberHttp.followUpGroup(mid, tagItem.tagid, pn, ps);
-    if (res['status']) {
-      if (res['data'].isNotEmpty) {
+    if (res case ApiSuccess<List<FollowItemModel>>(:final data)) {
+      if (data.isNotEmpty) {
         if (type == 'init') {
-          followList.value = res['data'];
+          followList.value = data;
         } else {
-          followList.addAll(res['data']);
+          followList.addAll(data);
         }
         pn += 1;
       }
@@ -86,8 +85,8 @@ class _OwnerFollowListState extends State<OwnerFollowList>
         future: _futureBuilderFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
-            var data = snapshot.data;
-            if (data['status']) {
+            final result = snapshot.data;
+            if (result is ApiSuccess<List<FollowItemModel>>) {
               return Obx(
                 () => followList.isNotEmpty
                     ? ListView.builder(
@@ -100,8 +99,8 @@ class _OwnerFollowListState extends State<OwnerFollowList>
                               height:
                                   MediaQuery.of(context).padding.bottom + 60,
                               padding: EdgeInsets.only(
-                                  bottom:
-                                      MediaQuery.of(context).padding.bottom),
+                                bottom: MediaQuery.of(context).padding.bottom,
+                              ),
                             );
                           } else {
                             return FollowItem(
@@ -117,9 +116,11 @@ class _OwnerFollowListState extends State<OwnerFollowList>
               return CustomScrollView(
                 slivers: [
                   HttpError(
-                    errMsg: data['msg'],
+                    errMsg: result is ApiFailure<List<FollowItemModel>>
+                        ? result.message
+                        : '关注分组加载失败',
                     fn: () => widget.ctr.queryFollowings('init'),
-                  )
+                  ),
                 ],
               );
             }

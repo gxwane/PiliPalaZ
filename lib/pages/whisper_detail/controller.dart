@@ -3,6 +3,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/msg.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/msg/session.dart';
 import '../../utils/feed_back.dart';
 import '../../utils/storage.dart';
@@ -29,8 +30,8 @@ class WhisperDetailController extends GetxController {
 
   Future querySessionMsg() async {
     var res = await MsgHttp.sessionMsg(talkerId: talkerId);
-    if (res['status']) {
-      messageList.value = res['data'].messages;
+    if (res case ApiSuccess<SessionMsgDataModel>(:final data)) {
+      messageList.value = data.messages ?? <MessageItem>[];
       if (messageList.isNotEmpty) {
         if (messageList.length == 1 &&
             messageList.last.msgType == 18 &&
@@ -41,12 +42,12 @@ class WhisperDetailController extends GetxController {
         } else {
           ackSessionMsg();
         }
-        if (res['data'].eInfos != null) {
-          eInfos = res['data'].eInfos;
+        if (data.eInfos != null) {
+          eInfos = data.eInfos;
         }
       }
     } else {
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast((res as ApiFailure<SessionMsgDataModel>).message);
     }
   }
 
@@ -59,8 +60,8 @@ class WhisperDetailController extends GetxController {
       talkerId: talkerId,
       ackSeqno: messageList.last.msgSeqno,
     );
-    if (!res['status']) {
-      SmartDialog.showToast(res['msg']);
+    if (res case ApiFailure<void> failure) {
+      SmartDialog.showToast(failure.message);
     }
   }
 
@@ -86,13 +87,12 @@ class WhisperDetailController extends GetxController {
       content: '{"content":"$message"}',
       msgType: 1,
     );
-    if (result['status']) {
-      print(result['data']);
+    if (result is ApiSuccess<void>) {
       querySessionMsg();
       replyContentController.text = "";
       SmartDialog.showToast('发送成功');
     } else {
-      SmartDialog.showToast(result['msg']);
+      SmartDialog.showToast((result as ApiFailure<void>).message);
     }
   }
 }

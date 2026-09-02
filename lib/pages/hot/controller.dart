@@ -2,6 +2,7 @@ import 'package:pilipalaz/utils/extension.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
 import 'package:pilipalaz/http/video.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/model_hot_video_item.dart';
 
 class HotController extends GetxController {
@@ -13,22 +14,19 @@ class HotController extends GetxController {
   bool flag = false;
 
   // 获取推荐
-  Future queryHotFeed(type) async {
+  Future<ApiResult<List<HotVideoItemModel>>> queryHotFeed(String type) async {
     if (type != 'onLoad') {
       _currentPage = 1;
     }
-    var res = await VideoHttp.hotVideoList(
-      pn: _currentPage,
-      ps: _count,
-    );
-    if (res['status']) {
+    var res = await VideoHttp.hotVideoList(pn: _currentPage, ps: _count);
+    if (res case ApiSuccess<List<HotVideoItemModel>>(:final data)) {
       if (type == 'init') {
-        videoList.value = res['data'];
+        videoList.value = data;
       } else if (type == 'onRefresh') {
         // videoList.insertAll(0, res['data']);
-        videoList.value = res['data'];
+        videoList.value = data;
       } else if (type == 'onLoad') {
-        videoList.addAll(res['data']);
+        videoList.addAll(data);
       }
       _currentPage += 1;
       if (_currentPage == 2) queryHotFeed('onLoad');

@@ -5,9 +5,9 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/http/member.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/member/tags.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
-
 
 class GroupPanel extends StatefulWidget {
   final int? mid;
@@ -18,7 +18,7 @@ class GroupPanel extends StatefulWidget {
 }
 
 class _GroupPanelState extends State<GroupPanel> {
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<List<MemberTagItemModel>>> _futureBuilderFuture;
   late List<MemberTagItemModel> tagsList;
   bool showDefault = true;
 
@@ -31,22 +31,27 @@ class _GroupPanelState extends State<GroupPanel> {
   void onSave() async {
     feedBack();
     // 是否有选中的 有选中的带id，没选使用默认0
-    final bool anyHasChecked =
-        tagsList.any((MemberTagItemModel e) => e.checked == true);
+    final bool anyHasChecked = tagsList.any(
+      (MemberTagItemModel e) => e.checked == true,
+    );
     late String tagids;
     if (anyHasChecked) {
-      final List<MemberTagItemModel> checkedList =
-          tagsList.where((MemberTagItemModel e) => e.checked == true).toList();
-      final List<int> tagidList =
-          checkedList.map<int>((e) => e.tagid!).toList();
+      final List<MemberTagItemModel> checkedList = tagsList
+          .where((MemberTagItemModel e) => e.checked == true)
+          .toList();
+      final List<int> tagidList = checkedList
+          .map<int>((e) => e.tagid!)
+          .toList();
       tagids = tagidList.join(',');
     } else {
       tagids = '0';
     }
     // 保存
     final res = await MemberHttp.addUsers(widget.mid, tagids);
-    SmartDialog.showToast(res['msg']);
-    if (res['status']) {
+    SmartDialog.showToast(
+      res is ApiSuccess<void> ? '操作成功' : (res as ApiFailure<void>).message,
+    );
+    if (res is ApiSuccess<void>) {
       Get.back();
     }
   }
@@ -63,11 +68,14 @@ class _GroupPanelState extends State<GroupPanel> {
             centerTitle: false,
             elevation: 0,
             leading: IconButton(
-                tooltip: '关闭',
-                onPressed: () => Get.back(),
-                icon: const Icon(Icons.close_outlined)),
-            title:
-                Text('设置关注分组', style: Theme.of(context).textTheme.titleMedium),
+              tooltip: '关闭',
+              onPressed: () => Get.back(),
+              icon: const Icon(Icons.close_outlined),
+            ),
+            title: Text(
+              '设置关注分组',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ),
           Expanded(
             child: Material(
@@ -75,35 +83,35 @@ class _GroupPanelState extends State<GroupPanel> {
                 future: _futureBuilderFuture,
                 builder: (BuildContext context, AsyncSnapshot snapshot) {
                   if (snapshot.connectionState == ConnectionState.done) {
-                    Map data = snapshot.data as Map;
-                    if (data['status']) {
-                      tagsList = data['data'];
+                    final result = snapshot.data;
+                    if (result is ApiSuccess<List<MemberTagItemModel>>) {
+                      final data = result.data;
+                      tagsList = data;
                       return ListView.builder(
-                        itemCount: data['data'].length,
+                        itemCount: data.length,
                         itemBuilder: (context, index) {
                           return ListTile(
                             onTap: () {
-                              data['data'][index].checked =
-                                  !data['data'][index].checked;
-                              showDefault =
-                                  !data['data'].any((e) => e.checked == true);
+                              data[index].checked = data[index].checked != true;
+                              showDefault = !data.any((e) => e.checked == true);
                               setState(() {});
                             },
                             dense: true,
                             leading: const Icon(Icons.group_outlined),
                             minLeadingWidth: 0,
-                            title: Text(data['data'][index].name),
-                            subtitle: data['data'][index].tip != ''
-                                ? Text(data['data'][index].tip)
+                            title: Text(data[index].name ?? ''),
+                            subtitle: data[index].tip != ''
+                                ? Text(data[index].tip ?? '')
                                 : null,
                             trailing: Transform.scale(
                               scale: 0.9,
                               child: Checkbox(
-                                value: data['data'][index].checked,
+                                value: data[index].checked,
                                 onChanged: (bool? checkValue) {
-                                  data['data'][index].checked = checkValue;
-                                  showDefault = !data['data']
-                                      .any((e) => e.checked == true);
+                                  data[index].checked = checkValue;
+                                  showDefault = !data.any(
+                                    (e) => e.checked == true,
+                                  );
                                   setState(() {});
                                 },
                               ),
@@ -113,7 +121,9 @@ class _GroupPanelState extends State<GroupPanel> {
                       );
                     } else {
                       return HttpError(
-                        errMsg: data['msg'],
+                        errMsg: result is ApiFailure<List<MemberTagItemModel>>
+                            ? result.message
+                            : '关注分组加载失败',
                         fn: () => setState(() {}),
                       );
                     }
@@ -144,8 +154,9 @@ class _GroupPanelState extends State<GroupPanel> {
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.only(left: 30, right: 30),
                     foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                    backgroundColor:
-                        Theme.of(context).colorScheme.primary, // 设置按钮背景色
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primary, // 设置按钮背景色
                   ),
                   child: Text(showDefault ? '保存至默认分组' : '保存'),
                 ),

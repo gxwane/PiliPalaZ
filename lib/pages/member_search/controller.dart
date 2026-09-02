@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/member.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/member/archive.dart';
 
 class MemberSearchController extends GetxController {
@@ -54,9 +55,11 @@ class MemberSearchController extends GetxController {
   }
 
   // 搜索视频
-  Future searchArchives({type = 'init'}) async {
+  Future<ApiResult<MemberArchiveDataModel>?> searchArchives({
+    type = 'init',
+  }) async {
     if (type == 'onLoad' && loadingText.value == '没有更多了') {
-      return;
+      return null;
     }
     var res = await MemberHttp.memberArchive(
       mid: mid,
@@ -64,20 +67,22 @@ class MemberSearchController extends GetxController {
       keyword: controller.value.text,
       order: 'pubdate',
     );
-    if (res['status']) {
+    if (res case ApiSuccess<MemberArchiveDataModel>(:final data)) {
       if (type == 'init' || archivePn == 1) {
-        archiveList.value = res['data'].list.vlist;
+        archiveList.value = data.list?.vlist ?? <VListItemModel>[];
       } else {
-        archiveList.addAll(res['data'].list.vlist);
+        archiveList.addAll(data.list?.vlist ?? <VListItemModel>[]);
       }
-      archiveCount = res['data'].page['count'];
+      archiveCount = data.page?['count'] as int? ?? 0;
       if (archiveList.length == archiveCount) {
         loadingText.value = '没有更多了';
       }
       archivePn += 1;
       hasRequest = true;
     } else {
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast(
+        (res as ApiFailure<MemberArchiveDataModel>).message,
+      );
     }
     // loadingStatus.value = 'finish';
     return res;

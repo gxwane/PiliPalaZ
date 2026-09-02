@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/member.dart';
+import 'package:pilipalaz/http/api_result.dart';
 
 import '../../models/follow/result.dart';
 
@@ -43,12 +44,16 @@ class FollowSearchController extends GetxController {
     searchFollow();
   }
 
-  Future searchFollow({type = 'init'}) async {
+  Future<ApiResult<FollowDataModel>> searchFollow({type = 'init'}) async {
     if (controller.value.text == '') {
-      return {'status': true, 'data': <FollowItemModel>[].obs};
+      followList.clear();
+      total.value = 0;
+      return ApiSuccess<FollowDataModel>(
+        FollowDataModel(total: 0, list: <FollowItemModel>[]),
+      );
     }
     if (type == 'init') {
-      ps = 1;
+      pn = 1;
     }
     var res = await MemberHttp.getfollowSearch(
       mid: mid,
@@ -56,13 +61,14 @@ class FollowSearchController extends GetxController {
       pn: pn,
       name: controller.value.text,
     );
-    if (res['status']) {
+    if (res case ApiSuccess<FollowDataModel>(:final data)) {
       if (type == 'init') {
-        followList.value = res['data'].list;
+        followList.value = data.list ?? <FollowItemModel>[];
       } else {
-        followList.addAll(res['data'].list);
+        followList.addAll(data.list ?? <FollowItemModel>[]);
       }
-      total.value = res['data'].total;
+      total.value = data.total ?? 0;
+      pn += 1;
     }
     return res;
   }

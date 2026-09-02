@@ -196,15 +196,6 @@ final class WbiSign {
     }
   }
 
-  @Deprecated('Migrate the caller to sign() and handle ApiResult explicitly.')
-  Future<Map<String, dynamic>> makSign(Map<String, dynamic> params) async {
-    final result = await sign(params);
-    if (result case ApiSuccess<Map<String, dynamic>>(:final data)) {
-      return data;
-    }
-    throw StateError((result as ApiFailure<Map<String, dynamic>>).message);
-  }
-
   static String _fileStem(String url) {
     final path = Uri.parse(url).pathSegments;
     if (path.isEmpty) {

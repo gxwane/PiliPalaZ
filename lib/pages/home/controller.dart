@@ -6,7 +6,8 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/models/common/tab_type.dart';
 import 'package:pilipalaz/utils/storage.dart';
-import '../../http/index.dart';
+import '../../http/api_result.dart';
+import '../../http/search.dart';
 import '../../utils/feed_back.dart';
 import '../mine/view.dart';
 
@@ -39,17 +40,24 @@ class HomeController extends GetxController with GetTickerProviderStateMixin {
     userInfo = userInfoCache.get('userInfoCache');
     userLogin.value = userInfo != null;
     userFace.value = userInfo != null ? userInfo.face : '';
-    hideSearchBar =
-        setting.get(SettingBoxKey.hideSearchBar, defaultValue: false);
+    hideSearchBar = setting.get(
+      SettingBoxKey.hideSearchBar,
+      defaultValue: false,
+    );
     if (setting.get(SettingBoxKey.enableSearchWord, defaultValue: true)) {
       searchDefault();
     }
-    enableGradientBg =
-        setting.get(SettingBoxKey.enableGradientBg, defaultValue: true);
+    enableGradientBg = setting.get(
+      SettingBoxKey.enableGradientBg,
+      defaultValue: true,
+    );
     // useSideBar = setting.get(SettingBoxKey.useSideBar, defaultValue: false);
-    sideBarPosition = SideBarPositionCode.fromCode(setting.get(
+    sideBarPosition = SideBarPositionCode.fromCode(
+      setting.get(
         SettingBoxKey.sideBarPosition,
-        defaultValue: SideBarPosition.none.code))!;
+        defaultValue: SideBarPosition.none.code,
+      ),
+    )!;
     // 进行tabs配置
     setTabConfig();
   }
@@ -77,15 +85,20 @@ class HomeController extends GetxController with GetTickerProviderStateMixin {
   void setTabConfig() async {
     defaultTabs = [...tabsConfig];
     tabbarSort = settingStorage
-        .get(SettingBoxKey.tabbarSort,
-            defaultValue: ['live', 'rcmd', 'hot', 'rank', 'bangumi'])
+        .get(
+          SettingBoxKey.tabbarSort,
+          defaultValue: ['live', 'rcmd', 'hot', 'rank', 'bangumi'],
+        )
         .map<String>((i) => i.toString())
         .toList();
     defaultTabs.retainWhere(
-        (item) => tabbarSort.contains((item['type'] as TabType).id));
-    defaultTabs.sort((a, b) => tabbarSort
-        .indexOf((a['type'] as TabType).id)
-        .compareTo(tabbarSort.indexOf((b['type'] as TabType).id)));
+      (item) => tabbarSort.contains((item['type'] as TabType).id),
+    );
+    defaultTabs.sort(
+      (a, b) => tabbarSort
+          .indexOf((a['type'] as TabType).id)
+          .compareTo(tabbarSort.indexOf((b['type'] as TabType).id)),
+    );
 
     tabs.value = defaultTabs;
 
@@ -121,20 +134,19 @@ class HomeController extends GetxController with GetTickerProviderStateMixin {
   }
 
   void searchDefault() async {
-    var res = await Request().get(Api.searchDefault);
-    if (res.data['code'] == 0) {
-      defaultSearch.value = res.data['data']['name'];
+    final result = await SearchHttp.defaultKeyword();
+    if (result case ApiSuccess<String>(:final data)) {
+      defaultSearch.value = data;
     }
   }
 
   showUserInfoDialog(context) {
     feedBack();
     showDialog(
-        context: context,
-        useSafeArea: true,
-        builder: (_) => const Dialog(
-              insetPadding: EdgeInsets.zero,
-              child: MinePage(),
-            ));
+      context: context,
+      useSafeArea: true,
+      builder: (_) =>
+          const Dialog(insetPadding: EdgeInsets.zero, child: MinePage()),
+    );
   }
 }

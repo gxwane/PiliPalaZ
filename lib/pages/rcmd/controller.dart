@@ -4,6 +4,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/video.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/rcmd_video_item.dart';
 import 'package:pilipalaz/pages/rcmd/refresh_merge.dart';
 import 'package:pilipalaz/utils/storage.dart';
@@ -34,11 +35,11 @@ class RcmdController extends GetxController {
   }
 
   // 获取推荐
-  Future<Map<String, dynamic>> queryRcmdFeed(String type) async {
+  Future<ApiResult<List<RcmdVideoItem>>> queryRcmdFeed(String type) async {
     if (type == 'onRefresh') {
       _currentPage = 0;
     }
-    late final Map<String, dynamic> res;
+    late final ApiResult<List<RcmdVideoItem>> res;
     switch (defaultRcmdType) {
       case 'app':
       case 'notLogin':
@@ -50,8 +51,8 @@ class RcmdController extends GetxController {
       default: //'web'
         res = await VideoHttp.rcmdVideoList(freshIdx: _currentPage, ps: 20);
     }
-    if (res['status']) {
-      final videos = List<RcmdVideoItem>.from(res['data'] as Iterable);
+    if (res case ApiSuccess<List<RcmdVideoItem>>(:final data)) {
+      final videos = data;
       if (type == 'init') {
         lastSeenIndex.value = null;
         if (videoList.isNotEmpty) {
@@ -82,16 +83,19 @@ class RcmdController extends GetxController {
         SmartDialog.showToast("仅请求到${videos.length}条");
       }
     } else {
-      SmartDialog.showToast("${res['msg']}，请尝试(重新)登录");
+      SmartDialog.showToast(
+        '${(res as ApiFailure<List<RcmdVideoItem>>).message}，请尝试(重新)登录',
+      );
     }
     return res;
   }
 
   // 下拉刷新
-  Future<Map<String, dynamic>> onRefresh() => queryRcmdFeed('onRefresh');
+  Future<ApiResult<List<RcmdVideoItem>>> onRefresh() =>
+      queryRcmdFeed('onRefresh');
 
   // 上拉加载
-  Future<Map<String, dynamic>> onLoad() => queryRcmdFeed('onLoad');
+  Future<ApiResult<List<RcmdVideoItem>>> onLoad() => queryRcmdFeed('onLoad');
 
   // 返回顶部
   void animateToTop() {

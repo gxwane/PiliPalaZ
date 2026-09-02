@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pilipalaz/services/diagnostics/diagnostic_record.dart';
 import 'package:pilipalaz/services/diagnostics/local_diagnostics.dart';
 
@@ -163,5 +164,19 @@ void main() {
     await reloaded.initialize();
     expect(reloaded.enabled, isFalse);
     expect(await reloaded.readFailures(), hasLength(1));
+  });
+
+  test('image loading failures are not persisted as app failures', () {
+    final imageError = FlutterErrorDetails(
+      exception: Exception('network image unavailable'),
+      library: 'image resource service',
+    );
+    final appError = FlutterErrorDetails(
+      exception: Exception('widget failed'),
+      library: 'widgets library',
+    );
+
+    expect(shouldPersistFlutterError(imageError), isFalse);
+    expect(shouldPersistFlutterError(appError), isTrue);
   });
 }

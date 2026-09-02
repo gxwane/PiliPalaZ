@@ -1,177 +1,308 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:html/dom.dart';
 import 'package:html/parser.dart';
-import 'index.dart';
+
+import 'api_result.dart';
+import 'http_runtime.dart';
+
+final class HtmlArticleData {
+  const HtmlArticleData({
+    required this.avatar,
+    required this.userName,
+    required this.updateTime,
+    required this.content,
+    required this.commentId,
+  });
+
+  final String avatar;
+  final String userName;
+  final String updateTime;
+  final String content;
+  final int commentId;
+}
 
 class HtmlHttp {
-  // article
-  static Future reqHtml(id, dynamicType) async {
-    var response = await Request().get(
-      "https://www.bilibili.com/opus/$id",
-      extra: {'ua': 'pc'},
+  static Future<ApiResult<HtmlArticleData>> reqHtml(
+    String id,
+    String dynamicType,
+  ) async {
+    var response = await HttpRuntime.instance.client.getText(
+      'https://www.bilibili.com/opus/$id',
+      endpoint: 'article.opus',
+      options: Options(
+        headers: <String, Object?>{
+          HttpHeaders.userAgentHeader: HttpRuntime.instance.headerUa(
+            type: 'pc',
+          ),
+        },
+      ),
     );
+    if (response case ApiFailure<String> failure) {
+      return failure.cast<HtmlArticleData>();
+    }
 
-    if (response.data.contains('Redirecting to')) {
-      RegExp regex = RegExp(r'//([\w\.]+)/(\w+)/(\w+)');
-      Match? match = regex.firstMatch(response.data);
-      if (match != null) {
-        String matchedString = match.group(0)!;
-        response = await Request().get(
-          'https:$matchedString/',
-          extra: {'ua': 'pc'},
+    var html = (response as ApiSuccess<String>).data;
+    if (html.contains('Redirecting to')) {
+      final match = RegExp(r'//([\w\.]+)/(\w+)/(\w+)').firstMatch(html);
+      final redirect = match?.group(0);
+      if (redirect != null) {
+        response = await HttpRuntime.instance.client.getText(
+          'https:$redirect/',
+          endpoint: 'article.opusRedirect',
+          options: Options(
+            headers: <String, Object?>{
+              HttpHeaders.userAgentHeader: HttpRuntime.instance.headerUa(
+                type: 'pc',
+              ),
+            },
+          ),
         );
+        if (response case ApiFailure<String> failure) {
+          return failure.cast<HtmlArticleData>();
+        }
+        html = (response as ApiSuccess<String>).data;
       }
     }
+
     try {
-      var html = response.data.toString();
-      RegExp initialStateRegex = RegExp(r'window\.__INITIAL_STATE__\s*=\s*(\{.*?\});', dotAll: true);
-      var match = initialStateRegex.firstMatch(html);
-      if (match != null) {
-        String jsonStr = match.group(1)!;
-        var json = jsonDecode(jsonStr);
-        var detail = json['detail'] ?? json['fallback'];
-        
-        String avatar = '';
-        String uname = '';
-        String updateTime = '';
-        String opusContent = '';
-        
-        if (detail['modules'] != null) {
-          for (var module in detail['modules']) {
-            if (module['module_type'] == 'MODULE_TYPE_AUTHOR') {
-              var author = module['module_author'];
-              avatar = author?['face'] ?? '';
-              uname = author?['name'] ?? '';
-              updateTime = author?['pub_time'] ?? '';
-            } else if (module['module_type'] == 'MODULE_TYPE_CONTENT') {
-              var content = module['module_content'];
-              if (content != null && content['paragraphs'] != null) {
-                for (var para in content['paragraphs']) {
-                  if (para['para_type'] == 1) {
-                    if (para['text'] != null && para['text']['nodes'] != null) {
-                      for (var node in para['text']['nodes']) {
-                        if (node['type'] == 'TEXT_NODE_TYPE_WORD') {
-                          opusContent += node['word']['words'];
-                        }
-                      }
-                      opusContent += '<br/>';
-                    }
-                  } else if (para['para_type'] == 2) {
-                    if (para['pic'] != null && para['pic']['pics'] != null) {
-                      for (var pic in para['pic']['pics']) {
-                        opusContent += '<img src="${pic['url']}"><br/>';
-                      }
-                    }
-                  }
-                }
-              }
-            } else if (module['module_type'] == 'MODULE_TYPE_DYNAMIC') {
-               var desc = module['module_dynamic']?['desc'];
-               if (desc != null && desc['text'] != null) {
-                 opusContent += desc['text'];
-               }
+      final match = RegExp(
+        r'window\.__INITIAL_STATE__\s*=\s*(\{.*?\});',
+        dotAll: true,
+      ).firstMatch(html);
+      if (match == null) {
+        return const ApiFailure<HtmlArticleData>(
+          kind: ApiFailureKind.malformedResponse,
+          message: '专栏页面缺少初始化数据',
+          endpoint: 'article.opus',
+        );
+      }
+      final decoded = jsonDecode(match.group(1)!);
+      if (decoded is! Map) {
+        throw const FormatException('Initial state is not an object');
+      }
+      final state = decoded.map(
+        (key, value) => MapEntry(key.toString(), value),
+      );
+      final detailValue = state['detail'] ?? state['fallback'];
+      if (detailValue is! Map) {
+        throw const FormatException('Missing article detail');
+      }
+      final detail = detailValue.map(
+        (key, value) => MapEntry(key.toString(), value),
+      );
+
+      var avatar = '';
+      var userName = '';
+      var updateTime = '';
+      var content = '';
+      final modules = detail['modules'];
+      if (modules is List) {
+        for (final moduleValue in modules) {
+          if (moduleValue is! Map) {
+            continue;
+          }
+          final module = moduleValue;
+          if (module['module_type'] == 'MODULE_TYPE_AUTHOR') {
+            final author = module['module_author'];
+            if (author is Map) {
+              avatar = author['face'] as String? ?? '';
+              userName = author['name'] as String? ?? '';
+              updateTime = author['pub_time'] as String? ?? '';
+            }
+          } else if (module['module_type'] == 'MODULE_TYPE_CONTENT') {
+            content += _contentFromModule(module['module_content']);
+          } else if (module['module_type'] == 'MODULE_TYPE_DYNAMIC') {
+            final dynamicModule = module['module_dynamic'];
+            final description = dynamicModule is Map
+                ? dynamicModule['desc']
+                : null;
+            if (description is Map && description['text'] is String) {
+              content += description['text'] as String;
             }
           }
-        } else {
-          // fallback for old structure
-          var author = detail?['module_author'];
-          var desc = detail?['module_dynamic']?['desc'];
-          var major = detail?['module_dynamic']?['major'];
-          var opus = major?['opus'];
-          var article = major?['article'];
-          avatar = author?['face'] ?? '';
-          uname = author?['name'] ?? '';
-          updateTime = author?['pub_time'] ?? '';
-          opusContent = desc?['text'] ?? '';
-          String cover = '';
-          if (opus != null) {
-            opusContent = opusContent.isEmpty ? (opus['summary']?['text'] ?? '') : opusContent;
-            cover = opus['pics']?.isNotEmpty == true ? opus['pics'][0]['url'] : '';
-          } else if (article != null) {
-            opusContent = opusContent.isEmpty ? (article['desc'] ?? '') : opusContent;
-            cover = article['covers']?.isNotEmpty == true ? article['covers'][0] : '';
-          }
-          if (cover.isNotEmpty) cover = '<img src="$cover">';
-          opusContent = cover + opusContent;
         }
-
-        if (avatar.isNotEmpty) avatar = avatar.replaceFirst('http:', 'https:');
-        String commentIdStr = detail?['basic']?['comment_id_str'] ?? id.toString();
-        
-        return {
-          'status': true,
-          'avatar': avatar,
-          'uname': uname,
-          'updateTime': updateTime,
-          'content': opusContent,
-          'commentId': int.parse(commentIdStr)
-        };
+      } else {
+        final author = detail['module_author'];
+        if (author is Map) {
+          avatar = author['face'] as String? ?? '';
+          userName = author['name'] as String? ?? '';
+          updateTime = author['pub_time'] as String? ?? '';
+        }
+        final dynamicModule = detail['module_dynamic'];
+        final description = dynamicModule is Map ? dynamicModule['desc'] : null;
+        final major = dynamicModule is Map ? dynamicModule['major'] : null;
+        content = description is Map
+            ? description['text'] as String? ?? ''
+            : '';
+        content = _legacyCoverAndSummary(major, content);
       }
-    } catch (err) {
-      print('err: $err');
+
+      if (avatar.isNotEmpty) {
+        avatar = avatar.replaceFirst('http:', 'https:');
+      }
+      final basic = detail['basic'];
+      final commentIdValue = basic is Map ? basic['comment_id_str'] : null;
+      final commentId = int.tryParse(commentIdValue?.toString() ?? id);
+      if (commentId == null) {
+        throw const FormatException('Invalid comment id');
+      }
+      return ApiSuccess<HtmlArticleData>(
+        HtmlArticleData(
+          avatar: avatar,
+          userName: userName,
+          updateTime: updateTime,
+          content: content,
+          commentId: commentId,
+        ),
+      );
+    } catch (_) {
+      return const ApiFailure<HtmlArticleData>(
+        kind: ApiFailureKind.decoding,
+        message: '专栏内容无法解析',
+        endpoint: 'article.opus',
+      );
     }
   }
 
-  // read
-  static Future reqReadHtml(id, dynamicType) async {
-    var response = await Request().get(
-      "https://www.bilibili.com/$dynamicType/$id/",
-      options: Options(headers: {
-        HttpHeaders.userAgentHeader: 'Mozilla/5.0',
-        HttpHeaders.refererHeader: 'https://www.bilibili.com/',
-        HttpHeaders.cookieHeader: 'opus-goback=1',
-      }),
+  static Future<ApiResult<HtmlArticleData>> reqReadHtml(
+    String id,
+    String dynamicType,
+  ) async {
+    final response = await HttpRuntime.instance.client.getText(
+      'https://www.bilibili.com/$dynamicType/$id/',
+      endpoint: 'article.read',
+      options: Options(
+        headers: const <String, Object?>{
+          HttpHeaders.userAgentHeader: 'Mozilla/5.0',
+          HttpHeaders.refererHeader: 'https://www.bilibili.com/',
+          HttpHeaders.cookieHeader: 'opus-goback=1',
+        },
+      ),
     );
-    Document rootTree = parse(response.data);
-    Element body = rootTree.body!;
-    Element appDom = body.querySelector('#app')!;
-    Element authorHeader = appDom.querySelector('.up-left')!;
-    // 头像
-    // String avatar =
-    //     authorHeader.querySelector('.bili-avatar-img')!.attributes['data-src']!;
-    // 正则寻找形如"author":{"mid":\d+,"name":".*","face":"xxxx"的匹配项
-    String avatar = RegExp(r'"author":\{"mid":\d+?,"name":".+?","face":"(.+?)"')
-        .firstMatch(response.data)!
-        .group(1)!
-        .replaceAll(r'\u002F', '/')
-        .split('@')[0];
-    print("avatar: $avatar");
-    String uname = authorHeader.querySelector('.up-name')!.text.trim();
-    print("uname: $uname");
-    // 动态详情
-    Element opusDetail = appDom.querySelector('.article-content')!;
-    // 发布时间
-    // String updateTime =
-    //     opusDetail.querySelector('.opus-module-author__pub__text')!.text;
-    // print(updateTime);
-
-    //
-    String opusContent =
-        opusDetail.querySelector('#read-article-holder')?.innerHtml ?? '';
-    print("opusContent: $opusContent");
-    if (opusContent.isEmpty) {
-      // 查找形如"dyn_id_str":"(\d+)"的id
-      String opusid =
-          RegExp(r'"dyn_id_str":"(\d+)"').firstMatch(response.data)!.group(1)!;
-      print("opusid: $opusid");
-      if (opusid == id.toString()) {
-        return {'status': false, 'data': null};
-      }
-      return await reqHtml(opusid, 'opus');
+    if (response case ApiFailure<String> failure) {
+      return failure.cast<HtmlArticleData>();
     }
-    RegExp digitRegExp = RegExp(r'\d+');
-    Iterable<Match> matches = digitRegExp.allMatches(id);
-    String number = matches.first.group(0)!;
-    return {
-      'status': true,
-      'avatar': avatar,
-      'uname': uname,
-      'updateTime': '',
-      'content': opusContent,
-      'commentId': int.parse(number)
-    };
+    final html = (response as ApiSuccess<String>).data;
+    try {
+      final Document document = parse(html);
+      final app = document.body?.querySelector('#app');
+      final author = app?.querySelector('.up-left');
+      final article = app?.querySelector('.article-content');
+      if (author == null || article == null) {
+        throw const FormatException('Missing article elements');
+      }
+      final avatarMatch = RegExp(
+        r'"author":\{"mid":\d+?,"name":".+?","face":"(.+?)"',
+      ).firstMatch(html);
+      final rawAvatar = avatarMatch?.group(1);
+      if (rawAvatar == null) {
+        throw const FormatException('Missing author avatar');
+      }
+      final avatar = rawAvatar.replaceAll(r'\u002F', '/').split('@').first;
+      final content =
+          article.querySelector('#read-article-holder')?.innerHtml ?? '';
+      if (content.isEmpty) {
+        final opusId = RegExp(
+          r'"dyn_id_str":"(\d+)"',
+        ).firstMatch(html)?.group(1);
+        if (opusId == null || opusId == id) {
+          return const ApiFailure<HtmlArticleData>(
+            kind: ApiFailureKind.malformedResponse,
+            message: '专栏正文为空',
+            endpoint: 'article.read',
+          );
+        }
+        return reqHtml(opusId, 'opus');
+      }
+      final number = RegExp(r'\d+').firstMatch(id)?.group(0);
+      if (number == null) {
+        throw const FormatException('Invalid article id');
+      }
+      return ApiSuccess<HtmlArticleData>(
+        HtmlArticleData(
+          avatar: avatar,
+          userName: author.querySelector('.up-name')?.text.trim() ?? '',
+          updateTime: '',
+          content: content,
+          commentId: int.parse(number),
+        ),
+      );
+    } catch (_) {
+      return const ApiFailure<HtmlArticleData>(
+        kind: ApiFailureKind.decoding,
+        message: '专栏页面无法解析',
+        endpoint: 'article.read',
+      );
+    }
+  }
+
+  static String _contentFromModule(Object? value) {
+    if (value is! Map || value['paragraphs'] is! List) {
+      return '';
+    }
+    final buffer = StringBuffer();
+    for (final paragraphValue in value['paragraphs'] as List) {
+      if (paragraphValue is! Map) {
+        continue;
+      }
+      if (paragraphValue['para_type'] == 1) {
+        final text = paragraphValue['text'];
+        final nodes = text is Map ? text['nodes'] : null;
+        if (nodes is List) {
+          for (final nodeValue in nodes) {
+            if (nodeValue is Map &&
+                nodeValue['type'] == 'TEXT_NODE_TYPE_WORD') {
+              final word = nodeValue['word'];
+              if (word is Map && word['words'] is String) {
+                buffer.write(word['words']);
+              }
+            }
+          }
+          buffer.write('<br/>');
+        }
+      } else if (paragraphValue['para_type'] == 2) {
+        final picture = paragraphValue['pic'];
+        final pictures = picture is Map ? picture['pics'] : null;
+        if (pictures is List) {
+          for (final pictureValue in pictures) {
+            if (pictureValue is Map && pictureValue['url'] is String) {
+              buffer.write('<img src="${pictureValue['url']}"><br/>');
+            }
+          }
+        }
+      }
+    }
+    return buffer.toString();
+  }
+
+  static String _legacyCoverAndSummary(Object? majorValue, String content) {
+    if (majorValue is! Map) {
+      return content;
+    }
+    final opus = majorValue['opus'];
+    final article = majorValue['article'];
+    var cover = '';
+    if (opus is Map) {
+      final summary = opus['summary'];
+      if (content.isEmpty && summary is Map && summary['text'] is String) {
+        content = summary['text'] as String;
+      }
+      final pictures = opus['pics'];
+      if (pictures is List && pictures.isNotEmpty && pictures.first is Map) {
+        cover = (pictures.first as Map)['url'] as String? ?? '';
+      }
+    } else if (article is Map) {
+      if (content.isEmpty && article['desc'] is String) {
+        content = article['desc'] as String;
+      }
+      final covers = article['covers'];
+      if (covers is List && covers.isNotEmpty && covers.first is String) {
+        cover = covers.first as String;
+      }
+    }
+    return cover.isEmpty ? content : '<img src="$cover">$content';
   }
 }

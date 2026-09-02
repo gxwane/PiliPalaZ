@@ -224,20 +224,24 @@ class BangumiIntroController extends GetxController {
   Future queryHasLikeVideo() async {
     var result = await VideoHttp.hasLikeVideo(bvid: bvid);
     // data	num	被点赞标志	0：未点赞  1：已点赞
-    hasLike.value = result["data"] == 1 ? true : false;
+    if (result case ApiSuccess<int>(:final data)) {
+      hasLike.value = data == 1;
+    }
   }
 
   // 获取投币状态
   Future queryHasCoinVideo() async {
     var result = await VideoHttp.hasCoinVideo(bvid: bvid);
-    hasCoin.value = result["data"]['multiply'] == 0 ? false : true;
+    if (result case ApiSuccess<VideoCoinState>(:final data)) {
+      hasCoin.value = data.multiply != 0;
+    }
   }
 
   // 获取收藏状态
   Future queryHasFavVideo() async {
     var result = await VideoHttp.hasFavVideo(aid: IdUtils.bv2av(bvid));
-    if (result['status']) {
-      hasFav.value = result["data"]['favoured'];
+    if (result case ApiSuccess<VideoFavoriteState>(:final data)) {
+      hasFav.value = data.favoured;
     } else {
       hasFav.value = false;
     }
@@ -246,14 +250,14 @@ class BangumiIntroController extends GetxController {
   // （取消）点赞
   Future actionLikeVideo() async {
     var result = await VideoHttp.likeVideo(bvid: bvid, type: !hasLike.value);
-    if (result['status']) {
-      SmartDialog.showToast(!hasLike.value ? result['data']['toast'] : '取消赞');
+    if (result case ApiSuccess<VideoActionData>(:final data)) {
+      SmartDialog.showToast(!hasLike.value ? (data.toast ?? '点赞成功') : '取消赞');
       hasLike.value = !hasLike.value;
       bangumiDetail.value.stat!['likes'] =
           bangumiDetail.value.stat!['likes'] + (!hasLike.value ? 1 : -1);
       hasLike.refresh();
     } else {
-      SmartDialog.showToast(result['msg']);
+      SmartDialog.showToast((result as ApiFailure<VideoActionData>).message);
     }
   }
 
@@ -304,13 +308,13 @@ class BangumiIntroController extends GetxController {
                   bvid: bvid,
                   multiply: _tempThemeValue,
                 );
-                if (res['status']) {
+                if (res is ApiSuccess<void>) {
                   SmartDialog.showToast('投币成功');
                   hasCoin.value = true;
                   bangumiDetail.value.stat!['coins'] =
                       bangumiDetail.value.stat!['coins'] + _tempThemeValue;
                 } else {
-                  SmartDialog.showToast(res['msg']);
+                  SmartDialog.showToast((res as ApiFailure<void>).message);
                 }
                 Get.back();
               },
@@ -338,7 +342,7 @@ class BangumiIntroController extends GetxController {
       addIds: addMediaIdsNew.join(','),
       delIds: delMediaIdsNew.join(','),
     );
-    if (result['status']) {
+    if (result is ApiSuccess<void>) {
       addMediaIdsNew = [];
       delMediaIdsNew = [];
       // 重新获取收藏状态
@@ -492,15 +496,20 @@ class BangumiIntroController extends GetxController {
           seasonId: bangumiDetail.value.seasonId,
         );
       }
-      if (result['status']) {
+      if (result case ApiSuccess<BangumiFollowAction>(:final data)) {
         _syncFollowedModels(nextStatus);
         SmartDialog.showToast(
-          result['msg'] ??
-              (currentStatus ? '已取消$followActionLabel' : '已$followActionLabel'),
+          data.toast.isNotEmpty
+              ? data.toast
+              : (currentStatus
+                    ? '已取消$followActionLabel'
+                    : '已$followActionLabel'),
         );
       } else {
         hasFollow.value = currentStatus;
-        SmartDialog.showToast(result['msg']);
+        SmartDialog.showToast(
+          (result as ApiFailure<BangumiFollowAction>).message,
+        );
       }
     } catch (e) {
       hasFollow.value = currentStatus;
@@ -518,13 +527,13 @@ class BangumiIntroController extends GetxController {
     }
   }
 
-  Future queryVideoInFolder() async {
+  Future<ApiResult<FavFolderData>> queryVideoInFolder() async {
     var result = await VideoHttp.videoInFolder(
       mid: userInfo.mid,
       rid: IdUtils.bv2av(bvid),
     );
-    if (result['status']) {
-      favFolderData.value = result['data'];
+    if (result case ApiSuccess<FavFolderData>(:final data)) {
+      favFolderData.value = data;
     }
     return result;
   }

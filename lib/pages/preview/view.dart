@@ -16,11 +16,7 @@ typedef DoubleClickAnimationListener = void Function();
 class ImagePreview extends StatefulWidget {
   final int? initialPage;
   final List<String>? imgList;
-  const ImagePreview({
-    super.key,
-    this.initialPage,
-    this.imgList,
-  });
+  const ImagePreview({super.key, this.initialPage, this.imgList});
 
   @override
   _ImagePreviewState createState() => _ImagePreviewState();
@@ -47,7 +43,9 @@ class _ImagePreviewState extends State<ImagePreview>
     //     vsync: this, duration: const Duration(milliseconds: 400));
     setStatusBar();
     _doubleClickAnimationController = AnimationController(
-        duration: const Duration(milliseconds: 250), vsync: this);
+      duration: const Duration(milliseconds: 250),
+      vsync: this,
+    );
   }
 
   onOpenMenu() {
@@ -71,16 +69,18 @@ class _ImagePreviewState extends State<ImagePreview>
               ListTile(
                 onTap: () {
                   Clipboard.setData(
-                          ClipboardData(text: _previewController.currentImgUrl))
+                        ClipboardData(text: _previewController.currentImgUrl),
+                      )
                       .then((value) {
-                    Get.back();
-                    SmartDialog.showToast('已复制到粘贴板');
-                  }).catchError((err) {
-                    SmartDialog.showNotify(
-                      msg: err.toString(),
-                      notifyType: NotifyType.error,
-                    );
-                  });
+                        Get.back();
+                        SmartDialog.showToast('已复制到粘贴板');
+                      })
+                      .catchError((err) {
+                        SmartDialog.showNotify(
+                          msg: err.toString(),
+                          notifyType: NotifyType.error,
+                        );
+                      });
                 },
                 dense: true,
                 title: const Text('复制链接', style: TextStyle(fontSize: 14)),
@@ -89,7 +89,9 @@ class _ImagePreviewState extends State<ImagePreview>
                 onTap: () {
                   Get.back();
                   DownloadUtils.downloadImg(
-                      context, _previewController.currentImgUrl);
+                    context,
+                    _previewController.currentImgUrl,
+                  );
                 },
                 dense: true,
                 title: const Text('保存到手机', style: TextStyle(fontSize: 14)),
@@ -160,8 +162,9 @@ class _ImagePreviewState extends State<ImagePreview>
                       double end;
 
                       //remove old
-                      _doubleClickAnimation
-                          ?.removeListener(_doubleClickAnimationListener);
+                      _doubleClickAnimation?.removeListener(
+                        _doubleClickAnimationListener,
+                      );
 
                       //stop pre
                       _doubleClickAnimationController.stop();
@@ -175,14 +178,16 @@ class _ImagePreviewState extends State<ImagePreview>
 
                       _doubleClickAnimationListener = () {
                         state.handleDoubleTap(
-                            scale: _doubleClickAnimation!.value,
-                            doubleTapPosition: pointerDownPosition);
+                          scale: _doubleClickAnimation!.value,
+                          doubleTapPosition: pointerDownPosition,
+                        );
                       };
                       _doubleClickAnimation = _doubleClickAnimationController
                           .drive(Tween<double>(begin: begin, end: end));
 
-                      _doubleClickAnimation!
-                          .addListener(_doubleClickAnimationListener);
+                      _doubleClickAnimation!.addListener(
+                        _doubleClickAnimationListener,
+                      );
 
                       _doubleClickAnimationController.forward();
                     },
@@ -193,9 +198,9 @@ class _ImagePreviewState extends State<ImagePreview>
                             state.loadingProgress;
                         final double? progress =
                             loadingProgress?.expectedTotalBytes != null
-                                ? loadingProgress!.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                                : null;
+                            ? loadingProgress!.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                            : null;
                         return Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -214,6 +219,16 @@ class _ImagePreviewState extends State<ImagePreview>
                           ),
                         );
                       }
+                      if (state.extendedImageLoadState == LoadState.failed) {
+                        return const Center(
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: Colors.white70,
+                            size: 48,
+                          ),
+                        );
+                      }
+                      return null;
                     },
                     initGestureConfigHandler: (ExtendedImageState state) {
                       return GestureConfig(
@@ -234,50 +249,53 @@ class _ImagePreviewState extends State<ImagePreview>
             right: 0,
             bottom: 0,
             child: Container(
-                padding: EdgeInsets.only(
-                    left: 20,
-                    right: 20,
-                    bottom: MediaQuery.of(context).padding.bottom + 30),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: <Color>[
-                      Colors.transparent,
-                      Colors.black87,
-                    ],
-                    tileMode: TileMode.mirror,
-                  ),
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                bottom: MediaQuery.of(context).padding.bottom + 30,
+              ),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: <Color>[Colors.transparent, Colors.black87],
+                  tileMode: TileMode.mirror,
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    widget.imgList!.length > 1
-                        ? Obx(
-                            () => Text.rich(
-                              textAlign: TextAlign.center,
-                              TextSpan(
-                                  style: const TextStyle(
-                                      color: Colors.white, fontSize: 16),
-                                  children: [
-                                    TextSpan(
-                                        text: _previewController.currentPage
-                                            .toString()),
-                                    const TextSpan(text: ' / '),
-                                    TextSpan(
-                                        text:
-                                            widget.imgList!.length.toString()),
-                                  ]),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  widget.imgList!.length > 1
+                      ? Obx(
+                          () => Text.rich(
+                            textAlign: TextAlign.center,
+                            TextSpan(
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                              children: [
+                                TextSpan(
+                                  text: _previewController.currentPage
+                                      .toString(),
+                                ),
+                                const TextSpan(text: ' / '),
+                                TextSpan(
+                                  text: widget.imgList!.length.toString(),
+                                ),
+                              ],
                             ),
-                          )
-                        : const SizedBox(),
-                    IconButton(
-                      onPressed: () => Get.back(),
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      tooltip: '关闭',
-                    ),
-                  ],
-                )),
+                          ),
+                        )
+                      : const SizedBox(),
+                  IconButton(
+                    onPressed: () => Get.back(),
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    tooltip: '关闭',
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),

@@ -1,6 +1,8 @@
 import 'package:easy_debounce/easy_throttle.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/dynamics/result.dart';
 import 'package:pilipalaz/pages/member_dynamics/index.dart';
 import 'package:pilipalaz/utils/utils.dart';
 
@@ -20,7 +22,7 @@ class MemberDynamicsPage extends StatefulWidget {
 
 class _MemberDynamicsPageState extends State<MemberDynamicsPage> {
   late MemberDynamicsController _memberDynamicController;
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<DynamicsDataModel>?> _futureBuilderFuture;
   late ScrollController scrollController;
   late bool dynamicsWaterfallFlow;
 
@@ -30,11 +32,15 @@ class _MemberDynamicsPageState extends State<MemberDynamicsPage> {
     // mid = int.parse(Get.parameters['mid']!);
     final int mid = widget.mid;
     final String heroTag = Utils.makeHeroTag(mid);
-    _memberDynamicController =
-        Get.put(MemberDynamicsController(mid: mid), tag: heroTag);
+    _memberDynamicController = Get.put(
+      MemberDynamicsController(mid: mid),
+      tag: heroTag,
+    );
     _futureBuilderFuture = _memberDynamicController.getMemberDynamic('init');
-    dynamicsWaterfallFlow = GStorage.setting
-        .get(SettingBoxKey.dynamicsWaterfallFlow, defaultValue: true);
+    dynamicsWaterfallFlow = GStorage.setting.get(
+      SettingBoxKey.dynamicsWaterfallFlow,
+      defaultValue: true,
+    );
   }
 
   @override
@@ -54,9 +60,12 @@ class _MemberDynamicsPageState extends State<MemberDynamicsPage> {
                     200)) {
           // 触发分页加载
           EasyThrottle.throttle(
-              'member_dynamics', const Duration(milliseconds: 1000), () {
-            _memberDynamicController.onLoad();
-          });
+            'member_dynamics',
+            const Duration(milliseconds: 1000),
+            () {
+              _memberDynamicController.onLoad();
+            },
+          );
         }
         return true;
       },
@@ -70,14 +79,14 @@ class _MemberDynamicsPageState extends State<MemberDynamicsPage> {
           // 不能设置controller，否则NestedScrollView的联动会失效
           // controller: _memberDynamicController.scrollController,
           slivers: [
-            FutureBuilder(
+            FutureBuilder<ApiResult<DynamicsDataModel>?>(
               future: _futureBuilderFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.done) {
                   if (snapshot.data != null) {
-                    Map data = snapshot.data as Map;
+                    final result = snapshot.data!;
                     List list = _memberDynamicController.dynamicsList;
-                    if (data['status']) {
+                    if (result is ApiSuccess<DynamicsDataModel>) {
                       return Obx(() {
                         if (list.isEmpty) {
                           return const SliverToBoxAdapter();
@@ -87,53 +96,51 @@ class _MemberDynamicsPageState extends State<MemberDynamicsPage> {
                             slivers: [
                               const SliverFillRemaining(),
                               SliverConstrainedCrossAxis(
-                                  maxExtent: Grid.maxRowWidth * 2,
-                                  sliver: SliverList(
-                                    delegate: SliverChildBuilderDelegate(
-                                      (context, index) {
-                                        return DynamicPanel(item: list[index]);
-                                      },
-                                      childCount: list.length,
-                                    ),
-                                  )),
+                                maxExtent: Grid.maxRowWidth * 2,
+                                sliver: SliverList(
+                                  delegate: SliverChildBuilderDelegate((
+                                    context,
+                                    index,
+                                  ) {
+                                    return DynamicPanel(item: list[index]);
+                                  }, childCount: list.length),
+                                ),
+                              ),
                               const SliverFillRemaining(),
                             ],
                           );
                         }
                         return SliverWaterfallFlow.extent(
-                            maxCrossAxisExtent: Grid.maxRowWidth * 2,
-                            //cacheExtent: 0.0,
-                            crossAxisSpacing: StyleString.safeSpace,
-                            mainAxisSpacing: StyleString.safeSpace,
+                          maxCrossAxisExtent: Grid.maxRowWidth * 2,
+                          //cacheExtent: 0.0,
+                          crossAxisSpacing: StyleString.safeSpace,
+                          mainAxisSpacing: StyleString.safeSpace,
 
-                            /// follow max child trailing layout offset and layout with full cross axis extend
-                            /// last child as loadmore item/no more item in [GridView] and [WaterfallFlow]
-                            /// with full cross axis extend
-                            //  LastChildLayoutType.fullCrossAxisExtend,
+                          /// follow max child trailing layout offset and layout with full cross axis extend
+                          /// last child as loadmore item/no more item in [GridView] and [WaterfallFlow]
+                          /// with full cross axis extend
+                          //  LastChildLayoutType.fullCrossAxisExtend,
 
-                            /// as foot at trailing and layout with full cross axis extend
-                            /// show no more item at trailing when children are not full of viewport
-                            /// if children is full of viewport, it's the same as fullCrossAxisExtend
-                            //  LastChildLayoutType.foot,
-                            lastChildLayoutTypeBuilder: (index) =>
-                                index == list.length
-                                    ? LastChildLayoutType.foot
-                                    : LastChildLayoutType.none,
-                            children: [
-                              for (var i in list) DynamicPanel(item: i),
-                            ]);
+                          /// as foot at trailing and layout with full cross axis extend
+                          /// show no more item at trailing when children are not full of viewport
+                          /// if children is full of viewport, it's the same as fullCrossAxisExtend
+                          //  LastChildLayoutType.foot,
+                          lastChildLayoutTypeBuilder: (index) =>
+                              index == list.length
+                              ? LastChildLayoutType.foot
+                              : LastChildLayoutType.none,
+                          children: [for (var i in list) DynamicPanel(item: i)],
+                        );
                       });
                     } else {
                       return HttpError(
-                        errMsg: snapshot.data['msg'],
+                        errMsg:
+                            (result as ApiFailure<DynamicsDataModel>).message,
                         fn: () {},
                       );
                     }
                   } else {
-                    return HttpError(
-                      errMsg: snapshot.data['msg'],
-                      fn: () {},
-                    );
+                    return HttpError(errMsg: '动态加载失败', fn: () {});
                   }
                 } else {
                   return const SliverToBoxAdapter();

@@ -71,18 +71,23 @@ class FollowController extends GetxController with GetTickerProviderStateMixin {
   }
 
   // 当查看当前用户的关注时，请求关注分组
-  Future followUpTags() async {
+  Future<ApiResult<List<MemberTagItemModel>>?> followUpTags() async {
     if (userInfo != null && mid == userInfo.mid) {
       var res = await MemberHttp.followUpTags();
-      if (res['status']) {
-        followTags = res['data'];
+      if (res case ApiSuccess<List<MemberTagItemModel>>(:final data)) {
+        followTags = data;
         tabController = TabController(
           initialIndex: 0,
-          length: res['data'].length,
+          length: data.length,
           vsync: this,
+        );
+      } else {
+        SmartDialog.showToast(
+          (res as ApiFailure<List<MemberTagItemModel>>).message,
         );
       }
       return res;
     }
+    return null;
   }
 }

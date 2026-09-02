@@ -6,12 +6,7 @@ class HotKeyword extends StatelessWidget {
   final double? width;
   final List? hotSearchList;
   final Function? onClick;
-  const HotKeyword({
-    this.width,
-    this.hotSearchList,
-    this.onClick,
-    super.key,
-  });
+  const HotKeyword({this.width, this.hotSearchList, this.onClick, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -29,8 +24,9 @@ class HotKeyword extends StatelessWidget {
                 onTap: () => onClick!(i.keyword),
                 child: Padding(
                   padding: EdgeInsets.only(
-                      left: 2,
-                      right: hotSearchList!.indexOf(i) % 2 == 1 ? 10 : 0),
+                    left: 2,
+                    right: hotSearchList!.indexOf(i) % 2 == 1 ? 10 : 0,
+                  ),
                   child: Tooltip(
                     message: i.keyword!,
                     child: Row(
@@ -50,7 +46,10 @@ class HotKeyword extends StatelessWidget {
                           SizedBox(
                             height: 15,
                             child: CachedNetworkImage(
-                                imageUrl: i.icon!, height: 15.0),
+                              imageUrl: i.icon!,
+                              height: 15.0,
+                              errorWidget: (_, _, _) => const SizedBox.shrink(),
+                            ),
                           ),
                       ],
                     ),

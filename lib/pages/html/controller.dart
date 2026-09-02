@@ -16,7 +16,7 @@ class HtmlRenderController extends GetxController {
   late String dynamicType;
   late int type;
   RxInt oid = (-1).obs;
-  late Map response;
+  late HtmlArticleData response;
   int? floor;
   String nextOffset = "";
   bool isLoadingMore = false;
@@ -48,16 +48,18 @@ class HtmlRenderController extends GetxController {
   }
 
   // 请求动态内容
-  Future reqHtml(id) async {
-    late dynamic res;
+  Future<ApiResult<HtmlArticleData>> reqHtml(String id) async {
+    late ApiResult<HtmlArticleData> res;
     if (dynamicType == 'opus' || dynamicType == 'picture') {
       res = await HtmlHttp.reqHtml(id, dynamicType);
     } else {
       res = await HtmlHttp.reqReadHtml(id, dynamicType);
     }
-    response = res;
-    oid.value = res['commentId'];
-    queryReplyList(reqType: 'init');
+    if (res case ApiSuccess<HtmlArticleData>(:final data)) {
+      response = data;
+      oid.value = data.commentId;
+      queryReplyList(reqType: 'init');
+    }
     return res;
   }
 
@@ -84,8 +86,9 @@ class HtmlRenderController extends GetxController {
           noMore.value = '没有更多了';
         }
       } else {
-        noMore.value =
-            nextOffset == "" && reqType == 'init' ? '还没有评论' : '没有更多了';
+        noMore.value = nextOffset == "" && reqType == 'init'
+            ? '还没有评论'
+            : '没有更多了';
       }
       if (reqType == 'init') {
         // 添加置顶回复

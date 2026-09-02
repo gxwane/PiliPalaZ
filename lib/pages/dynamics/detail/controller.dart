@@ -35,11 +35,14 @@ class DynamicDetailController extends GetxController {
     item = Get.arguments['item'];
     floor = Get.arguments['floor'];
     if (floor == 1) {
-      acount.value =
-          int.parse(item!.modules!.moduleStat!.comment!.count ?? '0');
+      acount.value = int.parse(
+        item!.modules!.moduleStat!.comment!.count ?? '0',
+      );
     }
-    int defaultReplySortIndex =
-        setting.get(SettingBoxKey.replySortType, defaultValue: 0);
+    int defaultReplySortIndex = setting.get(
+      SettingBoxKey.replySortType,
+      defaultValue: 0,
+    );
     if (defaultReplySortIndex == 2) {
       setting.put(SettingBoxKey.replySortType, 0);
       defaultReplySortIndex = 0;
@@ -49,13 +52,13 @@ class DynamicDetailController extends GetxController {
     sortTypeLabel.value = _sortType.labels;
   }
 
-  Future queryReplyList({reqType = 'init'}) async {
+  Future<ApiResult<ReplyData>?> queryReplyList({reqType = 'init'}) async {
     if (reqType == 'init') {
       nextOffset = "";
       noMore.value = "";
     }
-    if (isLoadingMore) return;
-    if (noMore.value == '没有更多了') return;
+    if (isLoadingMore) return null;
+    if (noMore.value == '没有更多了') return null;
     isLoadingMore = true;
     var res = await ReplyHttp.replyList(
       oid: oid!,
@@ -74,8 +77,9 @@ class DynamicDetailController extends GetxController {
           noMore.value = '没有更多了';
         }
       } else {
-        noMore.value =
-            nextOffset == "" && reqType == 'init' ? '还没有评论' : '没有更多了';
+        noMore.value = nextOffset == "" && reqType == 'init'
+            ? '还没有评论'
+            : '没有更多了';
       }
       if (reqType == 'init') {
         // 添加置顶回复
@@ -116,8 +120,13 @@ class DynamicDetailController extends GetxController {
   }
 
   // 根据jumpUrl获取动态html
-  reqHtmlByOpusId(int id) async {
-    var res = await HtmlHttp.reqHtml(id, 'opus');
-    oid = res['commentId'];
+  Future<ApiResult<HtmlArticleData>> reqHtmlByOpusId(int id) async {
+    final res = await HtmlHttp.reqHtml(id.toString(), 'opus');
+    if (res case ApiSuccess<HtmlArticleData>(:final data)) {
+      oid = data.commentId;
+    } else {
+      SmartDialog.showToast((res as ApiFailure<HtmlArticleData>).message);
+    }
+    return res;
   }
 }

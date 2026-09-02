@@ -12,6 +12,7 @@ import 'package:pilipalaz/http/user_api.dart';
 import 'package:pilipalaz/http/video.dart';
 import 'package:pilipalaz/http/video_api.dart';
 import 'package:pilipalaz/models/user/fav_folder.dart';
+import 'package:pilipalaz/models/video/ai.dart';
 import 'package:pilipalaz/models/user/stat.dart';
 import 'package:pilipalaz/models/video_detail_res.dart';
 import 'package:pilipalaz/pages/video/controller.dart';
@@ -106,8 +107,10 @@ class VideoIntroController extends GetxController {
     }
     userLogin = userInfo != null;
     lastPlayCid.value = int.parse(Get.parameters['cid']!);
-    isShowOnlineTotal =
-        setting.get(SettingBoxKey.enableOnlineTotal, defaultValue: false);
+    isShowOnlineTotal = setting.get(
+      SettingBoxKey.enableOnlineTotal,
+      defaultValue: false,
+    );
     if (isShowOnlineTotal) {
       queryOnlineTotal();
       startTimer(); // 在页面加载时启动定时器
@@ -119,20 +122,23 @@ class VideoIntroController extends GetxController {
         final VideoDetailController videoDetailCtr =
             Get.find<VideoDetailController>(tag: heroTag);
         final cid = videoDetailCtr.cid.value;
-        final current =
-            value.pages?.firstWhere((element) => element.cid == cid);
+        final current = value.pages?.firstWhere(
+          (element) => element.cid == cid,
+        );
 
         videoPlayerServiceHandler.onVideoDetailChange(
-            current?.pagePart ?? "",
-            value.title ?? "",
-            Duration(seconds: current?.duration ?? 0),
-            value.pic ?? "");
+          current?.pagePart ?? "",
+          value.title ?? "",
+          Duration(seconds: current?.duration ?? 0),
+          value.pic ?? "",
+        );
       } else {
         videoPlayerServiceHandler.onVideoDetailChange(
-            value.title ?? "",
-            value.owner?.name ?? "",
-            Duration(seconds: value.duration ?? 0),
-            value.pic ?? "");
+          value.title ?? "",
+          value.owner?.name ?? "",
+          Duration(seconds: value.duration ?? 0),
+          value.pic ?? "",
+        );
       }
     });
   }
@@ -149,8 +155,10 @@ class VideoIntroController extends GetxController {
     } catch (_) {}
     print("videoDetailCtr: $videoDetailCtr");
     if (videoDetailCtr == null) {
-      Get.toNamed('/video?bvid=$bvid&cid=${lastPlayCid.value}&resume=true',
-          arguments: {'heroTag': heroTag});
+      Get.toNamed(
+        '/video?bvid=$bvid&cid=${lastPlayCid.value}&resume=true',
+        arguments: {'heroTag': heroTag},
+      );
       return;
     }
     videoDetailCtr.resumePlay = true;
@@ -232,15 +240,17 @@ class VideoIntroController extends GetxController {
   Future queryHasLikeVideo() async {
     var result = await VideoHttp.hasLikeVideo(bvid: bvid);
     // data	num	被点赞标志	0：未点赞  1：已点赞  2：已点踩
-    hasLike.value = result["data"] == 1;
-    hasDislike.value = result["data"] == 2;
+    if (result case ApiSuccess<int>(:final data)) {
+      hasLike.value = data == 1;
+      hasDislike.value = data == 2;
+    }
   }
 
   // 获取投币状态
   Future queryHasCoinVideo() async {
     var result = await VideoHttp.hasCoinVideo(bvid: bvid);
-    if (result['status']) {
-      hasCoin.value = result["data"]['multiply'] != 0;
+    if (result case ApiSuccess<VideoCoinState>(:final data)) {
+      hasCoin.value = data.multiply != 0;
     }
   }
 
@@ -249,8 +259,8 @@ class VideoIntroController extends GetxController {
     /// fix 延迟查询
     await Future.delayed(const Duration(milliseconds: 200));
     var result = await VideoHttp.hasFavVideo(aid: IdUtils.bv2av(bvid));
-    if (result['status']) {
-      hasFav.value = result["data"]['favoured'];
+    if (result case ApiSuccess<VideoFavoriteState>(:final data)) {
+      hasFav.value = data.favoured;
     } else {
       hasFav.value = false;
     }
@@ -269,13 +279,13 @@ class VideoIntroController extends GetxController {
       return false;
     }
     var result = await VideoHttp.oneThree(bvid: bvid);
-    if (result['status']) {
-      hasLike.value = result["data"]["like"];
-      hasCoin.value = result["data"]["coin"];
-      hasFav.value = result["data"]["fav"];
+    if (result case ApiSuccess<VideoTripleState>(:final data)) {
+      hasLike.value = data.liked;
+      hasCoin.value = data.coined;
+      hasFav.value = data.favoured;
       SmartDialog.showToast('三连成功');
     } else {
-      SmartDialog.showToast(result['msg']);
+      SmartDialog.showToast((result as ApiFailure<VideoTripleState>).message);
     }
   }
 
@@ -286,10 +296,10 @@ class VideoIntroController extends GetxController {
       return;
     }
     var result = await VideoHttp.likeVideo(bvid: bvid, type: !hasLike.value);
-    if (result['status']) {
+    if (result case ApiSuccess<VideoActionData>(:final data)) {
       // hasLike.value = result["data"] == 1 ? true : false;
       if (!hasLike.value) {
-        SmartDialog.showToast(result['data']['toast']);
+        SmartDialog.showToast(data.toast ?? '点赞成功');
         hasLike.value = true;
         hasDislike.value = false;
         videoDetail.value.stat!.like = videoDetail.value.stat!.like! + 1;
@@ -300,7 +310,7 @@ class VideoIntroController extends GetxController {
       }
       hasLike.refresh();
     } else {
-      SmartDialog.showToast(result['msg']);
+      SmartDialog.showToast((result as ApiFailure<VideoActionData>).message);
     }
   }
 
@@ -309,9 +319,11 @@ class VideoIntroController extends GetxController {
       SmartDialog.showToast('账号未登录');
       return;
     }
-    var result =
-        await VideoHttp.dislikeVideo(bvid: bvid, type: !hasDislike.value);
-    if (result['status']) {
+    var result = await VideoHttp.dislikeVideo(
+      bvid: bvid,
+      type: !hasDislike.value,
+    );
+    if (result is ApiSuccess<void>) {
       // hasLike.value = result["data"] == 1 ? true : false;
       if (!hasDislike.value) {
         SmartDialog.showToast('点踩成功');
@@ -323,7 +335,7 @@ class VideoIntroController extends GetxController {
       }
       // hasDislike.refresh();
     } else {
-      SmartDialog.showToast(result['msg']);
+      SmartDialog.showToast((result as ApiFailure<void>).message);
     }
   }
 
@@ -335,43 +347,47 @@ class VideoIntroController extends GetxController {
     }
     void coinVideo(int coin) async {
       var res = await VideoHttp.coinVideo(bvid: bvid, multiply: coin);
-      if (res['status']) {
-        print(res);
+      if (res is ApiSuccess<void>) {
         SmartDialog.showToast('投币成功');
         hasCoin.value = true;
         videoDetail.value.stat!.coin = videoDetail.value.stat!.coin! + coin;
       } else {
-        SmartDialog.showToast(res['msg']);
+        SmartDialog.showToast((res as ApiFailure<void>).message);
       }
     }
 
     showDialog(
-        context: Get.context!,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('选择投币个数'),
-            contentPadding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
-            actions: [
-              TextButton(
-                  onPressed: () => Get.back(),
-                  child: Text('取消',
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.outline))),
-              TextButton(
-                  onPressed: () async {
-                    coinVideo(1);
-                    Get.back();
-                  },
-                  child: const Text('投 1 枚')),
-              TextButton(
-                  onPressed: () async {
-                    coinVideo(2);
-                    Get.back();
-                  },
-                  child: const Text('投 2 枚'))
-            ],
-          );
-        });
+      context: Get.context!,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('选择投币个数'),
+          contentPadding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
+          actions: [
+            TextButton(
+              onPressed: () => Get.back(),
+              child: Text(
+                '取消',
+                style: TextStyle(color: Theme.of(context).colorScheme.outline),
+              ),
+            ),
+            TextButton(
+              onPressed: () async {
+                coinVideo(1);
+                Get.back();
+              },
+              child: const Text('投 1 枚'),
+            ),
+            TextButton(
+              onPressed: () async {
+                coinVideo(2);
+                Get.back();
+              },
+              child: const Text('投 2 枚'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // （取消）收藏
@@ -388,12 +404,12 @@ class VideoIntroController extends GetxController {
         delIds: favStatus == 1 ? '$defaultFolderId' : '',
       );
       SmartDialog.dismiss();
-      if (result['status']) {
+      if (result is ApiSuccess<void>) {
         // 重新获取收藏状态
         await queryHasFavVideo();
         SmartDialog.showToast('✅ 快速收藏/取消收藏成功');
       } else {
-        SmartDialog.showToast(result['msg']);
+        SmartDialog.showToast((result as ApiFailure<void>).message);
       }
       return;
     }
@@ -411,11 +427,12 @@ class VideoIntroController extends GetxController {
     }
     SmartDialog.showLoading(msg: '请求中');
     var result = await VideoHttp.favVideo(
-        aid: IdUtils.bv2av(bvid),
-        addIds: addMediaIdsNew.join(','),
-        delIds: delMediaIdsNew.join(','));
+      aid: IdUtils.bv2av(bvid),
+      addIds: addMediaIdsNew.join(','),
+      delIds: delMediaIdsNew.join(','),
+    );
     SmartDialog.dismiss();
-    if (result['status']) {
+    if (result is ApiSuccess<void>) {
       addMediaIdsNew = [];
       delMediaIdsNew = [];
       Get.back();
@@ -423,57 +440,64 @@ class VideoIntroController extends GetxController {
       await queryHasFavVideo();
       SmartDialog.showToast('操作成功');
     } else {
-      SmartDialog.showToast(result['msg']);
+      SmartDialog.showToast((result as ApiFailure<void>).message);
     }
   }
 
   // 分享视频
   Future actionShareVideo() async {
     showDialog(
-        context: Get.context!,
-        builder: (context) {
-          String videoUrl = '${HttpString.baseUrl}/video/$bvid';
-          return AlertDialog(
-            title: const Text('请选择'),
-            actions: [
-              TextButton.icon(
-                  onPressed: () {
-                    Clipboard.setData(ClipboardData(text: videoUrl));
-                    SmartDialog.showToast('已复制');
-                    Get.back();
-                  },
-                  icon: const Icon(Icons.copy),
-                  label: const Text('复制链接')),
-              TextButton.icon(
-                  onPressed: () {
-                    launchUrl(Uri.parse(videoUrl));
-                    Get.back();
-                  },
-                  icon: const Icon(Icons.open_in_browser),
-                  label: const Text('其它app打开')),
-              TextButton.icon(
-                  onPressed: () async {
-                    await SharePlus.instance.share(
-                      ShareParams(
-                        text: '${videoDetail.value.title} '
-                            'UP主: ${videoDetail.value.owner?.name ?? '未知'}'
-                            ' - $videoUrl',
-                      ),
-                    );
-                    Get.back();
-                  },
-                  icon: const Icon(Icons.share),
-                  label: const Text('分享视频')),
-            ],
-          );
-        });
+      context: Get.context!,
+      builder: (context) {
+        String videoUrl = '${HttpString.baseUrl}/video/$bvid';
+        return AlertDialog(
+          title: const Text('请选择'),
+          actions: [
+            TextButton.icon(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: videoUrl));
+                SmartDialog.showToast('已复制');
+                Get.back();
+              },
+              icon: const Icon(Icons.copy),
+              label: const Text('复制链接'),
+            ),
+            TextButton.icon(
+              onPressed: () {
+                launchUrl(Uri.parse(videoUrl));
+                Get.back();
+              },
+              icon: const Icon(Icons.open_in_browser),
+              label: const Text('其它app打开'),
+            ),
+            TextButton.icon(
+              onPressed: () async {
+                await SharePlus.instance.share(
+                  ShareParams(
+                    text:
+                        '${videoDetail.value.title} '
+                        'UP主: ${videoDetail.value.owner?.name ?? '未知'}'
+                        ' - $videoUrl',
+                  ),
+                );
+                Get.back();
+              },
+              icon: const Icon(Icons.share),
+              label: const Text('分享视频'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
-  Future queryVideoInFolder() async {
+  Future<ApiResult<FavFolderData>> queryVideoInFolder() async {
     var result = await VideoHttp.videoInFolder(
-        mid: userInfo.mid, rid: IdUtils.bv2av(bvid));
-    if (result['status']) {
-      favFolderData.value = result['data'];
+      mid: userInfo.mid,
+      rid: IdUtils.bv2av(bvid),
+    );
+    if (result case ApiSuccess<FavFolderData>(:final data)) {
+      favFolderData.value = data;
     }
     return result;
   }
@@ -501,8 +525,8 @@ class VideoIntroController extends GetxController {
       return;
     }
     var result = await VideoHttp.hasFollow(mid: mid);
-    if (result['status']) {
-      followStatus.value = result['data'];
+    if (result case ApiSuccess<VideoFollowState>(:final data)) {
+      followStatus.value = <String, dynamic>{'attribute': data.attribute};
     }
     return result;
   }
@@ -542,15 +566,17 @@ class VideoIntroController extends GetxController {
     videoDetailCtr.queryVideoUrl();
     // 重新请求相关视频
     try {
-      final RelatedController relatedCtr =
-          Get.find<RelatedController>(tag: heroTag);
+      final RelatedController relatedCtr = Get.find<RelatedController>(
+        tag: heroTag,
+      );
       relatedCtr.bvid = bvid;
       relatedCtr.queryRelatedVideo();
     } catch (_) {}
     // 重新请求评论
     try {
-      final VideoReplyController videoReplyCtr =
-          Get.find<VideoReplyController>(tag: heroTag);
+      final VideoReplyController videoReplyCtr = Get.find<VideoReplyController>(
+        tag: heroTag,
+      );
       videoReplyCtr.aid = aid;
       videoReplyCtr.queryReplyList(type: 'init');
     } catch (_) {}
@@ -575,8 +601,8 @@ class VideoIntroController extends GetxController {
       bvid: bvid,
       cid: lastPlayCid.value,
     );
-    if (result['status']) {
-      total.value = result['data']['total'];
+    if (result case ApiSuccess<VideoOnlineTotal>(:final data)) {
+      total.value = data.total;
     }
   }
 
@@ -606,8 +632,9 @@ class VideoIntroController extends GetxController {
       }
     }
 
-    final int currentIndex =
-        episodes.indexWhere((e) => e.cid == lastPlayCid.value);
+    final int currentIndex = episodes.indexWhere(
+      (e) => e.cid == lastPlayCid.value,
+    );
     int prevIndex = currentIndex - 1;
     PlayRepeat playRepeat = PlPlayerController.getInstance().playRepeat;
     // 列表循环
@@ -647,8 +674,9 @@ class VideoIntroController extends GetxController {
     if (playRepeat == PlayRepeat.listCycle) {
       return true;
     }
-    final int currentIndex =
-        episodes.indexWhere((e) => e.cid == lastPlayCid.value);
+    final int currentIndex = episodes.indexWhere(
+      (e) => e.cid == lastPlayCid.value,
+    );
     return currentIndex < episodes.length - 1;
   }
 
@@ -678,8 +706,9 @@ class VideoIntroController extends GetxController {
       return false;
     }
 
-    final int currentIndex =
-        episodes.indexWhere((e) => e.cid == lastPlayCid.value);
+    final int currentIndex = episodes.indexWhere(
+      (e) => e.cid == lastPlayCid.value,
+    );
     int nextIndex = currentIndex + 1;
 
     // 列表循环
@@ -710,7 +739,7 @@ class VideoIntroController extends GetxController {
     } catch (_) {
       relatedCtr = Get.put(RelatedController(), tag: heroTag);
       relatedCtr.queryRelatedVideo().then((value) {
-        if (value['status']) {
+        if (value is ApiSuccess<List<HotVideoItemModel>>) {
           playRelated();
         }
       });
@@ -723,14 +752,15 @@ class VideoIntroController extends GetxController {
     }
     try {
       if (videoItem.cid != null) {
-        Get.offNamed('/video?bvid=${videoItem.bvid}&cid=${videoItem.cid}',
-            arguments: {'videoItem': videoItem, 'heroTag': heroTag});
+        Get.offNamed(
+          '/video?bvid=${videoItem.bvid}&cid=${videoItem.cid}',
+          arguments: {'videoItem': videoItem, 'heroTag': heroTag},
+        );
         // changeSeasonOrbangu(videoItem.bvid, videoItem.cid, videoItem.aid);
       } else {
-        SearchHttp.ab2c(
-          aid: videoItem.aid,
-          bvid: videoItem.bvid,
-        ).then((cidResult) {
+        SearchHttp.ab2c(aid: videoItem.aid, bvid: videoItem.bvid).then((
+          cidResult,
+        ) {
           if (cidResult case ApiFailure<int>(:final message)) {
             SmartDialog.showToast(message);
             return;
@@ -749,7 +779,7 @@ class VideoIntroController extends GetxController {
   }
 
   // ai总结
-  Future aiConclusion() async {
+  Future<ApiResult<AiConclusionModel>> aiConclusion() async {
     SmartDialog.showLoading(msg: '正在查询AI总结');
     final res = await VideoHttp.aiConclusion(
       bvid: bvid,
@@ -757,11 +787,12 @@ class VideoIntroController extends GetxController {
       upMid: videoDetail.value.owner?.mid,
     );
     SmartDialog.dismiss();
-    if (!res['status']) {
+    if (res is ApiFailure<AiConclusionModel>) {
       SmartDialog.showNotify(
-          msg: "当前视频暂未生产AI视频总结",
-          notifyType: NotifyType.warning,
-          displayTime: const Duration(seconds: 1));
+        msg: "当前视频暂未生产AI视频总结",
+        notifyType: NotifyType.warning,
+        displayTime: const Duration(seconds: 1),
+      );
     }
     return res;
   }

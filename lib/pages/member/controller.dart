@@ -3,6 +3,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/member.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/http/video.dart';
 import 'package:pilipalaz/models/member/archive.dart';
 import 'package:pilipalaz/models/member/coin.dart';
@@ -45,18 +46,17 @@ class MemberController extends GetxController with GetTickerProviderStateMixin {
   }
 
   // 获取用户信息
-  Future<Map<String, dynamic>> getInfo() async {
+  Future<ApiResult<MemberInfoModel>> getInfo() async {
     // await getMemberStat();
     // await getMemberView();
     // await getWwebid();
     var res = await MemberHttp.memberInfo(mid: mid);
-    print(res);
-    if (res['status']) {
-      memberInfo.value = res['data'];
+    if (res case ApiSuccess<MemberInfoModel>(:final data)) {
+      memberInfo.value = data;
       relationSearch();
-      face.value = res['data'].card?.face;
+      face.value = data.card?.face ?? '';
     } else {
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast((res as ApiFailure<MemberInfoModel>).message);
     }
     return res;
   }
@@ -64,7 +64,6 @@ class MemberController extends GetxController with GetTickerProviderStateMixin {
   // Future getWwebid() async {
   //   try {
   //     dynamic response =
-  //         await Request().get('${HttpString.spaceBaseUrl}/$mid/dynamic');
   //     dom.Document document = html_parser.parse(response.data);
   //     dom.Element? scriptElement =
   //         document.querySelector('script#__RENDER_DATA__');
@@ -126,9 +125,15 @@ class MemberController extends GetxController with GetTickerProviderStateMixin {
               TextButton(
                 onPressed: () async {
                   final res = await MemberHttp.addUsers(
-                      mid, specialFollowed ? '0' : '-10');
-                  SmartDialog.showToast(res['msg']);
-                  if (res['status']) {
+                    mid,
+                    specialFollowed ? '0' : '-10',
+                  );
+                  SmartDialog.showToast(
+                    res is ApiSuccess<void>
+                        ? '操作成功'
+                        : (res as ApiFailure<void>).message,
+                  );
+                  if (res is ApiSuccess<void>) {
                     specialFollowed = !specialFollowed;
                   }
                   Get.back();
@@ -152,8 +157,12 @@ class MemberController extends GetxController with GetTickerProviderStateMixin {
                   act: memberInfo.value.card!.isFollow! ? 2 : 1,
                   reSrc: 11,
                 );
-                SmartDialog.showToast(res['status'] ? "操作成功" : res['msg']);
-                if (res['status']) {
+                SmartDialog.showToast(
+                  res is ApiSuccess<void>
+                      ? '操作成功'
+                      : (res as ApiFailure<void>).message,
+                );
+                if (res is ApiSuccess<void>) {
                   memberInfo.value.card!.isFollow =
                       !memberInfo.value.card!.isFollow!;
                 }
@@ -228,7 +237,7 @@ class MemberController extends GetxController with GetTickerProviderStateMixin {
                   act: attribute.value != 128 ? 5 : 6,
                   reSrc: 11,
                 );
-                if (res['status']) {
+                if (res is ApiSuccess<void>) {
                   attribute.value = attribute.value != 128 ? 128 : 0;
                   attributeText.value = attribute.value == 128 ? '已拉黑' : '关注';
                   memberInfo.value.card!.isFollow = false;
@@ -237,7 +246,7 @@ class MemberController extends GetxController with GetTickerProviderStateMixin {
                 }
               },
               child: const Text('确认'),
-            )
+            ),
           ],
         );
       },
@@ -254,10 +263,16 @@ class MemberController extends GetxController with GetTickerProviderStateMixin {
   }
 
   // 请求投币视频
-  Future getRecentCoinVideo() async {
-    if (userInfo == null) return;
+  Future<ApiResult<List<MemberCoinsDataModel>>?> getRecentCoinVideo() async {
+    if (userInfo == null) return null;
     var res = await MemberHttp.getRecentCoinVideo(mid: mid!);
-    recentCoinsList.value = res['data'];
+    if (res case ApiSuccess<List<MemberCoinsDataModel>>(:final data)) {
+      recentCoinsList.value = data;
+    } else {
+      SmartDialog.showToast(
+        (res as ApiFailure<List<MemberCoinsDataModel>>).message,
+      );
+    }
     return res;
   }
 

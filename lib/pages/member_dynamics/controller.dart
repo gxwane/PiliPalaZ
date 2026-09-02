@@ -1,5 +1,6 @@
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/member.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/dynamics/result.dart';
 
 class MemberDynamicsController extends GetxController {
@@ -10,22 +11,19 @@ class MemberDynamicsController extends GetxController {
   bool hasMore = true;
   RxList<DynamicItemModel> dynamicsList = <DynamicItemModel>[].obs;
 
-  Future getMemberDynamic(type) async {
+  Future<ApiResult<DynamicsDataModel>?> getMemberDynamic(type) async {
     if (type == 'onRefresh') {
       offset = '';
       dynamicsList.clear();
     }
     if (offset == '-1') {
-      return;
+      return null;
     }
-    var res = await MemberHttp.memberDynamic(
-      offset: offset,
-      mid: mid,
-    );
-    if (res['status']) {
-      dynamicsList.addAll(res['data'].items);
-      offset = res['data'].offset != '' ? res['data'].offset : '-1';
-      hasMore = res['data'].hasMore;
+    var res = await MemberHttp.memberDynamic(offset: offset, mid: mid);
+    if (res case ApiSuccess<DynamicsDataModel>(:final data)) {
+      dynamicsList.addAll(data.items ?? <DynamicItemModel>[]);
+      offset = data.offset?.isNotEmpty == true ? data.offset! : '-1';
+      hasMore = data.hasMore ?? false;
     }
     return res;
   }

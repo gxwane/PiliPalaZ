@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/user/fav_folder.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
 
 class FavPanel extends StatefulWidget {
@@ -12,7 +14,7 @@ class FavPanel extends StatefulWidget {
 }
 
 class _FavPanelState extends State<FavPanel> {
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<FavFolderData>> _futureBuilderFuture;
 
   @override
   void initState() {
@@ -31,64 +33,94 @@ class _FavPanelState extends State<FavPanel> {
             centerTitle: false,
             elevation: 0,
             leading: IconButton(
-                tooltip: '关闭',
-                onPressed: () => Get.back(),
-                icon: const Icon(Icons.close_outlined)),
-            title:
-                Text('添加到收藏夹', style: Theme.of(context).textTheme.titleMedium),
+              tooltip: '关闭',
+              onPressed: () => Get.back(),
+              icon: const Icon(Icons.close_outlined),
+            ),
+            title: Text(
+              '添加到收藏夹',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
           ),
           Expanded(
             child: Material(
-              child: FutureBuilder(
+              child: FutureBuilder<ApiResult<FavFolderData>>(
                 future: _futureBuilderFuture,
-                builder: (BuildContext context, AsyncSnapshot snapshot) {
-                  if (snapshot.connectionState == ConnectionState.done) {
-                    Map data = snapshot.data as Map;
-                    if (data['status']) {
-                      return Obx(
-                        () => ListView.builder(
-                          itemCount:
-                              widget.ctr!.favFolderData.value.list!.length,
-                          itemBuilder: (context, index) {
-                            return ListTile(
-                              onTap: () => widget.ctr!.onChoose(
-                                  widget.ctr!.favFolderData.value.list![index]
-                                          .favState !=
-                                      1,
-                                  index),
-                              dense: true,
-                              leading: const Icon(Icons.folder_outlined),
-                              minLeadingWidth: 0,
-                              title: Text(widget.ctr!.favFolderData.value
-                                  .list![index].title!),
-                              subtitle: Text(
-                                '${widget.ctr!.favFolderData.value.list![index].mediaCount}个内容',
-                              ),
-                              trailing: Transform.scale(
-                                scale: 0.9,
-                                child: Checkbox(
-                                  value: widget.ctr!.favFolderData.value
-                                          .list![index].favState ==
-                                      1,
-                                  onChanged: (bool? checkValue) =>
-                                      widget.ctr!.onChoose(checkValue!, index),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    } else {
-                      return HttpError(
-                        errMsg: data['msg'],
-                        fn: () => setState(() {}),
-                      );
-                    }
-                  } else {
-                    // 骨架屏
-                    return const Text('请求中');
-                  }
-                },
+                builder:
+                    (
+                      BuildContext context,
+                      AsyncSnapshot<ApiResult<FavFolderData>> snapshot,
+                    ) {
+                      if (snapshot.connectionState == ConnectionState.done) {
+                        final result = snapshot.data;
+                        if (result is ApiSuccess<FavFolderData>) {
+                          return Obx(
+                            () => ListView.builder(
+                              itemCount:
+                                  widget.ctr!.favFolderData.value.list!.length,
+                              itemBuilder: (context, index) {
+                                return ListTile(
+                                  onTap: () => widget.ctr!.onChoose(
+                                    widget
+                                            .ctr!
+                                            .favFolderData
+                                            .value
+                                            .list![index]
+                                            .favState !=
+                                        1,
+                                    index,
+                                  ),
+                                  dense: true,
+                                  leading: const Icon(Icons.folder_outlined),
+                                  minLeadingWidth: 0,
+                                  title: Text(
+                                    widget
+                                        .ctr!
+                                        .favFolderData
+                                        .value
+                                        .list![index]
+                                        .title!,
+                                  ),
+                                  subtitle: Text(
+                                    '${widget.ctr!.favFolderData.value.list![index].mediaCount}个内容',
+                                  ),
+                                  trailing: Transform.scale(
+                                    scale: 0.9,
+                                    child: Checkbox(
+                                      value:
+                                          widget
+                                              .ctr!
+                                              .favFolderData
+                                              .value
+                                              .list![index]
+                                              .favState ==
+                                          1,
+                                      onChanged: (bool? checkValue) => widget
+                                          .ctr!
+                                          .onChoose(checkValue!, index),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        } else if (result is ApiFailure<FavFolderData>) {
+                          return HttpError(
+                            errMsg: result.message,
+                            fn: () {
+                              setState(() {
+                                _futureBuilderFuture = widget.ctr!
+                                    .queryVideoInFolder();
+                              });
+                            },
+                          );
+                        }
+                        return const Text('请求异常');
+                      } else {
+                        // 骨架屏
+                        return const Text('请求中');
+                      }
+                    },
               ),
             ),
           ),
@@ -110,9 +142,9 @@ class _FavPanelState extends State<FavPanel> {
                   onPressed: () => Get.back(),
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.only(left: 30, right: 30),
-                    backgroundColor: Theme.of(context)
-                        .colorScheme
-                        .onInverseSurface, // 设置按钮背景色
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.onInverseSurface, // 设置按钮背景色
                   ),
                   child: const Text('取消'),
                 ),
@@ -125,8 +157,9 @@ class _FavPanelState extends State<FavPanel> {
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.only(left: 30, right: 30),
                     foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                    backgroundColor:
-                        Theme.of(context).colorScheme.primary, // 设置按钮背景色
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primary, // 设置按钮背景色
                   ),
                   child: const Text('完成'),
                 ),

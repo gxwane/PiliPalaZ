@@ -1,84 +1,153 @@
-import 'dart:developer';
 import 'package:dio/dio.dart';
-import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:hive/hive.dart';
+
 import '../common/constants.dart';
 import '../models/common/reply_type.dart';
 import '../models/home/rcmd/result.dart';
 import '../models/model_hot_video_item.dart';
 import '../models/model_rec_video_item.dart';
+import '../models/rcmd_video_item.dart';
 import '../models/user/fav_folder.dart';
 import '../models/video/ai.dart';
-import '../models/video/play/url.dart';
 import '../models/video_detail_res.dart';
 import '../utils/id_utils.dart';
 import '../utils/recommend_filter.dart';
 import '../utils/storage.dart';
 import '../utils/utils.dart';
 import '../utils/wbi_sign.dart';
-import '../pages/mine/controller.dart';
 import 'api.dart';
-import 'init.dart';
+import 'api_client.dart';
+import 'api_decoder.dart';
+import 'api_result.dart';
+import 'http_runtime.dart';
 import 'login.dart';
+import 'video_api.dart';
 
-/// res.data['code'] == 0 请求正常返回结果
-/// res.data['data'] 为结果
-/// 返回{'status': bool, 'data': List}
-/// view层根据 status 判断渲染逻辑
-class VideoHttp {
-  static Box localCache = GStorage.localCache;
-  static Box onlineCache = GStorage.onlineCache;
-  static Box setting = GStorage.setting;
-  static bool enableRcmdDynamic =
-      setting.get(SettingBoxKey.enableRcmdDynamic, defaultValue: true);
-  static Box userInfoCache = GStorage.userInfo;
+final class VideoCoinState {
+  const VideoCoinState(this.multiply);
 
-  // 首页推荐视频
-  static Future rcmdVideoList({required int ps, required int freshIdx}) async {
-    var res = await Request().get(
+  final int multiply;
+}
+
+final class VideoFavoriteState {
+  const VideoFavoriteState(this.favoured);
+
+  final bool favoured;
+}
+
+final class VideoTripleState {
+  const VideoTripleState({
+    required this.liked,
+    required this.coined,
+    required this.favoured,
+  });
+
+  final bool liked;
+  final bool coined;
+  final bool favoured;
+}
+
+final class VideoActionData {
+  const VideoActionData({this.toast});
+
+  final String? toast;
+}
+
+final class VideoFollowState {
+  const VideoFollowState(this.attribute);
+
+  final int attribute;
+}
+
+final class VideoOnlineTotal {
+  const VideoOnlineTotal(this.total);
+
+  final String total;
+}
+
+final class VideoReplyCreation {
+  const VideoReplyCreation({required this.reply, required this.successToast});
+
+  final JsonObject reply;
+  final String successToast;
+}
+
+final class BangumiFollowAction {
+  const BangumiFollowAction(this.toast);
+
+  final String toast;
+}
+
+final class VideoSubtitleSource {
+  const VideoSubtitleSource({
+    required this.url,
+    required this.language,
+    required this.title,
+  });
+
+  final String url;
+  final String language;
+  final String title;
+}
+
+abstract final class VideoHttp {
+  static final Box<dynamic> localCache = GStorage.localCache;
+  static final Box<dynamic> onlineCache = GStorage.onlineCache;
+  static final Box<dynamic> setting = GStorage.setting;
+  static final bool enableRcmdDynamic =
+      setting.get(SettingBoxKey.enableRcmdDynamic, defaultValue: true) as bool;
+
+  static ApiClient get _client => HttpRuntime.instance.client;
+
+  static Future<ApiResult<List<RcmdVideoItem>>> rcmdVideoList({
+    required int ps,
+    required int freshIdx,
+  }) {
+    return _client.getJson<List<RcmdVideoItem>>(
       Api.recommendListWeb,
-      data: {
+      queryParameters: <String, dynamic>{
         'version': 1,
         'feed_version': 'V8',
         'homepage_ver': 1,
         'ps': ps,
         'fresh_idx': freshIdx,
         'brush': freshIdx,
-        'fresh_type': 4
+        'fresh_type': 4,
       },
-    );
-    if (res.data['code'] == 0) {
-      List<RecVideoItemModel> list = [];
-      List<int> blackMidsList = onlineCache
-          .get(OnlineCacheKey.blackMidsList, defaultValue: [-1])
-          .map<int>((e) => e as int)
-          .toList();
-      for (var i in res.data['data']['item']) {
-        //过滤掉live与ad，以及拉黑用户
-        if (i['goto'] == 'av' &&
-            (i['owner'] != null &&
-                !blackMidsList.contains(i['owner']['mid']))) {
-          RecVideoItemModel videoItem = RecVideoItemModel.fromJson(i);
-          if (!RecommendFilter.filter(videoItem)) {
-            list.add(videoItem);
+      endpoint: 'video.recommend.web',
+      decode: (json) => BiliApiDecoder.data<List<RcmdVideoItem>>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          final items = BiliApiDecoder.list(data['item'], field: 'data.item');
+          final blackMids = _blackMids();
+          final videos = <RcmdVideoItem>[];
+          for (final value in items) {
+            final item = BiliApiDecoder.object(value, field: 'data.item[]');
+            final owner = item['owner'];
+            final ownerMid = owner is Map ? owner['mid'] : null;
+            if (item['goto'] != 'av' ||
+                ownerMid is! num ||
+                blackMids.contains(ownerMid.toInt())) {
+              continue;
+            }
+            final video = RecVideoItemModel.fromJson(item);
+            if (!RecommendFilter.filter(video)) {
+              videos.add(video);
+            }
           }
-        }
-      }
-      return {'status': true, 'data': list};
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
-    }
+          return videos;
+        },
+      ),
+    );
   }
 
-  // 添加额外的loginState变量模拟未登录状态
-  static Future rcmdVideoListApp(
-      {bool loginStatus = true, required int freshIdx}) async {
-    var data = {
-      'access_key': loginStatus
-          ? (localCache
-                  .get(LocalCacheKey.accessKey, defaultValue: {})['value'] ??
-              '')
-          : '',
+  static Future<ApiResult<List<RcmdVideoItem>>> rcmdVideoListApp({
+    bool loginStatus = true,
+    required int freshIdx,
+  }) {
+    final parameters = <String, String>{
+      'access_key': loginStatus ? (_accessKey ?? '') : '',
       'appkey': Constants.appKey,
       'build': '2001100',
       'c_locale': 'zh_CN',
@@ -91,7 +160,7 @@ class VideoHttp {
       'flush': '5',
       'fnval': '976',
       'fnver': '0',
-      'force_host': '2', //使用https
+      'force_host': '2',
       'fourk': '1',
       'guidance': '0',
       'https_url_req': '0',
@@ -107,744 +176,765 @@ class VideoHttp {
       'splash_id': '',
       'statistics': Constants.statistics,
       'ts': (DateTime.now().millisecondsSinceEpoch ~/ 1000).toString(),
-      'voice_balance': '0'
+      'voice_balance': '0',
     };
-    String sign = Utils.appSign(
-      data,
+    parameters['sign'] = Utils.appSign(
+      parameters,
       Constants.appKey,
       Constants.appSec,
     );
-    data['sign'] = sign;
-
-    var res = await Request().get(
+    return _client.getJson<List<RcmdVideoItem>>(
       Api.recommendListApp,
-      data: data,
-      options: Options(headers: {
-        'Host': 'app.bilibili.com',
-        'buvid': LoginHttp.buvid,
-        'fp_local':
-            '1111111111111111111111111111111111111111111111111111111111111111',
-        'fp_remote':
-            '1111111111111111111111111111111111111111111111111111111111111111',
-        'session_id': '11111111',
-        'env': 'prod',
-        'app-key': 'android_hd',
-        'User-Agent': Constants.userAgent,
-        'x-bili-trace-id': Constants.traceId,
-        'x-bili-aurora-eid': '',
-        'x-bili-aurora-zone': '',
-        'bili-http-engine': 'cronet',
-      }),
+      queryParameters: parameters,
+      options: Options(
+        headers: <String, Object?>{
+          'Host': 'app.bilibili.com',
+          'buvid': LoginHttp.buvid,
+          'fp_local':
+              '1111111111111111111111111111111111111111111111111111111111111111',
+          'fp_remote':
+              '1111111111111111111111111111111111111111111111111111111111111111',
+          'session_id': '11111111',
+          'env': 'prod',
+          'app-key': 'android_hd',
+          'User-Agent': Constants.userAgent,
+          'x-bili-trace-id': Constants.traceId,
+          'x-bili-aurora-eid': '',
+          'x-bili-aurora-zone': '',
+          'bili-http-engine': 'cronet',
+        },
+      ),
+      endpoint: 'video.recommend.app',
+      decode: (json) => BiliApiDecoder.data<List<RcmdVideoItem>>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          final items = BiliApiDecoder.list(data['items'], field: 'data.items');
+          final blackMids = _blackMids();
+          final videos = <RcmdVideoItem>[];
+          for (final value in items) {
+            final item = BiliApiDecoder.object(value, field: 'data.items[]');
+            final arguments = item['args'];
+            final ownerMid = arguments is Map ? arguments['up_id'] : null;
+            final cardGoto = item['card_goto'];
+            if (cardGoto == 'ad_av' ||
+                cardGoto == 'ad_web_s' ||
+                item['ad_info'] != null ||
+                (!enableRcmdDynamic && cardGoto == 'picture') ||
+                ownerMid is! num ||
+                blackMids.contains(ownerMid.toInt())) {
+              continue;
+            }
+            final video = RecVideoItemAppModel.fromJson(item);
+            if (!RecommendFilter.filter(video)) {
+              videos.add(video);
+            }
+          }
+          return videos;
+        },
+      ),
     );
-    log(res.data['data'].toString());
-    if (res.data['code'] == 0) {
-      List<RecVideoItemAppModel> list = [];
-      List<int> blackMidsList = onlineCache
-          .get(OnlineCacheKey.blackMidsList, defaultValue: [-1])
-          .map<int>((e) => e as int)
-          .toList();
-      for (var i in res.data['data']['items']) {
-        // 屏蔽推广和拉黑用户
-        if (i['card_goto'] != 'ad_av' &&
-            i['card_goto'] != 'ad_web_s' &&
-            i['ad_info'] == null &&
-            (!enableRcmdDynamic ? i['card_goto'] != 'picture' : true) &&
-            (i['args'] != null &&
-                !blackMidsList.contains(i['args']['up_id']))) {
-          RecVideoItemAppModel videoItem = RecVideoItemAppModel.fromJson(i);
-          if (!RecommendFilter.filter(videoItem)) {
-            list.add(videoItem);
-          }
-        }
-      }
-      return {'status': true, 'data': list};
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
-    }
   }
 
-  // 最热视频
-  static Future hotVideoList({required int pn, required int ps}) async {
-    try {
-      var res = await Request().get(
-        Api.hotList,
-        data: {'pn': pn, 'ps': ps},
-      );
-      if (res.data['code'] == 0) {
-        List<HotVideoItemModel> list = [];
-        List<int> blackMidsList = onlineCache
-            .get(OnlineCacheKey.blackMidsList, defaultValue: [-1])
-            .map<int>((e) => e as int)
-            .toList();
-        for (var i in res.data['data']['list']) {
-          if (!blackMidsList.contains(i['owner']['mid'])) {
-            list.add(HotVideoItemModel.fromJson(i));
-          }
-        }
-        return {'status': true, 'data': list};
-      } else {
-        return {'status': false, 'data': [], 'msg': res.data['message']};
-      }
-    } catch (err) {
-      return {'status': false, 'data': [], 'msg': err};
-    }
+  static Future<ApiResult<List<HotVideoItemModel>>> hotVideoList({
+    required int pn,
+    required int ps,
+  }) {
+    return _videoList(
+      Api.hotList,
+      endpoint: 'video.hot',
+      parameters: <String, dynamic>{'pn': pn, 'ps': ps},
+      listField: 'list',
+    );
   }
 
-  // 视频流
-  static Future videoUrl(
-      {int? avid, String? bvid, required int cid, int? qn}) async {
-    Map<String, dynamic> data = {
-      'cid': cid,
-      'qn': qn ?? 80,
-      // 获取所有格式的视频
-      'fnval': 4048,
-    };
-    if (avid != null) {
-      data['avid'] = avid;
-    }
-    if (bvid != null) {
-      data['bvid'] = bvid;
-    }
-
-    // 免登录查看1080p
-    if ((userInfoCache.get('userInfoCache') == null ||
-            MineController.anonymity) &&
-        setting.get(SettingBoxKey.p1080, defaultValue: true)) {
-      data['try_look'] = 1;
-    }
-
-    Map params = await WbiSign().makSign({
-      ...data,
-      'fourk': 1,
-      'voice_balance': 1,
-      'gaia_source': 'pre-load',
-      'web_location': 1550101,
-    });
-
-    try {
-      var res = await Request().get(Api.videoUrl, data: params);
-      if (res.data['code'] == 0) {
-        return {
-          'status': true,
-          'data': PlayUrlModel.fromJson(res.data['data'])
-        };
-      } else {
-        return {
-          'status': false,
-          'data': [],
-          'code': res.data['code'],
-          'msg': res.data['message'],
-        };
-      }
-    } catch (err) {
-      return {'status': false, 'data': [], 'msg': err};
-    }
+  static Future<ApiResult<VideoDetailData>> videoIntro({required String bvid}) {
+    return VideoApi.instance.detail(bvid: bvid);
   }
 
-  // 视频信息 标题、简介
-  static Future videoIntro({required String bvid}) async {
-    var res = await Request().get(Api.videoIntro, data: {'bvid': bvid});
-    VideoDetailResponse result = VideoDetailResponse.fromJson(res.data);
-    if (result.code == 0) {
-      return {'status': true, 'data': result.data!};
-    } else {
-      // Map errMap = {
-      //   -400: '请求错误',
-      //   -403: '权限不足',
-      //   -404: '视频资源失效',
-      //   62002: '稿件不可见',
-      //   62004: '稿件审核中',
-      // };
-      return {
-        'status': false,
-        'data': result.data,
-        'code': result.code,
-        'msg': result.message,
-        // 'msg': errMap[result.code] ?? '请求异常',
-      };
-    }
-  }
-
-  // 相关视频
-  static Future relatedVideoList({required String bvid}) async {
-    print(
-        'RecommendFilter.disableRelatedVideos: ${RecommendFilter.disableRelatedVideos}');
+  static Future<ApiResult<List<HotVideoItemModel>>> relatedVideoList({
+    required String bvid,
+  }) {
     if (RecommendFilter.disableRelatedVideos) {
-      return {'status': true, 'data': []};
+      return Future.value(const ApiSuccess<List<HotVideoItemModel>>([]));
     }
-    var res = await Request().get(Api.relatedList, data: {'bvid': bvid});
-    if (res.data['code'] == 0) {
-      List<HotVideoItemModel> list = [];
-      for (var i in res.data['data']) {
-        HotVideoItemModel videoItem = HotVideoItemModel.fromJson(i);
-        if (!RecommendFilter.filter(videoItem, relatedVideos: true)) {
-          list.add(videoItem);
-        }
-      }
-      return {'status': true, 'data': list};
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
-    }
+    return _client.getJson<List<HotVideoItemModel>>(
+      Api.relatedList,
+      queryParameters: <String, dynamic>{'bvid': bvid},
+      endpoint: 'video.related',
+      decode: (json) => BiliApiDecoder.data<List<HotVideoItemModel>>(
+        json,
+        decode: (value) {
+          final videos = <HotVideoItemModel>[];
+          for (final raw in BiliApiDecoder.list(value, field: 'data')) {
+            final item = HotVideoItemModel.fromJson(
+              BiliApiDecoder.object(raw, field: 'data[]'),
+            );
+            if (!RecommendFilter.filter(item, relatedVideos: true)) {
+              videos.add(item);
+            }
+          }
+          return videos;
+        },
+      ),
+    );
   }
 
-  // 获取点赞状态
-  static Future hasLikeVideo({required String bvid}) async {
-    var res = await Request().get(Api.hasLikeVideo, data: {'bvid': bvid});
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': res.data['data']};
-    } else {
-      return {'status': false, 'data': []};
-    }
+  static Future<ApiResult<int>> hasLikeVideo({required String bvid}) {
+    return _client.getJson<int>(
+      Api.hasLikeVideo,
+      queryParameters: <String, dynamic>{'bvid': bvid},
+      endpoint: 'video.likeState',
+      decode: (json) => BiliApiDecoder.data<int>(
+        json,
+        decode: (value) => BiliApiDecoder.integer(value, field: 'data'),
+      ),
+    );
   }
 
-  // 获取投币状态
-  static Future hasCoinVideo({required String bvid}) async {
-    var res = await Request().get(Api.hasCoinVideo, data: {'bvid': bvid});
-    print('res: $res');
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': res.data['data']};
-    } else {
-      return {'status': false, 'data': []};
-    }
+  static Future<ApiResult<VideoCoinState>> hasCoinVideo({
+    required String bvid,
+  }) {
+    return _client.getJson<VideoCoinState>(
+      Api.hasCoinVideo,
+      queryParameters: <String, dynamic>{'bvid': bvid},
+      endpoint: 'video.coinState',
+      decode: (json) => BiliApiDecoder.data<VideoCoinState>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          return VideoCoinState(
+            BiliApiDecoder.integer(data['multiply'], field: 'data.multiply'),
+          );
+        },
+      ),
+    );
   }
 
-  // 投币
-  static Future coinVideo({required String bvid, required int multiply}) async {
-    var res = await Request().post(
+  static Future<ApiResult<void>> coinVideo({
+    required String bvid,
+    required int multiply,
+  }) {
+    return _client.postJson<void>(
       Api.coinVideo,
-      queryParameters: {
+      queryParameters: <String, dynamic>{
         'aid': IdUtils.bv2av(bvid),
-        // 'bvid': bvid,
         'multiply': multiply,
         'select_like': 0,
-        'access_key': GStorage.localCache
-            .get(LocalCacheKey.accessKey, defaultValue: {})['value'],
-        // 'csrf': await Request.getCsrf(),
+        'access_key': _accessKey,
       },
+      endpoint: 'video.coin',
+      decode: BiliApiDecoder.success,
     );
-    print(res);
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': res.data['data']};
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
-    }
   }
 
-  // 获取收藏状态
-  static Future hasFavVideo({required int aid}) async {
-    var res = await Request().get(Api.hasFavVideo, data: {'aid': aid});
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': res.data['data']};
-    } else {
-      return {'status': false, 'data': []};
-    }
+  static Future<ApiResult<VideoFavoriteState>> hasFavVideo({required int aid}) {
+    return _client.getJson<VideoFavoriteState>(
+      Api.hasFavVideo,
+      queryParameters: <String, dynamic>{'aid': aid},
+      endpoint: 'video.favoriteState',
+      decode: (json) => BiliApiDecoder.data<VideoFavoriteState>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          return VideoFavoriteState(data['favoured'] == true);
+        },
+      ),
+    );
   }
 
-  // 一键三连
-  static Future oneThree({required String bvid}) async {
-    var res = await Request().post(
+  static Future<ApiResult<VideoTripleState>> oneThree({required String bvid}) {
+    return _client.postJson<VideoTripleState>(
       Api.oneThree,
-      queryParameters: {
+      queryParameters: <String, dynamic>{
         'aid': IdUtils.bv2av(bvid),
-        'access_key': GStorage.localCache
-            .get(LocalCacheKey.accessKey, defaultValue: {})['value'],
+        'access_key': _accessKey,
       },
+      endpoint: 'video.triple',
+      decode: (json) => BiliApiDecoder.data<VideoTripleState>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          return VideoTripleState(
+            liked: data['like'] == true,
+            coined: data['coin'] == true,
+            favoured: data['fav'] == true,
+          );
+        },
+      ),
     );
-    print(res);
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': res.data['data']};
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
-    }
   }
 
-  // （取消）点赞
-  static Future likeVideo({required String bvid, required bool type}) async {
-    var res = await Request().post(Api.likeVideo, queryParameters: {
-      'aid': IdUtils.bv2av(bvid),
-      'like': type ? 0 : 1,
-      'access_key': GStorage.localCache
-          .get(LocalCacheKey.accessKey, defaultValue: {})['value'],
-    }
-        // queryParameters: {
-        //   'bvid': bvid,
-        //   'like': type ? 1 : 2,
-        //   'csrf': await Request.getCsrf(),
-        // },
-        );
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': res.data['data']};
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
-    }
+  static Future<ApiResult<VideoActionData>> likeVideo({
+    required String bvid,
+    required bool type,
+  }) {
+    return _client.postJson<VideoActionData>(
+      Api.likeVideo,
+      queryParameters: <String, dynamic>{
+        'aid': IdUtils.bv2av(bvid),
+        'like': type ? 0 : 1,
+        'access_key': _accessKey,
+      },
+      endpoint: 'video.like',
+      decode: (json) => BiliApiDecoder.data<VideoActionData>(
+        json,
+        decode: (value) {
+          final data = value is Map
+              ? value.map((key, value) => MapEntry(key.toString(), value))
+              : const <String, dynamic>{};
+          return VideoActionData(toast: data['toast'] as String?);
+        },
+      ),
+    );
   }
 
-  // （取消）点踩
-  static Future dislikeVideo({required String bvid, required bool type}) async {
-    String? accessKey = GStorage.localCache
-        .get(LocalCacheKey.accessKey, defaultValue: {})['value'];
-    if (accessKey == null || accessKey == "") {
-      return {'status': false, 'msg': "请退出账号后重新登录"};
+  static Future<ApiResult<void>> dislikeVideo({
+    required String bvid,
+    required bool type,
+  }) {
+    final accessKey = _accessKey;
+    if (accessKey == null || accessKey.isEmpty) {
+      return Future.value(_missingAccessKey('video.dislike'));
     }
-    var res = await Request().post(
+    return _client.postJson<void>(
       Api.dislikeVideo,
-      queryParameters: {
+      queryParameters: <String, dynamic>{
         'aid': IdUtils.bv2av(bvid),
         'dislike': type ? 0 : 1,
         'access_key': accessKey,
       },
+      endpoint: 'video.dislike',
+      decode: BiliApiDecoder.success,
     );
-    print(res);
-    if (res.data is! String && res.data['code'] == 0) {
-      return {'status': true};
-    } else {
-      return {
-        'status': false,
-        'msg': res.data is String ? res.data : res.data['message']
-      };
-    }
   }
 
-  // 推送不感兴趣反馈
-  static Future feedDislike(
-      {required String goto,
-      required int id,
-      int? reasonId,
-      int? feedbackId}) async {
-    String? accessKey = GStorage.localCache
-        .get(LocalCacheKey.accessKey, defaultValue: {})['value'];
-    if (accessKey == null || accessKey == "") {
-      return {'status': false, 'msg': "请退出账号后重新登录"};
-    }
+  static Future<ApiResult<void>> feedDislike({
+    required String goto,
+    required int id,
+    int? reasonId,
+    int? feedbackId,
+  }) {
     assert((reasonId != null) ^ (feedbackId != null));
-    var res = await Request().get(Api.feedDislike, data: {
-      'goto': goto,
-      'id': id,
-      // 'mid': mid,
-      if (reasonId != null) 'reason_id': reasonId,
-      if (feedbackId != null) 'feedback_id': feedbackId,
-      'build': 1,
-      'mobi_app': 'android',
-      'access_key': accessKey,
-      'appkey': Constants.appKey,
-    });
-    print(res);
-    if (res.data['code'] == 0) {
-      return {'status': true};
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
+    return _feedDislikeRequest(
+      Api.feedDislike,
+      endpoint: 'video.feedDislike',
+      goto: goto,
+      id: id,
+      reasonId: reasonId,
+      feedbackId: feedbackId,
+    );
   }
 
-  // 推送不感兴趣取消
-  static Future feedDislikeCancel(
-      {required String goto,
-      required int id,
-      int? reasonId,
-      int? feedbackId}) async {
-    String? accessKey = GStorage.localCache
-        .get(LocalCacheKey.accessKey, defaultValue: {})['value'];
-    if (accessKey == null || accessKey == "") {
-      return {'status': false, 'msg': "请退出账号后重新登录"};
-    }
-    // assert ((reasonId != null) ^ (feedbackId != null));
-    var res = await Request().get(Api.feedDislikeCancel, data: {
-      'goto': goto,
-      'id': id,
-      // 'mid': mid,
-      if (reasonId != null) 'reason_id': reasonId,
-      if (feedbackId != null) 'feedback_id': feedbackId,
-      'build': 1,
-      'mobi_app': 'android',
-      'access_key': accessKey,
-      'appkey': Constants.appKey,
-    });
-    print(res);
-    if (res.data['code'] == 0) {
-      return {'status': true};
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
+  static Future<ApiResult<void>> feedDislikeCancel({
+    required String goto,
+    required int id,
+    int? reasonId,
+    int? feedbackId,
+  }) {
+    return _feedDislikeRequest(
+      Api.feedDislikeCancel,
+      endpoint: 'video.feedDislikeCancel',
+      goto: goto,
+      id: id,
+      reasonId: reasonId,
+      feedbackId: feedbackId,
+    );
   }
 
-  // （取消）收藏
-  static Future favVideo(
-      {required int aid, String? addIds, String? delIds}) async {
-    var res = await Request().post(Api.favVideo, queryParameters: {
-      'rid': aid,
-      'type': 2,
-      'add_media_ids': addIds ?? '',
-      'del_media_ids': delIds ?? '',
-      'csrf': await Request.getCsrf(),
-    });
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': res.data['data']};
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
-    }
+  static Future<ApiResult<void>> favVideo({
+    required int aid,
+    String? addIds,
+    String? delIds,
+  }) async {
+    return _client.postJson<void>(
+      Api.favVideo,
+      queryParameters: <String, dynamic>{
+        'rid': aid,
+        'type': 2,
+        'add_media_ids': addIds ?? '',
+        'del_media_ids': delIds ?? '',
+        'csrf': await HttpRuntime.instance.getCsrf(),
+      },
+      endpoint: 'video.favorite',
+      decode: BiliApiDecoder.success,
+    );
   }
 
-  // 查看视频被收藏在哪个文件夹
-  static Future videoInFolder({required int mid, required int rid}) async {
-    var res = await Request()
-        .get(Api.videoInFolder, data: {'up_mid': mid, 'rid': rid});
-    if (res.data['code'] == 0) {
-      FavFolderData data = FavFolderData.fromJson(res.data['data']);
-      return {'status': true, 'data': data};
-    } else {
-      return {'status': false, 'data': []};
-    }
+  static Future<ApiResult<FavFolderData>> videoInFolder({
+    required int mid,
+    required int rid,
+  }) {
+    return _client.getJson<FavFolderData>(
+      Api.videoInFolder,
+      queryParameters: <String, dynamic>{'up_mid': mid, 'rid': rid},
+      endpoint: 'video.favoriteFolders',
+      decode: (json) => BiliApiDecoder.data<FavFolderData>(
+        json,
+        decode: (value) =>
+            FavFolderData.fromJson(BiliApiDecoder.object(value, field: 'data')),
+      ),
+    );
   }
 
-  // 发表评论 replyAdd
-
-  // type	num	评论区类型代码	必要	类型代码见表
-  // oid	num	目标评论区id	必要
-  // root	num	根评论rpid	非必要	二级评论以上使用
-  // parent	num	父评论rpid	非必要	二级评论同根评论id 大于二级评论为要回复的评论id
-  // message	str	发送评论内容	必要	最大1000字符
-  // plat	num	发送平台标识	非必要	1：web端 2：安卓客户端  3：ios客户端  4：wp客户端
-  static Future replyAdd({
+  static Future<ApiResult<VideoReplyCreation>> replyAdd({
     required ReplyType type,
     required int oid,
     required String message,
     int? root,
     int? parent,
   }) async {
-    if (message == '') {
-      return {'status': false, 'data': [], 'msg': '请输入评论内容'};
+    if (message.isEmpty) {
+      return const ApiFailure<VideoReplyCreation>(
+        kind: ApiFailureKind.apiRejected,
+        message: '请输入评论内容',
+        endpoint: 'video.replyAdd',
+      );
     }
-    var res = await Request().post(Api.replyAdd, queryParameters: {
-      'type': type.index,
-      'oid': oid,
-      'root': root == null || root == 0 ? '' : root,
-      'parent': parent == null || parent == 0 ? '' : parent,
-      'message': message,
-      'csrf': await Request.getCsrf(),
-    });
-    log(res.toString());
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': res.data['data']};
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
-    }
+    return _client.postJson<VideoReplyCreation>(
+      Api.replyAdd,
+      queryParameters: <String, dynamic>{
+        'type': type.index,
+        'oid': oid,
+        'root': root == null || root == 0 ? '' : root,
+        'parent': parent == null || parent == 0 ? '' : parent,
+        'message': message,
+        'csrf': await HttpRuntime.instance.getCsrf(),
+      },
+      endpoint: 'video.replyAdd',
+      decode: (json) => BiliApiDecoder.data<VideoReplyCreation>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          return VideoReplyCreation(
+            reply: BiliApiDecoder.object(data['reply'], field: 'data.reply'),
+            successToast: data['success_toast'] as String? ?? '评论成功',
+          );
+        },
+      ),
+    );
   }
 
-  static Future replyDel({
-    required int type, //replyType
+  static Future<ApiResult<void>> replyDel({
+    required int type,
     required int oid,
     required int rpid,
   }) async {
-    var res = await Request().post(Api.replyDel, queryParameters: {
-      'type': type, //type.index
-      'oid': oid,
-      'rpid': rpid,
-      'csrf': await Request.getCsrf(),
-    });
-    log(res.toString());
-    if (res.data['code'] == 0) {
-      return {'status': true};
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
+    return _client.postJson<void>(
+      Api.replyDel,
+      queryParameters: <String, dynamic>{
+        'type': type,
+        'oid': oid,
+        'rpid': rpid,
+        'csrf': await HttpRuntime.instance.getCsrf(),
+      },
+      endpoint: 'video.replyDelete',
+      decode: BiliApiDecoder.success,
+    );
   }
 
-  // 查询是否关注up
-  static Future hasFollow({required int mid}) async {
-    var res = await Request().get(Api.hasFollow, data: {'fid': mid});
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': res.data['data']};
-    } else {
-      return {'status': false, 'data': []};
-    }
-  }
-
-  // 操作用户关系
-  static Future relationMod(
-      {required int mid, required int act, required int reSrc}) async {
-    String pcua =
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.2 Safari/605.1.15';
-    var res = await Request().post(Api.relationMod,
-        data: {
-          'fid': mid,
-          'act': act,
-          're_src': reSrc,
-          'gaia_source': 'web_main',
-          'spmid': '333.999.0.0',
-          'extend_content': {
-            "entity": "user",
-            "entity_id": mid,
-            'fp': pcua,
-          },
-          'csrf': await Request.getCsrf(),
+  static Future<ApiResult<VideoFollowState>> hasFollow({required int mid}) {
+    return _client.getJson<VideoFollowState>(
+      Api.hasFollow,
+      queryParameters: <String, dynamic>{'fid': mid},
+      endpoint: 'video.followState',
+      decode: (json) => BiliApiDecoder.data<VideoFollowState>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          return VideoFollowState(
+            BiliApiDecoder.integer(data['attribute'], field: 'data.attribute'),
+          );
         },
-        options: Options(
-          contentType: Headers.formUrlEncodedContentType,
-          headers: {
-            'origin': 'https://space.bilibili.com',
-            'referer': 'https://space.bilibili.com/$mid/dynamic',
-            'user-agent': pcua,
-          },
-        ));
-    print(res);
-    if (res.data['code'] == 0) {
-      return {'status': true};
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
+      ),
+    );
   }
 
-  // 视频播放进度
-  static Future heartBeat({bvid, cid, progress, realtime}) async {
-    await Request().post(Api.heartBeat, queryParameters: {
-      // 'aid': aid,
-      'bvid': bvid,
-      'cid': cid,
-      // 'epid': '',
-      // 'sid': '',
-      // 'mid': '',
-      'played_time': progress,
-      // 'realtime': realtime,
-      // 'type': '',
-      // 'sub_type': '',
-      'csrf': await Request.getCsrf(),
-    });
+  static Future<ApiResult<void>> relationMod({
+    required int mid,
+    required int act,
+    required int reSrc,
+  }) async {
+    const pcUserAgent =
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+        'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.2 Safari/605.1.15';
+    return _client.postJson<void>(
+      Api.relationMod,
+      data: <String, dynamic>{
+        'fid': mid,
+        'act': act,
+        're_src': reSrc,
+        'gaia_source': 'web_main',
+        'spmid': '333.999.0.0',
+        'extend_content': <String, Object?>{
+          'entity': 'user',
+          'entity_id': mid,
+          'fp': pcUserAgent,
+        },
+        'csrf': await HttpRuntime.instance.getCsrf(),
+      },
+      options: Options(
+        contentType: Headers.formUrlEncodedContentType,
+        headers: <String, Object?>{
+          'origin': 'https://space.bilibili.com',
+          'referer': 'https://space.bilibili.com/$mid/dynamic',
+          'user-agent': pcUserAgent,
+        },
+      ),
+      endpoint: 'video.relationModify',
+      decode: BiliApiDecoder.success,
+    );
   }
 
-  // 添加追番
-  static Future bangumiAdd({int? seasonId}) async {
-    var res = await Request().post(Api.bangumiAdd, queryParameters: {
-      'season_id': seasonId,
-      'csrf': await Request.getCsrf(),
-    });
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'msg':
-            res.data['result'] == null ? 'failed' : res.data['result']['toast']
-      };
-    } else {
-      return {
-        'status': false,
-        'msg':
-            res.data['result'] == null ? 'failed' : res.data['result']['toast']
-      };
-    }
+  static Future<ApiResult<void>> heartBeat({
+    required String bvid,
+    required int cid,
+    required int progress,
+  }) async {
+    return _client.postJson<void>(
+      Api.heartBeat,
+      queryParameters: <String, dynamic>{
+        'bvid': bvid,
+        'cid': cid,
+        'played_time': progress,
+        'csrf': await HttpRuntime.instance.getCsrf(),
+      },
+      endpoint: 'video.heartbeat',
+      decode: BiliApiDecoder.success,
+    );
   }
 
-  // 取消追番
-  static Future bangumiDel({int? seasonId}) async {
-    var res = await Request().post(Api.bangumiDel, queryParameters: {
-      'season_id': seasonId,
-      'csrf': await Request.getCsrf(),
-    });
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'msg':
-            res.data['result'] == null ? 'failed' : res.data['result']['toast']
-      };
-    } else {
-      return {
-        'status': false,
-        'msg':
-            res.data['result'] == null ? 'failed' : res.data['result']['toast']
-      };
-    }
+  static Future<ApiResult<BangumiFollowAction>> bangumiAdd({int? seasonId}) {
+    return _bangumiFollow(Api.bangumiAdd, seasonId, 'video.bangumiFollow');
   }
 
-  // 查看视频同时在看人数
-  static Future onlineTotal({int? aid, String? bvid, int? cid}) async {
-    var res = await Request().get(Api.onlineTotal, data: {
-      'aid': aid,
-      'bvid': bvid,
-      'cid': cid,
-    });
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': res.data['data']};
-    } else {
-      return {'status': false, 'data': null, 'msg': res.data['message']};
-    }
+  static Future<ApiResult<BangumiFollowAction>> bangumiDel({int? seasonId}) {
+    return _bangumiFollow(Api.bangumiDel, seasonId, 'video.bangumiUnfollow');
   }
 
-  static Future aiConclusion({
+  static Future<ApiResult<VideoOnlineTotal>> onlineTotal({
+    int? aid,
+    String? bvid,
+    int? cid,
+  }) {
+    return _client.getJson<VideoOnlineTotal>(
+      Api.onlineTotal,
+      queryParameters: <String, dynamic>{'aid': aid, 'bvid': bvid, 'cid': cid},
+      endpoint: 'video.onlineTotal',
+      decode: (json) => BiliApiDecoder.data<VideoOnlineTotal>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          final total = data['total'];
+          if (total is! String && total is! num) {
+            throw const MalformedApiResponseException('data.total 字段格式不正确');
+          }
+          return VideoOnlineTotal(total.toString());
+        },
+      ),
+    );
+  }
+
+  static Future<ApiResult<AiConclusionModel>> aiConclusion({
     String? bvid,
     int? cid,
     int? upMid,
   }) async {
-    Map params = await WbiSign().makSign({
+    final signed = await WbiSign().sign(<String, dynamic>{
       'bvid': bvid,
       'cid': cid,
       'up_mid': upMid,
     });
-    var res = await Request().get(Api.aiConclusion, data: params);
-    if (res.data['code'] == 0 && res.data['data']['code'] == 0) {
-      return {
-        'status': true,
-        'data': AiConclusionModel.fromJson(res.data['data']),
-      };
-    } else {
-      return {'status': false, 'data': []};
+    if (signed case ApiFailure<Map<String, dynamic>> failure) {
+      return failure.cast<AiConclusionModel>();
     }
+    return _client.getJson<AiConclusionModel>(
+      Api.aiConclusion,
+      queryParameters: (signed as ApiSuccess<Map<String, dynamic>>).data,
+      endpoint: 'video.aiConclusion',
+      decode: (json) => BiliApiDecoder.data<AiConclusionModel>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          final code = data['code'];
+          if (code is! num) {
+            throw const MalformedApiResponseException('data.code 字段不是整数');
+          }
+          if (code.toInt() != 0) {
+            throw ApiRejectedException(
+              code: code.toInt(),
+              message: data['message'] as String? ?? '当前视频暂无 AI 总结',
+            );
+          }
+          return AiConclusionModel.fromJson(data);
+        },
+      ),
+    );
   }
 
-  static Future videoMetaInfo(
-      {String? aid, String? bvid, required int cid}) async {
+  static Future<ApiResult<List<VideoSubtitleSource>>> videoMetaInfo({
+    String? aid,
+    String? bvid,
+    required int cid,
+  }) {
     assert(aid != null || bvid != null);
-    var res = await Request().get(Api.videoMetaInfo, data: {
-      if (aid != null) 'aid': aid,
-      if (bvid != null) 'bvid': bvid,
-      'cid': cid,
-    });
-    if (res.data['code'] == 0) {
-      dynamic data = res.data['data'];
-      List subtitlesJson = data['subtitle']['subtitles'];
-      /*
-      [
-        {
-          "id": 1430455228267894300,
-          "lan": "ai-zh",
-          "lan_doc": "中文（自动生成）",
-          "is_lock": false,
-          "subtitle_url": "//aisubtitle.hdslb.com/bfs/ai_subtitle/prod/15508958271448462983dacf99a49f40ccdf91a4df8d925e2b58?auth_key=1708941835-aaa0e44844594386ad356795733983a2-0-89af73c6aad5a1fca43b02113fa9d485",
-          "type": 1,
-          "id_str": "1430455228267894272",
-          "ai_type": 0,
-          "ai_status": 2
-        }
-      ]
-       */
-      return {
-        'status': true,
-        'data': subtitlesJson,
-      };
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
-    }
+    return _client.getJson<List<VideoSubtitleSource>>(
+      Api.videoMetaInfo,
+      queryParameters: <String, dynamic>{
+        if (aid != null) 'aid': aid,
+        if (bvid != null) 'bvid': bvid,
+        'cid': cid,
+      },
+      endpoint: 'video.metadata',
+      decode: (json) => BiliApiDecoder.data<List<VideoSubtitleSource>>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          final subtitle = BiliApiDecoder.object(
+            data['subtitle'],
+            field: 'data.subtitle',
+          );
+          return BiliApiDecoder.list(
+            subtitle['subtitles'],
+            field: 'data.subtitle.subtitles',
+          ).map((value) {
+            final item = BiliApiDecoder.object(
+              value,
+              field: 'data.subtitle.subtitles[]',
+            );
+            final rawUrl = item['subtitle_url'];
+            if (rawUrl is! String || rawUrl.isEmpty) {
+              throw const MalformedApiResponseException('字幕地址格式不正确');
+            }
+            return VideoSubtitleSource(
+              url: rawUrl.startsWith('//') ? 'https:$rawUrl' : rawUrl,
+              language: item['lan'] as String? ?? '',
+              title: item['lan_doc'] as String? ?? '',
+            );
+          }).toList();
+        },
+      ),
+    );
   }
 
-  static Future vttSubtitles(List subtitlesJson) async {
-    if (subtitlesJson.isEmpty) {
-      return [];
+  static Future<ApiResult<List<Map<String, String>>>> vttSubtitles(
+    List<VideoSubtitleSource> subtitles,
+  ) async {
+    if (subtitles.isEmpty) {
+      return const ApiSuccess<List<Map<String, String>>>([]);
     }
-    List<Map<String, String>> subtitlesVtt = [];
-
-    String subtitleTimecode(num seconds) {
-      int h = (seconds / 3600).floor();
-      int m = ((seconds % 3600) / 60).floor();
-      int s = (seconds % 60).floor();
-      int ms = ((seconds * 1000) % 1000).floor();
-      if (h == 0) {
-        return "${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}.${ms.toString().padLeft(3, '0')}";
+    final tracks = <Map<String, String>>[];
+    ApiFailure<JsonObject>? lastFailure;
+    for (final subtitle in subtitles) {
+      final response = await _client.getJson<JsonObject>(
+        subtitle.url,
+        endpoint: 'video.subtitle',
+        decode: (json) => json,
+      );
+      if (response case ApiFailure<JsonObject> failure) {
+        lastFailure = failure;
+        continue;
       }
-      return "${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}.${ms.toString().padLeft(3, '0')}";
-    }
-
-    for (var i in subtitlesJson) {
-      var res =
-          await Request().get("https://${i['subtitle_url'].split('//')[1]}");
-      /*
-          {
-            "font_size": 0.4,
-            "font_color": "#FFFFFF",
-            "background_alpha": 0.5,
-            "background_color": "#9C27B0",
-            "Stroke": "none",
-            "type": "AIsubtitle",
-            "lang": "zh",
-            "version": "v1.6.0.4",
-            "body": [
-              {
-                "from": 0.5,
-                "to": 1.58,
-                "sid": 1,
-                "location": 2,
-                "content": "很多人可能不知道",
-                "music": 0.0
-              },
-              ……,
-              {
-                "from": 558.629,
-                "to": 560.22,
-                "sid": 280,
-                "location": 2,
-                "content": "我们下期再见",
-                "music": 0.0
-              }
-            ]
+      try {
+        final body = BiliApiDecoder.list(
+          (response as ApiSuccess<JsonObject>).data['body'],
+          field: 'body',
+        );
+        final text = StringBuffer('WEBVTT\n\n');
+        for (final rawCue in body) {
+          final cue = BiliApiDecoder.object(rawCue, field: 'body[]');
+          final start = cue['from'];
+          final end = cue['to'];
+          final content = cue['content'];
+          if (start is! num || end is! num || content is! String) {
+            throw const MalformedApiResponseException('字幕条目格式不正确');
           }
-         */
-      if (res.data != null) {
-        String vttData = "WEBVTT\n\n";
-        for (var item in res.data['body']) {
-          vttData += "${item['sid'] ?? 0}\n";
-          vttData +=
-              "${subtitleTimecode(item['from'])} --> ${subtitleTimecode(item['to'])}\n";
-          vttData += "${item['content'].trim()}\n\n";
+          text
+            ..writeln(cue['sid'] ?? 0)
+            ..writeln(
+              '${_subtitleTimecode(start)} --> ${_subtitleTimecode(end)}',
+            )
+            ..writeln(content.trim())
+            ..writeln();
         }
-        subtitlesVtt.add({
-          'language': i['lan'],
-          'title': i['lan_doc'],
-          'text': vttData,
+        tracks.add(<String, String>{
+          'language': subtitle.language,
+          'title': subtitle.title,
+          'text': text.toString(),
         });
-      } else {
-        SmartDialog.showToast("字幕${i['lan_doc']}加载失败, ${res.data['message']}");
+      } catch (_) {
+        lastFailure = const ApiFailure<JsonObject>(
+          kind: ApiFailureKind.decoding,
+          message: '字幕数据无法解析',
+          endpoint: 'video.subtitle',
+        );
       }
     }
-    if (subtitlesVtt.isNotEmpty) {
-      subtitlesVtt.insert(0, {'language': '', 'title': '关闭字幕', 'text': ""});
+    if (tracks.isEmpty && lastFailure != null) {
+      return lastFailure.cast<List<Map<String, String>>>();
     }
-    return subtitlesVtt;
+    if (tracks.isNotEmpty) {
+      tracks.insert(0, const <String, String>{
+        'language': '',
+        'title': '关闭字幕',
+        'text': '',
+      });
+    }
+    return ApiSuccess<List<Map<String, String>>>(tracks);
   }
 
-  // 视频排行
-  static Future getRankVideoList(int rid) async {
-    try {
-      var rankApi = "${Api.getRankApi}?rid=$rid&type=all";
-      var res = await Request().get(rankApi);
-      if (res.data['code'] == 0) {
-        List<HotVideoItemModel> list = [];
-        List<int> blackMidsList = onlineCache
-            .get(OnlineCacheKey.blackMidsList, defaultValue: [-1])
-            .map<int>((e) => e as int)
-            .toList();
-        for (var i in res.data['data']['list']) {
-          if (!blackMidsList.contains(i['owner']['mid'])) {
-            list.add(HotVideoItemModel.fromJson(i));
+  static Future<ApiResult<List<HotVideoItemModel>>> getRankVideoList(int rid) {
+    return _videoList(
+      Api.getRankApi,
+      endpoint: 'video.rank',
+      parameters: <String, dynamic>{'rid': rid, 'type': 'all'},
+      listField: 'list',
+    );
+  }
+
+  static Future<ApiResult<List<HotVideoItemModel>>> getRegionVideoList(
+    int tid,
+    int pn,
+    int ps,
+  ) {
+    return _videoList(
+      Api.getRegionApi,
+      endpoint: 'video.region',
+      parameters: <String, dynamic>{'rid': tid, 'pn': pn, 'ps': ps},
+      listField: 'archives',
+    );
+  }
+
+  static Future<ApiResult<void>> _feedDislikeRequest(
+    String url, {
+    required String endpoint,
+    required String goto,
+    required int id,
+    int? reasonId,
+    int? feedbackId,
+  }) {
+    final accessKey = _accessKey;
+    if (accessKey == null || accessKey.isEmpty) {
+      return Future.value(_missingAccessKey(endpoint));
+    }
+    return _client.getJson<void>(
+      url,
+      queryParameters: <String, dynamic>{
+        'goto': goto,
+        'id': id,
+        if (reasonId != null) 'reason_id': reasonId,
+        if (feedbackId != null) 'feedback_id': feedbackId,
+        'build': 1,
+        'mobi_app': 'android',
+        'access_key': accessKey,
+        'appkey': Constants.appKey,
+      },
+      endpoint: endpoint,
+      decode: BiliApiDecoder.success,
+    );
+  }
+
+  static Future<ApiResult<BangumiFollowAction>> _bangumiFollow(
+    String url,
+    int? seasonId,
+    String endpoint,
+  ) async {
+    return _client.postJson<BangumiFollowAction>(
+      url,
+      queryParameters: <String, dynamic>{
+        'season_id': seasonId,
+        'csrf': await HttpRuntime.instance.getCsrf(),
+      },
+      endpoint: endpoint,
+      decode: (json) => BiliApiDecoder.result<BangumiFollowAction>(
+        json,
+        decode: (value) {
+          final result = BiliApiDecoder.object(value, field: 'result');
+          return BangumiFollowAction(result['toast'] as String? ?? '操作成功');
+        },
+      ),
+    );
+  }
+
+  static Future<ApiResult<List<HotVideoItemModel>>> _videoList(
+    String url, {
+    required String endpoint,
+    required Map<String, dynamic> parameters,
+    required String listField,
+  }) {
+    return _client.getJson<List<HotVideoItemModel>>(
+      url,
+      queryParameters: parameters,
+      endpoint: endpoint,
+      decode: (json) => BiliApiDecoder.data<List<HotVideoItemModel>>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          final values = BiliApiDecoder.list(
+            data[listField],
+            field: 'data.$listField',
+          );
+          final blackMids = _blackMids();
+          final videos = <HotVideoItemModel>[];
+          for (final value in values) {
+            final item = BiliApiDecoder.object(
+              value,
+              field: 'data.$listField[]',
+            );
+            final owner = item['owner'];
+            final mid = owner is Map ? owner['mid'] : null;
+            if (mid is! num || blackMids.contains(mid.toInt())) {
+              continue;
+            }
+            videos.add(HotVideoItemModel.fromJson(item));
           }
-        }
-        return {'status': true, 'data': list};
-      } else {
-        return {'status': false, 'data': [], 'msg': res.data['message']};
-      }
-    } catch (err) {
-      return {'status': false, 'data': [], 'msg': err};
-    }
+          return videos;
+        },
+      ),
+    );
   }
 
-  // 视频分区
-  static Future getRegionVideoList(int tid, int pn, int ps) async {
-    var res = await Request().get(Api.getRegionApi, data: {
-      'rid': tid,
-      'pn': pn,
-      'ps': ps,
-    });
-    print("getRegionVideoList: $res");
-    if (res.data['code'] == 0) {
-      List<HotVideoItemModel> list = [];
-      List<int> blackMidsList = onlineCache
-          .get(OnlineCacheKey.blackMidsList, defaultValue: [-1])
-          .map<int>((e) => e as int)
-          .toList();
-      print(res.data['data']['archives']);
-      for (var i in res.data['data']['archives']) {
-        if (!blackMidsList.contains(i['owner']['mid'])) {
-          list.add(HotVideoItemModel.fromJson(i));
-        }
-      }
-      return {'status': true, 'data': list};
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
+  static List<int> _blackMids() {
+    final cached = onlineCache.get(
+      OnlineCacheKey.blackMidsList,
+      defaultValue: <int>[-1],
+    );
+    if (cached is! Iterable) {
+      return <int>[-1];
     }
+    return cached.whereType<num>().map((value) => value.toInt()).toList();
+  }
+
+  static String? get _accessKey {
+    final cached = localCache.get(
+      LocalCacheKey.accessKey,
+      defaultValue: const <String, Object?>{},
+    );
+    if (cached is Map && cached['value'] is String) {
+      return cached['value'] as String;
+    }
+    return null;
+  }
+
+  static ApiFailure<void> _missingAccessKey(String endpoint) {
+    return ApiFailure<void>(
+      kind: ApiFailureKind.apiRejected,
+      message: '请退出账号后重新登录',
+      endpoint: endpoint,
+    );
+  }
+
+  static String _subtitleTimecode(num seconds) {
+    final hours = (seconds / 3600).floor();
+    final minutes = ((seconds % 3600) / 60).floor();
+    final wholeSeconds = (seconds % 60).floor();
+    final milliseconds = ((seconds * 1000) % 1000).floor();
+    final minuteAndSecond =
+        '${minutes.toString().padLeft(2, '0')}:'
+        '${wholeSeconds.toString().padLeft(2, '0')}.'
+        '${milliseconds.toString().padLeft(3, '0')}';
+    return hours == 0
+        ? minuteAndSecond
+        : '${hours.toString().padLeft(2, '0')}:$minuteAndSecond';
   }
 }

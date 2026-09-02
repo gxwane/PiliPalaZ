@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/utils/utils.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/video/ai.dart';
 
 import 'package:pilipalaz/pages/rank/zone/view.dart';
 
@@ -18,7 +20,7 @@ class IntroDetail extends StatelessWidget {
   });
   final dynamic videoDetail;
   final bool enableAi;
-  final Future<dynamic> Function() aiConclusion;
+  final Future<ApiResult<AiConclusionModel>> Function() aiConclusion;
 
   @override
   Widget build(BuildContext context) {
@@ -27,66 +29,76 @@ class IntroDetail extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         const SizedBox(height: 4),
-        Row(children: [
-          if (videoDetail!.tname != null && videoDetail.tid != null)
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => Scaffold(
-                      appBar: AppBar(
-                        title: Text(videoDetail!.tname!,
-                            style: Theme.of(context).textTheme.titleMedium),
+        Row(
+          children: [
+            if (videoDetail!.tname != null && videoDetail.tid != null)
+              TextButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => Scaffold(
+                        appBar: AppBar(
+                          title: Text(
+                            videoDetail!.tname!,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                        body: ZonePage(tid: videoDetail!.tid!),
                       ),
-                      body: ZonePage(tid: videoDetail!.tid!),
+                    ),
+                  );
+                },
+                // 移除按钮外边距
+                style: ButtonStyle(
+                  padding: WidgetStateProperty.all(
+                    const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+                  ),
+                  minimumSize: WidgetStateProperty.all(Size.zero),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: WidgetStateProperty.all(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      side: BorderSide(
+                        width: 1,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
                   ),
-                );
-              },
-              // 移除按钮外边距
-              style: ButtonStyle(
-                padding: WidgetStateProperty.all(
-                    const EdgeInsets.symmetric(vertical: 5, horizontal: 10)),
-                minimumSize: WidgetStateProperty.all(Size.zero),
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: WidgetStateProperty.all(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    side: BorderSide(
-                        width: 1, color: Theme.of(context).colorScheme.primary),
+                ),
+                child: Text(
+                  videoDetail!.tname ?? '',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontSize: 13,
+                    height: 1,
                   ),
                 ),
               ),
-              child: Text(
-                videoDetail!.tname ?? '',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontSize: 13,
-                  height: 1,
-                ),
-              ),
+            const SizedBox(width: 8),
+            SelectableText(
+              key: PageStorageKey<String>(videoDetail!.bvid!),
+              videoDetail!.bvid!,
+              style: const TextStyle(fontSize: 13),
             ),
-          const SizedBox(width: 8),
-          SelectableText(
-            key: PageStorageKey<String>(videoDetail!.bvid!),
-            videoDetail!.bvid!,
-            style: const TextStyle(fontSize: 13),
-          ),
-          const SizedBox(width: 5),
-          if (enableAi)
-            Semantics(
+            const SizedBox(width: 5),
+            if (enableAi)
+              Semantics(
                 label: 'AI总结',
                 child: GestureDetector(
                   onTap: () async {
                     final res = await aiConclusion();
-                    if (res['status'] && context.mounted) {
-                      showAiBottomSheet(context, res['data'].modelResult);
+                    if (res case ApiSuccess<AiConclusionModel>(:final data)) {
+                      if (context.mounted) {
+                        showAiBottomSheet(context, data.modelResult);
+                      }
                     }
                   },
                   child: Image.asset('assets/images/ai.png', height: 24),
-                )),
-        ]),
+                ),
+              ),
+          ],
+        ),
         if (span != null) ...[
           const SizedBox(height: 4),
           SelectableText.rich(
@@ -95,9 +107,7 @@ class IntroDetail extends StatelessWidget {
               height: 1.4,
               // fontSize: 13,
             ),
-            TextSpan(
-              children: [span],
-            ),
+            TextSpan(children: [span]),
           ),
         ],
       ],
@@ -120,21 +130,28 @@ class IntroDetail extends StatelessWidget {
         case 1:
           final List<InlineSpan> spanChildren = <InlineSpan>[];
           final RegExp urlRegExp = RegExp(r'https?://\S+\b');
-          final Iterable<Match> matches =
-              urlRegExp.allMatches(currentDesc.rawText);
+          final Iterable<Match> matches = urlRegExp.allMatches(
+            currentDesc.rawText,
+          );
 
           int previousEndIndex = 0;
           for (final Match match in matches) {
             if (match.start > previousEndIndex) {
-              spanChildren.add(TextSpan(
-                  text: currentDesc.rawText
-                      .substring(previousEndIndex, match.start)));
+              spanChildren.add(
+                TextSpan(
+                  text: currentDesc.rawText.substring(
+                    previousEndIndex,
+                    match.start,
+                  ),
+                ),
+              );
             }
             spanChildren.add(
               TextSpan(
                 text: match.group(0),
                 style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary), // 设置颜色为蓝色
+                  color: Theme.of(context).colorScheme.primary,
+                ), // 设置颜色为蓝色
                 recognizer: TapGestureRecognizer()
                   ..onTap = () {
                     // 处理点击事件
@@ -157,15 +174,17 @@ class IntroDetail extends StatelessWidget {
           }
 
           if (previousEndIndex < currentDesc.rawText.length) {
-            spanChildren.add(TextSpan(
-                text: currentDesc.rawText.substring(previousEndIndex)));
+            spanChildren.add(
+              TextSpan(text: currentDesc.rawText.substring(previousEndIndex)),
+            );
           }
 
           final TextSpan result = TextSpan(children: spanChildren);
           return result;
         case 2:
-          final Color colorSchemePrimary =
-              Theme.of(context).colorScheme.primary;
+          final Color colorSchemePrimary = Theme.of(
+            context,
+          ).colorScheme.primary;
           final String heroTag = Utils.makeHeroTag(currentDesc.bizId);
           return TextSpan(
             text: '@${currentDesc.rawText}',
