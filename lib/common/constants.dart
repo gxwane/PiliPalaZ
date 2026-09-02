@@ -5,6 +5,9 @@ class ProjectLinks {
 
   static const String repository = 'https://github.com/gxwane/PiliPalaZ';
   static const String issues = '$repository/issues';
+  static const String newIssue = '$issues/new';
+  static const String bugIssueTemplate = 'bug_report.yml';
+  static const String featureIssueTemplate = 'feature_request.yml';
   static const String releases = '$repository/releases';
   static const String changelog = '$repository/blob/main/CHANGELOG.md';
   static const String releasesApi =
