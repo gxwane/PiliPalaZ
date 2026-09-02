@@ -10,12 +10,14 @@ import 'api_result.dart';
 import 'http_runtime.dart';
 
 typedef WbiSigner =
-    Future<Map<String, dynamic>> Function(Map<String, dynamic> parameters);
+    Future<ApiResult<Map<String, dynamic>>> Function(
+      Map<String, dynamic> parameters,
+    );
 
 final class VideoApi {
   VideoApi({ApiClient? client, WbiSigner? signer})
     : _client = client ?? HttpRuntime.instance.client,
-      _signer = signer ?? WbiSign().makSign;
+      _signer = signer ?? WbiSign().sign;
 
   static VideoApi? _instance;
 
@@ -43,22 +45,17 @@ final class VideoApi {
       data['try_look'] = 1;
     }
 
-    late final Map<String, dynamic> parameters;
-    try {
-      parameters = await _signer(<String, dynamic>{
-        ...data,
-        'fourk': 1,
-        'voice_balance': 1,
-        'gaia_source': 'pre-load',
-        'web_location': 1550101,
-      });
-    } catch (_) {
-      return const ApiFailure<PlayUrlModel>(
-        kind: ApiFailureKind.decoding,
-        message: '播放请求签名生成失败',
-        endpoint: 'video.playUrl',
-      );
+    final signed = await _signer(<String, dynamic>{
+      ...data,
+      'fourk': 1,
+      'voice_balance': 1,
+      'gaia_source': 'pre-load',
+      'web_location': 1550101,
+    });
+    if (signed case ApiFailure<Map<String, dynamic>> failure) {
+      return failure.cast<PlayUrlModel>();
     }
+    final parameters = (signed as ApiSuccess<Map<String, dynamic>>).data;
 
     return _client.getJson<PlayUrlModel>(
       Api.videoUrl,

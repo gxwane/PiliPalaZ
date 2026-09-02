@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/user.dart';
+import 'package:pilipalaz/http/api_result.dart';
 
 import 'storage.dart';
 
@@ -15,8 +16,8 @@ class Data {
       return;
     }
     var res = await UserHttp.historyStatus();
-    if (res['status']) {
-      localCache.put(LocalCacheKey.historyPause, res['data']);
+    if (res case ApiSuccess<bool>(:final data)) {
+      localCache.put(LocalCacheKey.historyPause, data);
     }
   }
 }

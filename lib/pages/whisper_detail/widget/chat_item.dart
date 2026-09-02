@@ -10,6 +10,7 @@ import 'package:pilipalaz/utils/utils.dart';
 import 'package:pilipalaz/utils/storage.dart';
 
 import '../../../http/search.dart';
+import '../../../http/api_result.dart';
 
 enum MsgType {
   invalid(value: 0, label: "空空的~"),
@@ -165,7 +166,13 @@ class ChatItem extends StatelessWidget {
                 onTap: () async {
                   SmartDialog.showLoading();
                   var bvid = content["bvid"];
-                  final int cid = await SearchHttp.ab2c(bvid: bvid);
+                  final cidResult = await SearchHttp.ab2c(bvid: bvid);
+                  if (cidResult case ApiFailure<int>(:final message)) {
+                    SmartDialog.dismiss();
+                    SmartDialog.showToast(message);
+                    return;
+                  }
+                  final cid = (cidResult as ApiSuccess<int>).data;
                   final String heroTag = Utils.makeHeroTag(bvid);
                   SmartDialog.dismiss<dynamic>().then(
                     (e) => Get.toNamed<dynamic>('/video?bvid=$bvid&cid=$cid',
@@ -212,7 +219,13 @@ class ChatItem extends StatelessWidget {
                   try {
                     SmartDialog.showLoading();
                     var bvid = content["bvid"];
-                    final int cid = await SearchHttp.ab2c(bvid: bvid);
+                    final cidResult = await SearchHttp.ab2c(bvid: bvid);
+                    if (cidResult case ApiFailure<int>(:final message)) {
+                      SmartDialog.dismiss();
+                      SmartDialog.showToast(message);
+                      return;
+                    }
+                    final cid = (cidResult as ApiSuccess<int>).data;
                     final String heroTag = Utils.makeHeroTag(bvid);
                     SmartDialog.dismiss<dynamic>().then(
                       (e) => Get.toNamed<dynamic>('/video?bvid=$bvid&cid=$cid',
@@ -298,7 +311,15 @@ class ChatItem extends StatelessWidget {
                             String bvid = match.group(0)!;
                             try {
                               SmartDialog.showLoading();
-                              final int cid = await SearchHttp.ab2c(bvid: bvid);
+                              final cidResult = await SearchHttp.ab2c(bvid: bvid);
+                              if (cidResult
+                                  case ApiFailure<int>(:final message)) {
+                                SmartDialog.dismiss();
+                                SmartDialog.showToast(message);
+                                return;
+                              }
+                              final cid =
+                                  (cidResult as ApiSuccess<int>).data;
                               final String heroTag = Utils.makeHeroTag(bvid);
                               SmartDialog.dismiss<dynamic>().then(
                                 (e) => Get.toNamed<dynamic>(

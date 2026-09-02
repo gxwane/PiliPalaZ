@@ -5,6 +5,8 @@ import 'package:pilipalaz/common/widgets/badge.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/common/widgets/stat/view.dart';
 import 'package:pilipalaz/http/search.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:pilipalaz/utils/utils.dart';
 
 class MemberSeriesItem extends StatelessWidget {
@@ -24,8 +26,15 @@ class MemberSeriesItem extends StatelessWidget {
       margin: EdgeInsets.zero,
       child: InkWell(
         onTap: () async {
-          int cid =
-              await SearchHttp.ab2c(aid: seriesItem.aid, bvid: seriesItem.bvid);
+          final cidResult = await SearchHttp.ab2c(
+            aid: seriesItem.aid,
+            bvid: seriesItem.bvid,
+          );
+          if (cidResult case ApiFailure<int>(:final message)) {
+            SmartDialog.showToast(message);
+            return;
+          }
+          final cid = (cidResult as ApiSuccess<int>).data;
           Get.toNamed('/video?bvid=${seriesItem.bvid}&cid=$cid',
               arguments: {'videoItem': seriesItem, 'heroTag': heroTag});
         },

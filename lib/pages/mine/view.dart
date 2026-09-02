@@ -8,6 +8,7 @@ import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/models/common/theme_type.dart';
 import 'package:pilipalaz/models/user/info.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import '../../utils/storage.dart';
 import 'controller.dart';
@@ -21,7 +22,7 @@ class MinePage extends StatefulWidget {
 
 class _MinePageState extends State<MinePage> {
   final MineController mineController = Get.put(MineController());
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<UserInfoData>> _futureBuilderFuture;
 
   @override
   void initState() {
@@ -171,11 +172,11 @@ class _MinePageState extends State<MinePage> {
               const SizedBox(width: 10),
             ]),
         const SizedBox(height: 10),
-        FutureBuilder(
+        FutureBuilder<ApiResult<UserInfoData>>(
           future: _futureBuilderFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.done) {
-              if (snapshot.data == null || !snapshot.data['status']) {
+              if (snapshot.data is! ApiSuccess<UserInfoData>) {
                 return userInfoBuild(mineController, context);
               }
               return Obx(() => userInfoBuild(mineController, context));

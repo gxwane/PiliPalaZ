@@ -14,7 +14,9 @@ import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../http/constants.dart';
 import '../../http/init.dart';
+import '../../http/api_result.dart';
 import '../../http/user.dart';
+import '../../models/user/info.dart';
 import '../../utils/storage.dart';
 import '../home/controller.dart';
 import '../media/controller.dart';
@@ -147,22 +149,24 @@ class LoginPageController extends GetxController
       SmartDialog.showToast('设置登录态失败，$e');
     }
     final result = await UserHttp.userInfo();
-    if (result['status'] && result['data'].isLogin) {
+    if (result case ApiSuccess<UserInfoData>(:final data)
+        when data.isLogin == true) {
       SmartDialog.showToast('登录成功，当前采用「'
           '${GStorage.setting.get(SettingBoxKey.defaultRcmdType, defaultValue: 'web')}'
           '端」推荐');
       Box userInfoCache = GStorage.userInfo;
-      await userInfoCache.put('userInfoCache', result['data']);
+      await userInfoCache.put('userInfoCache', data);
       final HomeController homeCtr = Get.find<HomeController>();
       homeCtr.updateLoginStatus(true);
-      homeCtr.userFace.value = result['data'].face;
+      homeCtr.userFace.value = data.face ?? '';
       final MediaController mediaCtr = Get.find<MediaController>();
-      mediaCtr.mid = result['data'].mid;
+      mediaCtr.mid = data.mid;
       await LoginUtils.refreshLoginStatus(true);
     } else {
       // 获取用户信息失败
       SmartDialog.showNotify(
-          msg: '登录失败，请检查cookie是否正确，${result['message']}',
+          msg: '登录失败，请检查cookie是否正确，'
+              '${result is ApiFailure<UserInfoData> ? result.message : '账号状态无效'}',
           notifyType: NotifyType.warning);
     }
   }

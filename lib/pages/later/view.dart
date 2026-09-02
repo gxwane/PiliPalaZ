@@ -5,6 +5,8 @@ import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/common/widgets/no_data.dart';
 import 'package:pilipalaz/common/widgets/video_card_h.dart';
 import 'package:pilipalaz/pages/later/index.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/http/user.dart';
 
 import '../../common/constants.dart';
 import '../../utils/grid.dart';
@@ -18,7 +20,7 @@ class LaterPage extends StatefulWidget {
 
 class _LaterPageState extends State<LaterPage> {
   final LaterController _laterController = Get.put(LaterController());
-  Future? _futureBuilderFuture;
+  Future<ApiResult<WatchLaterData>>? _futureBuilderFuture;
 
   @override
   void initState() {
@@ -76,12 +78,12 @@ class _LaterPageState extends State<LaterPage> {
           SliverPadding(
               padding:
                   const EdgeInsets.symmetric(horizontal: StyleString.safeSpace),
-              sliver: FutureBuilder(
+              sliver: FutureBuilder<ApiResult<WatchLaterData>>(
                 future: _futureBuilderFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.done) {
-                    Map data = snapshot.data as Map;
-                    if (data['status']) {
+                    final result = snapshot.data;
+                    if (result is ApiSuccess<WatchLaterData>) {
                       return Obx(
                         () => _laterController.laterList.isNotEmpty &&
                                 !_laterController.isLoading.value
@@ -117,7 +119,9 @@ class _LaterPageState extends State<LaterPage> {
                       );
                     } else {
                       return HttpError(
-                        errMsg: data['msg'],
+                        errMsg:
+                            (result as ApiFailure<WatchLaterData>?)?.message ??
+                            '稍后再看加载失败',
                         fn: () => setState(() {
                           _futureBuilderFuture =
                               _laterController.queryLaterList();

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/common/widgets/no_data.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/follow/result.dart';
 import 'package:pilipalaz/pages/follow/index.dart';
 
@@ -20,7 +21,7 @@ class FollowList extends StatefulWidget {
 }
 
 class _FollowListState extends State<FollowList> {
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<FollowDataModel>> _futureBuilderFuture;
   final ScrollController scrollController = ScrollController();
 
   @override
@@ -52,12 +53,12 @@ class _FollowListState extends State<FollowList> {
       displacement: 10.0,
       edgeOffset: 10.0,
       onRefresh: () async => await widget.ctr.queryFollowings('init'),
-      child: FutureBuilder(
+      child: FutureBuilder<ApiResult<FollowDataModel>>(
         future: _futureBuilderFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
-            var data = snapshot.data;
-            if (data['status']) {
+            final result = snapshot.data;
+            if (result is ApiSuccess<FollowDataModel>) {
               List<FollowItemModel> list = widget.ctr.followList;
               return Obx(
                 () => list.isNotEmpty
@@ -99,7 +100,9 @@ class _FollowListState extends State<FollowList> {
               return CustomScrollView(
                 slivers: [
                   HttpError(
-                    errMsg: data['msg'],
+                    errMsg:
+                        (result as ApiFailure<FollowDataModel>?)?.message ??
+                        '关注列表加载失败',
                     fn: () => widget.ctr.queryFollowings('init'),
                   )
                 ],

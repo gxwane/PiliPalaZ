@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/common/widgets/no_data.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:waterfall_flow/waterfall_flow.dart';
 
 import '../../../common/skeleton/dynamic_card.dart';
@@ -29,7 +30,7 @@ class DynamicsTabPage extends StatefulWidget {
 class _DynamicsTabPageState extends State<DynamicsTabPage>
     with AutomaticKeepAliveClientMixin {
   late DynamicsTabController _dynamicsTabController;
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<DynamicsDataModel>> _futureBuilderFuture;
   late ScrollController scrollController;
   late bool dynamicsWaterfallFlow;
   late final DynamicsController dynamicsController;
@@ -99,7 +100,7 @@ class _DynamicsTabPageState extends State<DynamicsTabPage>
           physics: const AlwaysScrollableScrollPhysics(),
           controller: _dynamicsTabController.scrollController,
           slivers: [
-            FutureBuilder(
+            FutureBuilder<ApiResult<DynamicsDataModel>>(
               future: _futureBuilderFuture,
               builder: (context, snapshot) {
                 // print(snapshot);
@@ -108,9 +109,8 @@ class _DynamicsTabPageState extends State<DynamicsTabPage>
                   if (snapshot.data == null) {
                     return const NoData();
                   }
-                  Map data = snapshot.data;
-                  // print('data: $data');
-                  if (data['status']) {
+                  final result = snapshot.data;
+                  if (result is ApiSuccess<DynamicsDataModel>) {
                     List<DynamicItemModel> list =
                         _dynamicsTabController.dynamicsList;
                     // print('list: $list');
@@ -179,7 +179,9 @@ class _DynamicsTabPageState extends State<DynamicsTabPage>
                     );
                   } else {
                     return HttpError(
-                      errMsg: data['msg'],
+                      errMsg:
+                          (result as ApiFailure<DynamicsDataModel>?)?.message ??
+                          '动态加载失败',
                       fn: () {
                         // setState(() {
                         _futureBuilderFuture =

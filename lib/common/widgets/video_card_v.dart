@@ -3,12 +3,14 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import '../../models/home/rcmd/result.dart';
+import '../../models/dynamics/result.dart';
 import '../../models/model_rec_video_item.dart';
 import 'my_dialog.dart';
 import 'overlay_pop.dart';
 import 'stat/danmu.dart';
 import 'stat/view.dart';
 import '../../http/dynamics.dart';
+import '../../http/api_result.dart';
 import '../../services/pgc_playback_coordinator.dart';
 import '../../utils/id_utils.dart';
 import '../../utils/utils.dart';
@@ -82,17 +84,19 @@ class VideoCardV extends StatelessWidget {
               var res = await DynamicsHttp.dynamicDetail(
                 id: path.split('/')[1],
               );
-              if (res['status']) {
+              if (res case ApiSuccess<DynamicItemModel>(:final data)) {
                 Get.toNamed(
                   '/dynamicDetail',
                   arguments: {
-                    'item': res['data'],
+                    'item': data,
                     'floor': 1,
                     'action': 'detail',
                   },
                 );
               } else {
-                SmartDialog.showToast(res['msg']);
+                SmartDialog.showToast(
+                  (res as ApiFailure<DynamicItemModel>).message,
+                );
               }
               return;
             }

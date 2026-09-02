@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/models/user/fav_folder.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/pages/main/index.dart';
 import 'package:pilipalaz/pages/media/index.dart';
 import 'package:pilipalaz/utils/utils.dart';
@@ -22,7 +23,7 @@ class MediaPage extends StatefulWidget {
 class _MediaPageState extends State<MediaPage>
     with AutomaticKeepAliveClientMixin {
   late MediaController mediaController;
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<FavFolderData>> _futureBuilderFuture;
 
   @override
   bool get wantKeepAlive => true;
@@ -209,18 +210,22 @@ class _MediaPageState extends State<MediaPage>
         SizedBox(
           width: double.infinity,
           height: 200,
-          child: FutureBuilder(
+          child: FutureBuilder<ApiResult<FavFolderData>>(
             future: _futureBuilderFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState != ConnectionState.done ||
                   !snapshot.hasData) {
                 return const SizedBox();
               }
-              Map data = snapshot.data as Map;
-              if (!data['status']) {
+              final result = snapshot.data;
+              if (result is! ApiSuccess<FavFolderData>) {
                 return SizedBox(
                   height: 160,
-                  child: Center(child: Text(data['msg'])),
+                  child: Center(
+                    child: Text(
+                      (result as ApiFailure<FavFolderData>).message,
+                    ),
+                  ),
                 );
               }
               return Obx(

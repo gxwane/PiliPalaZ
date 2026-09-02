@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/user.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/user/fav_detail.dart';
 
 import '../../http/video.dart';
@@ -52,20 +53,20 @@ class FavSearchController extends GetxController {
 
   // 搜索收藏夹视频
   Future searchFav({type = 'init'}) async {
-    var res = await await UserHttp.userFavFolderDetail(
+    var res = await UserHttp.userFavFolderDetail(
       pn: currentPage,
       ps: 20,
       mediaId: mediaId,
       keyword: searchKeyWord.value,
       type: searchType,
     );
-    if (res['status']) {
+    if (res case ApiSuccess<FavDetailData>(:final data)) {
       if (currentPage == 1 && type == 'init') {
-        favList.value = res['data'].medias;
+        favList.value = data.medias ?? <FavDetailItemData>[];
       } else if (type == 'onLoad') {
-        favList.addAll(res['data'].medias);
+        favList.addAll(data.medias ?? <FavDetailItemData>[]);
       }
-      hasMore = res['data'].hasMore;
+      hasMore = data.hasMore ?? false;
     }
     currentPage += 1;
     loadingStatus.value = false;

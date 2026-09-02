@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/skeleton/video_reply.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/video/reply/data.dart';
 import 'package:pilipalaz/models/common/reply_type.dart';
 import 'package:pilipalaz/models/video/reply/item.dart';
 import 'package:pilipalaz/pages/video/reply/widgets/reply_item.dart';
@@ -33,7 +35,7 @@ class VideoReplyReplyPanel extends StatefulWidget {
 class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel> {
   late VideoReplyReplyController _videoReplyReplyController;
   late AnimationController replyAnimationCtl;
-  Future? _futureBuilderFuture;
+  Future<ApiResult<ReplyReplyData>?>? _futureBuilderFuture;
   late ScrollController scrollController;
 
   @override
@@ -106,8 +108,7 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel> {
               edgeOffset: 10.0,
               onRefresh: () async {
                 setState(() {});
-                return await _videoReplyReplyController.queryReplyList(
-                    type: 'init');
+                await _videoReplyReplyController.queryReplyList(type: 'init');
               },
               child: CustomScrollView(
                 cacheExtent: 3500,
@@ -136,13 +137,13 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel> {
                       ),
                     ),
                   ],
-                  FutureBuilder(
+                  FutureBuilder<ApiResult<ReplyReplyData>?>(
                     future: _futureBuilderFuture,
                     builder: (BuildContext context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.done &&
                           snapshot.hasData) {
-                        final Map data = snapshot.data as Map;
-                        if (data['status']) {
+                        final result = snapshot.data;
+                        if (result is ApiSuccess<ReplyReplyData>) {
                           // 请求成功
                           return SliverMainAxisGroup(
                             slivers: <Widget>[
@@ -228,7 +229,10 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel> {
                         } else {
                           // 请求错误
                           return HttpError(
-                            errMsg: data['msg'],
+                            errMsg:
+                                (result as ApiFailure<ReplyReplyData>?)
+                                    ?.message ??
+                                '回复加载失败',
                             fn: () => setState(() {}),
                           );
                         }

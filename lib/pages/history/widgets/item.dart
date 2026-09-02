@@ -6,6 +6,7 @@ import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/widgets/badge.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/http/search.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/http/user.dart';
 import 'package:pilipalaz/http/video.dart';
 import 'package:pilipalaz/models/common/business_type.dart';
@@ -94,10 +95,14 @@ class HistoryItem extends StatelessWidget {
             );
           }
         } else {
-          int cid =
-              videoItem.history.cid ??
-              // videoItem.history.oid ??
-              await SearchHttp.ab2c(aid: aid, bvid: bvid);
+          final cidResult = videoItem.history.cid == null
+              ? await SearchHttp.ab2c(aid: aid, bvid: bvid)
+              : ApiSuccess<int>(videoItem.history.cid as int);
+          if (cidResult case ApiFailure<int>(:final message)) {
+            SmartDialog.showToast(message);
+            return;
+          }
+          final cid = (cidResult as ApiSuccess<int>).data;
           Get.toNamed(
             '/video?bvid=$bvid&cid=$cid',
             arguments: {'heroTag': heroTag, 'pic': videoItem.cover},
@@ -344,7 +349,11 @@ class VideoContent extends StatelessWidget {
                                 var res = await UserHttp.toViewLater(
                                   bvid: videoItem.history.bvid,
                                 );
-                                SmartDialog.showToast(res['msg']);
+                                SmartDialog.showToast(
+                                  res is ApiSuccess<void>
+                                      ? 'yeah！稍后再看'
+                                      : (res as ApiFailure<void>).message,
+                                );
                               },
                               value: 'pause',
                               height: 35,

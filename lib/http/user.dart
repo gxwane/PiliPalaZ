@@ -1,5 +1,3 @@
-import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
-import '../common/constants.dart';
 import '../models/model_hot_video_item.dart';
 import '../models/user/fav_detail.dart';
 import '../models/user/fav_folder.dart';
@@ -8,402 +6,283 @@ import '../models/user/info.dart';
 import '../models/user/stat.dart';
 import '../models/user/sub_detail.dart';
 import '../models/user/sub_folder.dart';
-import '../utils/storage.dart';
 import 'api.dart';
-import 'init.dart';
+import 'api_client.dart';
+import 'api_decoder.dart';
+import 'api_result.dart';
+import 'http_runtime.dart';
+
+final class WatchLaterData {
+  const WatchLaterData({required this.items, required this.count});
+
+  final List<HotVideoItemModel> items;
+  final int count;
+}
 
 class UserHttp {
-  static Future<dynamic> userStat({required int mid}) async {
-    var res = await Request().get(Api.userStat, data: {
-      'access_key': GStorage.localCache
-          .get(LocalCacheKey.accessKey, defaultValue: {})['value'],
-      'vmid': mid
-    });
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': res.data['data']};
-    } else {
-      return {'status': false};
-    }
+  static Future<ApiResult<UserInfoData>> userInfo() {
+    return _getData<UserInfoData>(
+      Api.userInfo,
+      'user.info',
+      UserInfoData.fromJson,
+    );
   }
 
-  static Future<dynamic> userInfo() async {
-    var res = await Request().get(Api.userInfo);
-    if (res.data['code'] == 0) {
-      UserInfoData data = UserInfoData.fromJson(res.data['data']);
-      return {'status': true, 'data': data};
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
+  static Future<ApiResult<UserStat>> userStatOwner() {
+    return _getData<UserStat>(
+      Api.userStatOwner,
+      'user.statOwner',
+      UserStat.fromJson,
+    );
   }
 
-  static Future<dynamic> userStatOwner() async {
-    var res = await Request().get(Api.userStatOwner);
-    if (res.data['code'] == 0) {
-      UserStat data = UserStat.fromJson(res.data['data']);
-      return {'status': true, 'data': data};
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
-    }
-  }
-
-  // 收藏夹
-  static Future<dynamic> userfavFolder({
+  static Future<ApiResult<FavFolderData>> userfavFolder({
     required int pn,
     required int ps,
     required int mid,
-  }) async {
-    var res = await Request().get(Api.userFavFolder, data: {
-      'pn': pn,
-      'ps': ps,
-      'up_mid': mid,
-    });
-    if (res.data['code'] == 0) {
-      late FavFolderData data;
-      if (res.data['data'] != null) {
-        data = FavFolderData.fromJson(res.data['data']);
-        return {'status': true, 'data': data};
-      }
-    } else {
-      return {
-        'status': false,
-        'data': [],
-        'msg': res.data['message'] ?? '账号未登录'
-      };
-    }
+  }) {
+    return _getData<FavFolderData>(
+      Api.userFavFolder,
+      'favorite.folders',
+      FavFolderData.fromJson,
+      queryParameters: <String, dynamic>{'pn': pn, 'ps': ps, 'up_mid': mid},
+    );
   }
 
-  static Future<dynamic> userFavFolderDetail(
-      {required int mediaId,
-      required int pn,
-      required int ps,
-      String keyword = '',
-      String order = 'mtime',
-      int type = 0}) async {
-    var res = await Request().get(Api.userFavFolderDetail, data: {
-      'media_id': mediaId,
-      'pn': pn,
-      'ps': ps,
-      'keyword': keyword,
-      'order': order,
-      'type': type,
-      'tid': 0,
-      'platform': 'web'
-    });
-    if (res.data['code'] == 0) {
-      FavDetailData data = FavDetailData.fromJson(res.data['data']);
-      return {'status': true, 'data': data};
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
-    }
-  }
-
-  // 稍后再看
-  static Future<dynamic> seeYouLater() async {
-    var res = await Request().get(Api.seeYouLater);
-    if (res.data['code'] == 0) {
-      if (res.data['data']['count'] == 0) {
-        return {
-          'status': true,
-          'data': {'list': [], 'count': 0}
-        };
-      }
-      List<HotVideoItemModel> list = [];
-      for (var i in res.data['data']['list']) {
-        list.add(HotVideoItemModel.fromJson(i));
-      }
-      return {
-        'status': true,
-        'data': {'list': list, 'count': res.data['data']['count']}
-      };
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
-    }
-  }
-
-  // 观看历史
-  static Future historyList(int? max, int? viewAt) async {
-    var res = await Request().get(Api.historyList, data: {
-      'type': 'all',
-      'ps': 20,
-      'max': max ?? 0,
-      'view_at': viewAt ?? 0,
-    });
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': HistoryData.fromJson(res.data['data'])};
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
-    }
-  }
-
-  // 暂停观看历史
-  static Future pauseHistory(bool switchStatus) async {
-    // 暂停switchStatus传true 否则false
-    var res = await Request().post(
-      Api.pauseHistory,
-      queryParameters: {
-        'switch': switchStatus,
-        'jsonp': 'jsonp',
-        'csrf': await Request.getCsrf(),
+  static Future<ApiResult<FavDetailData>> userFavFolderDetail({
+    required int mediaId,
+    required int pn,
+    required int ps,
+    String keyword = '',
+    String order = 'mtime',
+    int type = 0,
+  }) {
+    return _getData<FavDetailData>(
+      Api.userFavFolderDetail,
+      'favorite.detail',
+      FavDetailData.fromJson,
+      queryParameters: <String, dynamic>{
+        'media_id': mediaId,
+        'pn': pn,
+        'ps': ps,
+        'keyword': keyword,
+        'order': order,
+        'type': type,
+        'tid': 0,
+        'platform': 'web',
       },
     );
-    return res;
   }
 
-  // 观看历史暂停状态
-  static Future historyStatus() async {
-    var res = await Request().get(Api.historyStatus);
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': res.data['data']};
-    } else {
-      return {'status': false, 'data': [], 'msg': res.data['message']};
-    }
+  static Future<ApiResult<WatchLaterData>> seeYouLater() {
+    return HttpRuntime.instance.client.getJson<WatchLaterData>(
+      Api.seeYouLater,
+      endpoint: 'watchLater.list',
+      decode: (json) => BiliApiDecoder.data<WatchLaterData>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          final count = BiliApiDecoder.integer(
+            data['count'],
+            field: 'data.count',
+          );
+          final items = count == 0
+              ? <HotVideoItemModel>[]
+              : BiliApiDecoder.list(data['list'], field: 'data.list')
+                    .map(
+                      (item) => HotVideoItemModel.fromJson(
+                        BiliApiDecoder.object(item, field: 'data.list[]'),
+                      ),
+                    )
+                    .toList(growable: false);
+          return WatchLaterData(items: items, count: count);
+        },
+      ),
+    );
   }
 
-  // 清空历史记录
-  static Future clearHistory() async {
-    var res = await Request().post(
-      Api.clearHistory,
-      queryParameters: {
-        'jsonp': 'jsonp',
-        'csrf': await Request.getCsrf(),
+  static Future<ApiResult<HistoryData>> historyList(int? max, int? viewAt) {
+    return _getData<HistoryData>(
+      Api.historyList,
+      'history.list',
+      HistoryData.fromJson,
+      queryParameters: <String, dynamic>{
+        'type': 'all',
+        'ps': 20,
+        'max': max ?? 0,
+        'view_at': viewAt ?? 0,
       },
     );
-    return res;
   }
 
-  // 稍后再看
-  static Future toViewLater({String? bvid, dynamic aid}) async {
-    var data = {'csrf': await Request.getCsrf()};
-    if (bvid != null) {
-      data['bvid'] = bvid;
-    } else if (aid != null) {
-      data['aid'] = aid;
-    }
-    var res = await Request().post(
-      Api.toViewLater,
-      queryParameters: data,
-    );
-    if (res.data['code'] == 0) {
-      return {'status': true, 'msg': 'yeah！稍后再看'};
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
-  }
-
-  // 移除已观看
-  static Future toViewDel({int? aid}) async {
-    final Map<String, dynamic> params = {
+  static Future<ApiResult<void>> pauseHistory(bool paused) async {
+    return _postSuccess(Api.pauseHistory, 'history.pause', <String, dynamic>{
+      'switch': paused,
       'jsonp': 'jsonp',
-      'csrf': await Request.getCsrf(),
-    };
-
-    params[aid != null ? 'aid' : 'viewed'] = aid ?? true;
-    var res = await Request().post(
-      Api.toViewDel,
-      queryParameters: params,
-    );
-    if (res.data['code'] == 0) {
-      return {'status': true, 'msg': 'yeah！成功移除'};
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
+      'csrf': await HttpRuntime.instance.getCsrf(),
+    });
   }
 
-  // 获取用户凭证 失效
-  static Future thirdLogin() async {
-    var res = await Request().get(
-      'https://passport.bilibili.com/login/app/third',
-      data: {
-        'appkey': Constants.appKey,
-        'api': Constants.thirdApi,
-        'sign': Constants.thirdSign,
-      },
+  static Future<ApiResult<bool>> historyStatus() {
+    return HttpRuntime.instance.client.getJson<bool>(
+      Api.historyStatus,
+      endpoint: 'history.status',
+      decode: (json) => BiliApiDecoder.data<bool>(
+        json,
+        decode: (value) {
+          if (value is bool) {
+            return value;
+          }
+          throw const MalformedApiResponseException('data 字段不是布尔值');
+        },
+      ),
     );
-    try {
-      if (res.data['code'] == 0 && res.data['data']['has_login'] == 1) {
-        Request().get(res.data['data']['confirm_uri']);
-      }
-    } catch (err) {
-      SmartDialog.showNotify(msg: '获取用户凭证: $err', notifyType: NotifyType.error);
-    }
   }
 
-  // 清空稍后再看
-  static Future toViewClear() async {
-    var res = await Request().post(
-      Api.toViewClear,
-      queryParameters: {
-        'jsonp': 'jsonp',
-        'csrf': await Request.getCsrf(),
-      },
-    );
-    if (res.data['code'] == 0) {
-      return {'status': true, 'msg': '操作完成'};
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
+  static Future<ApiResult<void>> clearHistory() async {
+    return _postSuccess(Api.clearHistory, 'history.clear', <String, dynamic>{
+      'jsonp': 'jsonp',
+      'csrf': await HttpRuntime.instance.getCsrf(),
+    });
   }
 
-  // 删除历史记录
-  static Future delHistory(kid) async {
-    var res = await Request().post(
-      Api.delHistory,
-      queryParameters: {
-        'kid': kid,
-        'jsonp': 'jsonp',
-        'csrf': await Request.getCsrf(),
-      },
-    );
-    if (res.data['code'] == 0) {
-      return {'status': true, 'msg': '已删除'};
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
+  static Future<ApiResult<void>> toViewLater({String? bvid, int? aid}) async {
+    return _postSuccess(Api.toViewLater, 'watchLater.add', <String, dynamic>{
+      'csrf': await HttpRuntime.instance.getCsrf(),
+      if (bvid != null) 'bvid': bvid,
+      if (bvid == null && aid != null) 'aid': aid,
+    });
   }
 
-  static Future hasFollow(int mid) async {
-    var res = await Request().get(
-      Api.hasFollow,
-      data: {
-        'fid': mid,
-      },
-    );
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': res.data['data']};
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
+  static Future<ApiResult<void>> toViewDel({int? aid}) async {
+    return _postSuccess(Api.toViewDel, 'watchLater.remove', <String, dynamic>{
+      'jsonp': 'jsonp',
+      'csrf': await HttpRuntime.instance.getCsrf(),
+      aid != null ? 'aid' : 'viewed': aid ?? true,
+    });
   }
-  // // 相互关系查询
-  // static Future relationSearch(int mid) async {
-  //   Map params = await WbiSign().makSign({
-  //     'mid': mid,
-  //     'token': '',
-  //     'platform': 'web',
-  //     'web_location': 1550101,
-  //   });
-  //   var res = await Request().get(
-  //     Api.relationSearch,
-  //     data: {
-  //       'mid': mid,
-  //       'w_rid': params['w_rid'],
-  //       'wts': params['wts'],
-  //     },
-  //   );
-  //   if (res.data['code'] == 0) {
-  //     // relation 主动状态
-  //     // 被动状态
-  //     return {'status': true, 'data': res.data['data']};
-  //   } else {
-  //     return {'status': false, 'msg': res.data['message']};
-  //   }
-  // }
 
-  // 搜索历史记录
-  static Future searchHistory(
-      {required int pn, required String keyword}) async {
-    var res = await Request().get(
+  static Future<ApiResult<void>> toViewClear() async {
+    return _postSuccess(Api.toViewClear, 'watchLater.clear', <String, dynamic>{
+      'jsonp': 'jsonp',
+      'csrf': await HttpRuntime.instance.getCsrf(),
+    });
+  }
+
+  static Future<ApiResult<void>> delHistory(String kid) async {
+    return _postSuccess(Api.delHistory, 'history.delete', <String, dynamic>{
+      'kid': kid,
+      'jsonp': 'jsonp',
+      'csrf': await HttpRuntime.instance.getCsrf(),
+    });
+  }
+
+  static Future<ApiResult<HistoryData>> searchHistory({
+    required int pn,
+    required String keyword,
+  }) {
+    return _getData<HistoryData>(
       Api.searchHistory,
-      data: {
+      'history.search',
+      HistoryData.fromJson,
+      queryParameters: <String, dynamic>{
         'pn': pn,
         'keyword': keyword,
         'business': 'all',
       },
     );
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': HistoryData.fromJson(res.data['data'])};
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
   }
 
-  // 我的订阅
-  static Future userSubFolder({
+  static Future<ApiResult<SubFolderModelData>> userSubFolder({
     required int mid,
     required int pn,
     required int ps,
-  }) async {
-    var res = await Request().get(Api.userSubFolder, data: {
-      'up_mid': mid,
-      'ps': ps,
-      'pn': pn,
-      'platform': 'web',
-    });
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': SubFolderModelData.fromJson(res.data['data'])
-      };
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
+  }) {
+    return _getData<SubFolderModelData>(
+      Api.userSubFolder,
+      'subscription.folders',
+      SubFolderModelData.fromJson,
+      queryParameters: <String, dynamic>{
+        'up_mid': mid,
+        'ps': ps,
+        'pn': pn,
+        'platform': 'web',
+      },
+    );
   }
 
-  static Future favSeasonList({
+  static Future<ApiResult<SubDetailModelData>> favSeasonList({
     required int id,
     required int pn,
     required int ps,
-  }) async {
-    var res = await Request().get(Api.favSeasonList, data: {
-      'season_id': id,
-      'ps': ps,
-      'pn': pn,
-    });
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': SubDetailModelData.fromJson(res.data['data'])
-      };
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
+  }) {
+    return _getData<SubDetailModelData>(
+      Api.favSeasonList,
+      'subscription.seasonDetail',
+      SubDetailModelData.fromJson,
+      queryParameters: <String, dynamic>{'season_id': id, 'ps': ps, 'pn': pn},
+    );
   }
 
-  static Future favResourceList({
+  static Future<ApiResult<SubDetailModelData>> favResourceList({
     required int id,
     required int pn,
     required int ps,
-  }) async {
-    var res = await Request().get(Api.favResourceList, data: {
-      'media_id': id,
-      'ps': ps,
-      'pn': pn,
-    });
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': SubDetailModelData.fromJson(res.data['data'])
-      };
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
+  }) {
+    return _getData<SubDetailModelData>(
+      Api.favResourceList,
+      'subscription.resourceDetail',
+      SubDetailModelData.fromJson,
+      queryParameters: <String, dynamic>{'media_id': id, 'ps': ps, 'pn': pn},
+    );
   }
 
-  // 取消订阅
-  static Future cancelSub({required int id, required int type}) async {
-    late dynamic res;
-    if (type == 11) {
-      res = await Request().post(
-        Api.unfavFolder,
-        queryParameters: {
-          'media_id': id,
-          'csrf': await Request.getCsrf(),
-        },
-      );
-    } else {
-      res = await Request().post(
-        Api.unfavSeason,
-        queryParameters: {
-          'platform': 'web',
-          'season_id': id,
-          'csrf': await Request.getCsrf(),
-        },
-      );
-    }
-    if (res.data['code'] == 0) {
-      return {'status': true};
-    } else {
-      return {'status': false, 'msg': res.data['message']};
-    }
+  static Future<ApiResult<void>> cancelSub({
+    required int id,
+    required int type,
+  }) async {
+    final season = type != 11;
+    return _postSuccess(
+      season ? Api.unfavSeason : Api.unfavFolder,
+      season
+          ? 'subscription.unfavoriteSeason'
+          : 'subscription.unfavoriteFolder',
+      <String, dynamic>{
+        if (season) 'platform': 'web',
+        season ? 'season_id' : 'media_id': id,
+        'csrf': await HttpRuntime.instance.getCsrf(),
+      },
+    );
+  }
+
+  static Future<ApiResult<T>> _getData<T>(
+    String url,
+    String endpoint,
+    T Function(Map<String, dynamic> json) fromJson, {
+    Map<String, dynamic>? queryParameters,
+  }) {
+    return HttpRuntime.instance.client.getJson<T>(
+      url,
+      endpoint: endpoint,
+      queryParameters: queryParameters,
+      decode: (json) => BiliApiDecoder.data<T>(
+        json,
+        decode: (value) =>
+            fromJson(BiliApiDecoder.object(value, field: 'data')),
+      ),
+    );
+  }
+
+  static Future<ApiResult<void>> _postSuccess(
+    String url,
+    String endpoint,
+    Map<String, dynamic> queryParameters,
+  ) {
+    return HttpRuntime.instance.client.postJson<void>(
+      url,
+      endpoint: endpoint,
+      queryParameters: queryParameters,
+      decode: (json) => BiliApiDecoder.success(json),
+    );
   }
 }

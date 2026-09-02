@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/constants.dart';
 import 'package:pilipalaz/http/live.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/live/room_info.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import '../../models/live/room_info_h5.dart';
@@ -57,16 +58,16 @@ class LiveRoomController extends GetxController {
     );
   }
 
-  Future queryLiveInfo() async {
+  Future<ApiResult<RoomInfoModel>> queryLiveInfo() async {
     var res = await LiveHttp.liveRoomInfo(roomId: roomId, qn: 10000);
-    if (res['status']) {
+    if (res case ApiSuccess<RoomInfoModel>(:final data)) {
       List<CodecItem> codec =
-          res['data'].playurlInfo.playurl.stream.first.format.first.codec;
+          data.playurlInfo!.playurl!.stream!.first.format!.first.codec!;
       CodecItem item = codec.first;
       String videoUrl = VideoUtils.getCdnUrl(item);
       await playerInit(videoUrl);
-      return res;
     }
+    return res;
   }
 
   void setVolume(value) {
@@ -80,10 +81,10 @@ class LiveRoomController extends GetxController {
     }
   }
 
-  Future queryLiveInfoH5() async {
+  Future<ApiResult<RoomInfoH5Model>> queryLiveInfoH5() async {
     var res = await LiveHttp.liveRoomInfoH5(roomId: roomId);
-    if (res['status']) {
-      roomInfoH5.value = res['data'];
+    if (res case ApiSuccess<RoomInfoH5Model>(:final data)) {
+      roomInfoH5.value = data;
     }
     return res;
   }

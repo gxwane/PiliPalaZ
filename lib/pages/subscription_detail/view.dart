@@ -9,6 +9,8 @@ import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/common/widgets/no_data.dart';
 
 import '../../models/user/sub_folder.dart';
+import '../../models/user/sub_detail.dart';
+import '../../http/api_result.dart';
 import '../../utils/utils.dart';
 import 'controller.dart';
 import 'widget/sub_video_card.dart';
@@ -25,7 +27,7 @@ class _SubDetailPageState extends State<SubDetailPage> {
   final SubDetailController _subDetailController =
       Get.put(SubDetailController());
   late StreamController<bool> titleStreamC; // a
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<SubDetailModelData>?> _futureBuilderFuture;
   late String id;
 
   @override
@@ -199,12 +201,12 @@ class _SubDetailPageState extends State<SubDetailPage> {
               ),
             ),
           ),
-          FutureBuilder(
+          FutureBuilder<ApiResult<SubDetailModelData>?>(
             future: _futureBuilderFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.done) {
-                Map data = snapshot.data;
-                if (data['status']) {
+                final result = snapshot.data;
+                if (result is ApiSuccess<SubDetailModelData>) {
                   if (_subDetailController.item.mediaCount == 0) {
                     return const NoData();
                   } else {
@@ -224,7 +226,9 @@ class _SubDetailPageState extends State<SubDetailPage> {
                   }
                 } else {
                   return HttpError(
-                    errMsg: data['msg'],
+                    errMsg:
+                        (result as ApiFailure<SubDetailModelData>?)?.message ??
+                        '订阅详情加载失败',
                     fn: () => setState(() {}),
                   );
                 }

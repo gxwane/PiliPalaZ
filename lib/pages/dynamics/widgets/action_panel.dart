@@ -4,6 +4,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/dynamics.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/dynamics/result.dart';
 import 'package:pilipalaz/pages/dynamics/index.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
@@ -51,7 +52,7 @@ class _ActionPanelState extends State<ActionPanel> {
     bool status = like.status!;
     int up = status ? 2 : 1;
     var res = await DynamicsHttp.likeDynamic(dynamicId: dynamicId, up: up);
-    if (res['status']) {
+    if (res is ApiSuccess<void>) {
       SmartDialog.showToast(!status ? '点赞成功' : '取消赞');
       if (up == 1) {
         item.modules.moduleStat.like.count = (count + 1).toString();
@@ -66,7 +67,7 @@ class _ActionPanelState extends State<ActionPanel> {
       }
       setState(() {});
     } else {
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast((res as ApiFailure<void>).message);
     }
   }
 

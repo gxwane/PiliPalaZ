@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:pilipalaz/http/reply.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/common/reply_type.dart';
 import 'package:pilipalaz/models/video/reply/item.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
@@ -33,7 +34,7 @@ class _ZanButtonState extends State<ZanButton> {
     final res = await ReplyHttp.likeReply(
         type: widget.replyType!.index, oid: oid, rpid: rpid, action: action);
     // SmartDialog.dismiss();
-    if (res['status']) {
+    if (res is ApiSuccess<void>) {
       SmartDialog.showToast(replyItem.action == 0 ? '点赞成功' : '取消赞');
       if (action == 1) {
         replyItem.like = replyItem.like! + 1;
@@ -44,7 +45,7 @@ class _ZanButtonState extends State<ZanButton> {
       }
       setState(() {});
     } else {
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast((res as ApiFailure<void>).message);
     }
   }
 

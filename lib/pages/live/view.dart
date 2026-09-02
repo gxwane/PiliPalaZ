@@ -9,6 +9,8 @@ import 'package:pilipalaz/common/skeleton/video_card_v.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/pages/home/index.dart';
 import 'package:pilipalaz/pages/main/index.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/live/item.dart';
 
 import '../../utils/grid.dart';
 import 'controller.dart';
@@ -24,7 +26,7 @@ class LivePage extends StatefulWidget {
 class _LivePageState extends State<LivePage>
     with AutomaticKeepAliveClientMixin {
   final LiveController _liveController = Get.put(LiveController());
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<List<LiveItemModel>>> _futureBuilderFuture;
   late ScrollController scrollController;
 
   @override
@@ -93,15 +95,15 @@ class _LivePageState extends State<LivePage>
               // 单列布局 EdgeInsets.zero
               padding:
                   const EdgeInsets.fromLTRB(0, StyleString.cardSpace, 0, 0),
-              sliver: FutureBuilder(
+              sliver: FutureBuilder<ApiResult<List<LiveItemModel>>>(
                 future: _futureBuilderFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.done) {
                     if (snapshot.data == null) {
                       return const SliverToBoxAdapter(child: SizedBox());
                     }
-                    Map data = snapshot.data as Map;
-                    if (data['status']) {
+                    final result = snapshot.data;
+                    if (result is ApiSuccess<List<LiveItemModel>>) {
                       return SliverLayoutBuilder(
                           builder: (context, boxConstraints) {
                         return Obx(() => contentGrid(
@@ -109,7 +111,8 @@ class _LivePageState extends State<LivePage>
                       });
                     } else {
                       return HttpError(
-                        errMsg: data['msg'],
+                        errMsg:
+                            (result as ApiFailure<List<LiveItemModel>>).message,
                         fn: () {
                           setState(() {
                             _futureBuilderFuture =

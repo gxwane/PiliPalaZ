@@ -2,6 +2,7 @@ import 'package:pilipalaz/utils/extension.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/search.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/common/search_type.dart';
 import 'package:pilipalaz/utils/id_utils.dart';
 import 'package:pilipalaz/utils/utils.dart';
@@ -18,18 +19,18 @@ class SearchPanelController extends GetxController {
   // 视频时长筛选 仅用于搜索视频
   RxInt duration = 0.obs;
 
-  Future onSearch({type = 'init'}) async {
+  Future<ApiResult<SearchPageData>> onSearch({type = 'init'}) async {
     var result = await SearchHttp.searchByType(
         searchType: searchType!,
         keyword: keyword!,
         page: page.value,
         order: searchType!.type != 'video' ? null : order.value,
         duration: searchType!.type != 'video' ? null : duration.value);
-    if (result['status']) {
+    if (result case ApiSuccess<SearchPageData>(:final data)) {
       if (type == 'onRefresh') {
-        resultList.value = result['data'].list;
+        resultList.value = data.items;
       } else {
-        resultList.addAll(result['data'].list);
+        resultList.addAll(data.items);
       }
       page.value++;
       onPushDetail(keyword, resultList);
@@ -67,7 +68,11 @@ class SearchPanelController extends GetxController {
     if (matchKeys.isNotEmpty && searchType == SearchType.video ||
         aid.toString() == keyword) {
       String heroTag = Utils.makeHeroTag(bvid);
-      int cid = await SearchHttp.ab2c(aid: aid, bvid: bvid);
+      final cidResult = await SearchHttp.ab2c(aid: aid, bvid: bvid);
+      if (cidResult is! ApiSuccess<int>) {
+        return;
+      }
+      final cid = cidResult.data;
       if (matchKeys.isNotEmpty &&
               matchKeys.first == 'BV' &&
               matchRes[matchKeys.first] == bvid ||

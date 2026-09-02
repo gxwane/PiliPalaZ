@@ -5,6 +5,7 @@ import 'package:hive/hive.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/http/black.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/user/black.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:pilipalaz/utils/utils.dart';
@@ -20,7 +21,7 @@ class _BlackListPageState extends State<BlackListPage> {
   final BlackListController _blackListController =
       Get.put(BlackListController());
   final ScrollController scrollController = ScrollController();
-  Future? _futureBuilderFuture;
+  Future<ApiResult<BlackListDataModel>>? _futureBuilderFuture;
   bool _isLoadingMore = false;
   Box onlineCache = GStorage.onlineCache;
 
@@ -70,12 +71,12 @@ class _BlackListPageState extends State<BlackListPage> {
         displacement: 10.0,
         edgeOffset: 10.0,
         onRefresh: () async => await _blackListController.queryBlacklist(),
-        child: FutureBuilder(
+      child: FutureBuilder<ApiResult<BlackListDataModel>>(
           future: _futureBuilderFuture,
           builder: (BuildContext context, AsyncSnapshot snapshot) {
             if (snapshot.connectionState == ConnectionState.done) {
-              var data = snapshot.data;
-              if (data['status']) {
+              final result = snapshot.data;
+              if (result is ApiSuccess<BlackListDataModel>) {
                 List<BlackListItem> list = _blackListController.blackList;
                 return Obx(
                   () => list.length == 1
@@ -120,7 +121,9 @@ class _BlackListPageState extends State<BlackListPage> {
                 return CustomScrollView(
                   slivers: [
                     HttpError(
-                      errMsg: data['msg'],
+                    errMsg:
+                        (result as ApiFailure<BlackListDataModel>?)?.message ??
+                        '黑名单加载失败',
                       fn: () => _blackListController.queryBlacklist(),
                     )
                   ],
@@ -143,17 +146,18 @@ class BlackListController extends GetxController {
   RxInt total = 0.obs;
   RxList<BlackListItem> blackList = <BlackListItem>[].obs;
 
-  Future queryBlacklist({type = 'init'}) async {
+  Future<ApiResult<BlackListDataModel>> queryBlacklist({type = 'init'}) async {
     if (type == 'init') {
       currentPage = 1;
     }
     var result = await BlackHttp.blackList(pn: currentPage, ps: pageSize);
-    if (result['status']) {
+    if (result case ApiSuccess<BlackListDataModel>(:final data)) {
+      final list = data.list ?? <BlackListItem>[];
       if (type == 'init') {
-        blackList.value = result['data'].list;
-        total.value = result['data'].total;
+        blackList.value = list;
+        total.value = data.total ?? 0;
       } else {
-        blackList.addAll(result['data'].list);
+        blackList.addAll(list);
       }
 
       currentPage += 1;
@@ -161,12 +165,15 @@ class BlackListController extends GetxController {
     return result;
   }
 
-  Future removeBlack(mid) async {
+  Future<ApiResult<void>> removeBlack(mid) async {
     var result = await BlackHttp.removeBlack(fid: mid);
-    if (result['status']) {
+    if (result is ApiSuccess<void>) {
       blackList.removeWhere((e) => e.mid == mid);
       total.value = total.value - 1;
-      SmartDialog.showToast(result['msg']);
+      SmartDialog.showToast('操作成功');
+    } else {
+      SmartDialog.showToast((result as ApiFailure<void>).message);
     }
+    return result;
   }
 }

@@ -4,6 +4,8 @@ import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/widgets/stat/danmu.dart';
 import 'package:pilipalaz/common/widgets/stat/view.dart';
 import 'package:pilipalaz/http/search.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:pilipalaz/models/common/search_type.dart';
 import 'package:pilipalaz/utils/utils.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
@@ -28,7 +30,12 @@ class SubVideoCardH extends StatelessWidget {
     String heroTag = Utils.makeHeroTag(id);
     return InkWell(
       onTap: () async {
-        int cid = await SearchHttp.ab2c(bvid: bvid);
+        final cidResult = await SearchHttp.ab2c(bvid: bvid);
+        if (cidResult case ApiFailure<int>(:final message)) {
+          SmartDialog.showToast(message);
+          return;
+        }
+        final cid = (cidResult as ApiSuccess<int>).data;
         Map<String, String> parameters = {
           'bvid': bvid,
           'cid': cid.toString(),

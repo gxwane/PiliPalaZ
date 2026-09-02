@@ -7,6 +7,8 @@ import 'package:pilipalaz/pages/fav/index.dart';
 import 'package:pilipalaz/pages/fav/widgets/item.dart';
 
 import '../../common/constants.dart';
+import '../../http/api_result.dart';
+import '../../models/user/fav_folder.dart';
 import '../../utils/grid.dart';
 
 class FavPage extends StatefulWidget {
@@ -18,7 +20,7 @@ class FavPage extends StatefulWidget {
 
 class _FavPageState extends State<FavPage> {
   final FavController _favController = Get.put(FavController());
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<FavFolderData>?> _futureBuilderFuture;
   late ScrollController scrollController;
 
   @override
@@ -58,12 +60,12 @@ class _FavPageState extends State<FavPage> {
           const SizedBox(width: 6),
         ],
       ),
-      body: FutureBuilder(
+      body: FutureBuilder<ApiResult<FavFolderData>?>(
         future: _futureBuilderFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
-            Map data = snapshot.data as Map;
-            if (data['status']) {
+            final result = snapshot.data;
+            if (result is ApiSuccess<FavFolderData>) {
               return Obx(() => CustomScrollView(
                   cacheExtent: 3500,
                       controller: scrollController,
@@ -92,7 +94,9 @@ class _FavPageState extends State<FavPage> {
                 physics: const NeverScrollableScrollPhysics(),
                 slivers: [
                   HttpError(
-                    errMsg: data['msg'],
+                    errMsg:
+                        (result as ApiFailure<FavFolderData>?)?.message ??
+                        '收藏夹加载失败',
                     fn: () => setState(() {}),
                   ),
                 ],

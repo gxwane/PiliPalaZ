@@ -356,7 +356,11 @@ class _HeaderControlState extends State<HeaderControl> {
                   Get.back();
                   final res = await UserHttp.toViewLater(
                       bvid: widget.videoDetailCtr!.bvid);
-                  SmartDialog.showToast(res['msg']);
+                  SmartDialog.showToast(
+                    res is ApiSuccess<void>
+                        ? 'yeah！稍后再看'
+                        : (res as ApiFailure<void>).message,
+                  );
                 },
                 text: "稍后看",
                 selectStatus: false,

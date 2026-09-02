@@ -3,6 +3,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/user.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/user/fav_folder.dart';
 import 'package:pilipalaz/models/user/info.dart';
 import 'package:pilipalaz/utils/storage.dart';
@@ -16,35 +17,39 @@ class FavController extends GetxController {
   int pageSize = 10;
   RxBool hasMore = true.obs;
 
-  Future<dynamic> queryFavFolder({type = 'init'}) async {
+  Future<ApiResult<FavFolderData>?> queryFavFolder({type = 'init'}) async {
     userInfo = userInfoCache.get('userInfoCache');
     if (userInfo == null) {
-      return {'status': false, 'msg': '账号未登录'};
+      return const ApiFailure<FavFolderData>(
+        kind: ApiFailureKind.apiRejected,
+        message: '账号未登录',
+        endpoint: 'favorite.folders',
+      );
     }
     if (!hasMore.value) {
-      return;
+      return null;
     }
     var res = await UserHttp.userfavFolder(
       pn: currentPage,
       ps: pageSize,
       mid: userInfo!.mid!,
     );
-    if (res['status']) {
+    if (res case ApiSuccess<FavFolderData>(:final data)) {
       if (type == 'init') {
-        favFolderData.value = res['data'];
+        favFolderData.value = data;
       } else {
-        if (res['data'].list.isNotEmpty) {
-          favFolderData.value.list!.addAll(res['data'].list);
+        if (data.list?.isNotEmpty == true) {
+          favFolderData.value.list!.addAll(data.list!);
           favFolderData.update((val) {});
         }
       }
-      hasMore.value = res['data'].hasMore;
+      hasMore.value = data.hasMore ?? false;
       currentPage++;
       if (hasMore.value && type == 'init') {
         queryFavFolder(type: 'onload');
       }
     } else {
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast((res as ApiFailure<FavFolderData>).message);
     }
     return res;
   }

@@ -5,6 +5,7 @@ import 'package:hive/hive.dart';
 import 'package:pilipalaz/utils/storage.dart';
 
 import '../../http/danmaku_block.dart';
+import '../../http/api_result.dart';
 import '../../models/user/danmaku_block.dart';
 import '../../plugin/pl_player/controller.dart';
 import 'package:pilipalaz/common/widgets/spring_physics.dart';
@@ -194,8 +195,8 @@ class DanmakuBlockController extends GetxController
     SmartDialog.showLoading(msg: '正在同步弹幕屏蔽规则……');
     var result = await DanmakuFilterHttp.danmakuFilter();
     SmartDialog.dismiss();
-    if (result['status']) {
-      danmakuRules.value = result['data'].rule;
+    if (result case ApiSuccess<DanmakuBlockDataModel>(:final data)) {
+      danmakuRules.value = data.rule ?? <Rule>[];
       for (var element in ruleTypes.values) {
         element.clear();
       }
@@ -205,9 +206,11 @@ class DanmakuBlockController extends GetxController
       }).toList();
       ruleTypes.refresh();
       danmakuFilterRefresh();
-      SmartDialog.showToast(result['data'].toast);
+      SmartDialog.showToast(data.toast ?? '同步成功');
     } else {
-      SmartDialog.showToast(result['msg']);
+      SmartDialog.showToast(
+        (result as ApiFailure<DanmakuBlockDataModel>).message,
+      );
     }
     return result;
   }
@@ -216,14 +219,14 @@ class DanmakuBlockController extends GetxController
     SmartDialog.showLoading(msg: '正在删除弹幕屏蔽规则……');
     var result = await DanmakuFilterHttp.danmakuFilterDel(ids: id);
     SmartDialog.dismiss();
-    if (result['status']) {
+    if (result is ApiSuccess<void>) {
       danmakuRules.removeWhere((e) => e.id == id);
       ruleTypes[type]!.removeWhere((e) => e.id == id);
       ruleTypes.refresh();
       danmakuFilterRefresh();
-      SmartDialog.showToast(result['msg']);
+      SmartDialog.showToast('操作成功');
     } else {
-      SmartDialog.showToast(result['msg']);
+      SmartDialog.showToast((result as ApiFailure<void>).message);
     }
   }
 
@@ -232,8 +235,7 @@ class DanmakuBlockController extends GetxController
     var result =
         await DanmakuFilterHttp.danmakuFilterAdd(filter: filter, type: type);
     SmartDialog.dismiss();
-    if (result['status']) {
-      Rule data = result['data'];
+    if (result case ApiSuccess<Rule>(:final data)) {
       danmakuRules.add(data);
       SimpleRule simpleRule = SimpleRule(data.id!, data.type!, data.filter!);
       ruleTypes[type]!.add(simpleRule);
@@ -241,7 +243,7 @@ class DanmakuBlockController extends GetxController
       danmakuFilterRefresh();
       SmartDialog.showToast('添加成功');
     } else {
-      SmartDialog.showToast(result['msg']);
+      SmartDialog.showToast((result as ApiFailure<Rule>).message);
     }
   }
 }

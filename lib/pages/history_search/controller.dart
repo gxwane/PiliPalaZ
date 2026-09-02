@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/user.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/user/history.dart';
 
 class HistorySearchController extends GetxController {
@@ -50,16 +51,16 @@ class HistorySearchController extends GetxController {
       pn: pn,
       keyword: controller.value.text,
     );
-    if (res['status']) {
+    if (res case ApiSuccess<HistoryData>(:final data)) {
       if (type == 'init' && pn == 1) {
-        historyList.value = res['data'].list;
+        historyList.value = data.list ?? <HisListItem>[];
       } else {
-        historyList.addAll(res['data'].list);
+        historyList.addAll(data.list ?? <HisListItem>[]);
       }
       historyList.refresh();
       // count = res['data'].page['total'];
       // if (historyList.length == count) {
-      if (!res['data'].hasMore){
+      if (data.hasMore != true){
         loadingText.value = '没有更多了';
       }
     }
@@ -81,9 +82,11 @@ class HistorySearchController extends GetxController {
     }
 
     var res = await UserHttp.delHistory(resKid);
-    if (res['status']) {
+    if (res is ApiSuccess<void>) {
       historyList.removeWhere((e) => e.kid == kid);
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast('已删除');
+    } else {
+      SmartDialog.showToast((res as ApiFailure<void>).message);
     }
     loadingStatus.value = 'finish';
   }

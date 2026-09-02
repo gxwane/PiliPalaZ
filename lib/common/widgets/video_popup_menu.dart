@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 import '../../http/user.dart';
+import '../../http/api_result.dart';
 import '../../http/video.dart';
 import '../../models/home/rcmd/result.dart';
 import '../../pages/mine/controller.dart';
@@ -27,7 +28,11 @@ class VideoCustomActions {
           '稍后再看', 'pause', Icon(MdiIcons.clockTimeEightOutline, size: 16),
           () async {
         var res = await UserHttp.toViewLater(bvid: videoItem.bvid as String);
-        SmartDialog.showToast(res['msg']);
+        SmartDialog.showToast(
+          res is ApiSuccess<void>
+              ? 'yeah！稍后再看'
+              : (res as ApiFailure<void>).message,
+        );
       }),
       VideoCustomAction('访问：${videoItem.owner.name}', 'visit',
           Icon(MdiIcons.accountCircleOutline, size: 16), () async {

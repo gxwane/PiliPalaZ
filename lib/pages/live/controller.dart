@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/live.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/live/item.dart';
 import 'package:pilipalaz/utils/storage.dart';
 
@@ -17,18 +18,18 @@ class LiveController extends GetxController {
   Box setting = GStorage.setting;
 
   // 获取推荐
-  Future queryLiveList(type) async {
+  Future<ApiResult<List<LiveItemModel>>> queryLiveList(type) async {
     // if (type == 'init') {
     //   _currentPage = 1;
     // }
     var res = await LiveHttp.liveList(
       pn: _currentPage,
     );
-    if (res['status']) {
+    if (res case ApiSuccess<List<LiveItemModel>>(:final data)) {
       if (type == 'init') {
-        liveList.value = res['data'];
+        liveList.value = data;
       } else if (type == 'onLoad') {
-        liveList.addAll(res['data']);
+        liveList.addAll(data);
       }
       _currentPage += 1;
     }
@@ -37,12 +38,12 @@ class LiveController extends GetxController {
 
   // 下拉刷新
   Future onRefresh() async {
-    queryLiveList('init');
+    await queryLiveList('init');
   }
 
   // 上拉加载
   Future onLoad() async {
-    queryLiveList('onLoad');
+    await queryLiveList('onLoad');
   }
 
   // 返回顶部并刷新

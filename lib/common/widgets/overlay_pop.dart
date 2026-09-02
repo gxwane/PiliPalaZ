@@ -5,6 +5,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import '../../http/user.dart';
+import '../../http/api_result.dart';
 import '../../utils/download.dart';
 import '../constants.dart';
 import 'network_img_layer.dart';
@@ -120,7 +121,11 @@ class OverlayPop extends StatelessWidget {
                       onPressed: () async {
                         var res = await UserHttp.toViewLater(
                             bvid: videoItem.bvid as String);
-                        SmartDialog.showToast(res['msg']);
+                        SmartDialog.showToast(
+                          res is ApiSuccess<void>
+                              ? 'yeah！稍后再看'
+                              : (res as ApiFailure<void>).message,
+                        );
                       },
                     ),
                   ),

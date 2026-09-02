@@ -3,6 +3,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/user.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/common/theme_type.dart';
 import 'package:pilipalaz/models/user/info.dart';
 import 'package:pilipalaz/models/user/stat.dart';
@@ -54,31 +55,35 @@ class MineController extends GetxController {
     }
   }
 
-  Future queryUserInfo() async {
+  Future<ApiResult<UserInfoData>> queryUserInfo() async {
     if (!userLogin.value) {
-      return {'status': false};
+      return const ApiFailure<UserInfoData>(
+        kind: ApiFailureKind.apiRejected,
+        message: '账号未登录',
+        endpoint: 'user.info',
+      );
     }
     var res = await UserHttp.userInfo();
-    if (res['status']) {
-      if (res['data'].isLogin) {
-        userInfo.value = res['data'];
-        userInfoCache.put('userInfoCache', res['data']);
+    if (res case ApiSuccess<UserInfoData>(:final data)) {
+      if (data.isLogin == true) {
+        userInfo.value = data;
+        userInfoCache.put('userInfoCache', data);
         userLogin.value = true;
       } else {
         resetUserInfo();
       }
     } else {
       // resetUserInfo();
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast((res as ApiFailure<UserInfoData>).message);
     }
     await queryUserStatOwner();
     return res;
   }
 
-  Future queryUserStatOwner() async {
+  Future<ApiResult<UserStat>> queryUserStatOwner() async {
     var res = await UserHttp.userStatOwner();
-    if (res['status']) {
-      userStat.value = res['data'];
+    if (res case ApiSuccess<UserStat>(:final data)) {
+      userStat.value = data;
     }
     return res;
   }

@@ -2,6 +2,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/fan.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/fans/result.dart';
 import 'package:pilipalaz/utils/storage.dart';
 
@@ -28,13 +29,15 @@ class FansController extends GetxController {
     name = Get.parameters['name'] ?? userInfo?.uname;
   }
 
-  Future queryFans(type) async {
+  Future<ApiResult<FansDataModel>> queryFans(type) async {
     if (type == 'init' || type == 'refresh') {
       pn = 1;
       loadingText.value == '加载中...';
     }
     if (loadingText.value == '没有更多了') {
-      return;
+      return ApiSuccess<FansDataModel>(
+        FansDataModel(total: total, list: fansList.toList()),
+      );
     }
     var res = await FanHttp.fans(
       vmid: mid,
@@ -42,15 +45,16 @@ class FansController extends GetxController {
       ps: ps,
       orderType: 'attention',
     );
-    if (res['status']) {
+    if (res case ApiSuccess<FansDataModel>(:final data)) {
+      final list = data.list ?? <FansItemModel>[];
       if (type == 'init') {
-        fansList.value = res['data'].list;
-        total = res['data'].total;
+        fansList.value = list;
+        total = data.total ?? 0;
       } else if (type == 'onLoad') {
-        fansList.addAll(res['data'].list);
+        fansList.addAll(list);
       }
       print('fansList: ${fansList.length}, total: $total');
-      if ((pn == 1 && total < ps) || res['data'].list.isEmpty) {
+      if ((pn == 1 && total < ps) || list.isEmpty) {
         loadingText.value = '没有更多了';
       }
       pn += 1;
@@ -58,7 +62,7 @@ class FansController extends GetxController {
         queryFans('onLoad');
       }
     } else {
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast((res as ApiFailure<FansDataModel>).message);
     }
     return res;
   }

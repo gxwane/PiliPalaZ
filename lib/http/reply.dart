@@ -6,121 +6,106 @@ import '../models/video/reply/data.dart';
 import '../models/video/reply/emote.dart';
 import '../utils/storage.dart';
 import 'api.dart';
-import 'init.dart';
+import 'api_decoder.dart';
+import 'api_result.dart';
+import 'http_runtime.dart';
 
 class ReplyHttp {
-  static Future replyList({
+  static Options? get _anonymousOptions =>
+      GStorage.userInfo.get('userInfoCache') == null
+      ? Options(
+          headers: <String, Object?>{
+            HttpHeaders.cookieHeader: 'buvid3= ; b_nut= ; sid= ',
+          },
+        )
+      : null;
+
+  static Future<ApiResult<ReplyData>> replyList({
     required int oid,
     required String nextOffset,
     required int type,
     int sort = 1,
-  }) async {
-    Options? options = GStorage.userInfo.get('userInfoCache') == null
-        ? Options(
-            headers: {HttpHeaders.cookieHeader: "buvid3= ; b_nut= ; sid= "})
-        : null;
-    var res = await Request().get(Api.replyList,
-        data: {
-          'oid': oid,
-          'type': type,
-          'pagination_str': '{"offset":"${nextOffset.replaceAll('"', '\\"')}"}',
-          'mode': sort + 2, //2:按时间排序；3：按热度排序
-        },
-        options: options);
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': ReplyData.fromJson(res.data['data']),
-      };
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': res.data['message'],
-      };
-    }
+  }) {
+    return HttpRuntime.instance.client.getJson<ReplyData>(
+      Api.replyList,
+      endpoint: 'reply.list',
+      queryParameters: <String, dynamic>{
+        'oid': oid,
+        'type': type,
+        'pagination_str': '{"offset":"${nextOffset.replaceAll('"', '\\"')}"}',
+        'mode': sort + 2,
+      },
+      options: _anonymousOptions,
+      decode: (json) => BiliApiDecoder.data<ReplyData>(
+        json,
+        decode: (value) =>
+            ReplyData.fromJson(BiliApiDecoder.object(value, field: 'data')),
+      ),
+    );
   }
 
-  static Future replyReplyList({
+  static Future<ApiResult<ReplyReplyData>> replyReplyList({
     required int oid,
     required String root,
     required int pageNum,
     required int type,
     int sort = 1,
   }) async {
-    // 未登录状态下，将cookie设为空，可以请求到全部的评论
-    Options? options = GStorage.userInfo.get('userInfoCache') == null
-        ? Options(
-            headers: {HttpHeaders.cookieHeader: "buvid3= ; b_nut= ; sid= "})
-        : null;
-    var res = await Request().get(Api.replyReplyList,
-        data: {
-          'oid': oid,
-          'root': root,
-          'pn': pageNum,
-          'type': type,
-          'sort': 1,
-          'csrf': await Request.getCsrf(),
-        },
-        options: options);
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': ReplyReplyData.fromJson(res.data['data']),
-      };
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': res.data['message'],
-      };
-    }
+    return HttpRuntime.instance.client.getJson<ReplyReplyData>(
+      Api.replyReplyList,
+      endpoint: 'reply.replies',
+      queryParameters: <String, dynamic>{
+        'oid': oid,
+        'root': root,
+        'pn': pageNum,
+        'type': type,
+        'sort': sort,
+        'csrf': await HttpRuntime.instance.getCsrf(),
+      },
+      options: _anonymousOptions,
+      decode: (json) => BiliApiDecoder.data<ReplyReplyData>(
+        json,
+        decode: (value) => ReplyReplyData.fromJson(
+          BiliApiDecoder.object(value, field: 'data'),
+        ),
+      ),
+    );
   }
 
-  // 评论点赞
-  static Future likeReply({
+  static Future<ApiResult<void>> likeReply({
     required int type,
     required int oid,
     required int rpid,
     required int action,
   }) async {
-    var res = await Request().post(
+    return HttpRuntime.instance.client.postJson<void>(
       Api.likeReply,
-      queryParameters: {
+      endpoint: 'reply.like',
+      queryParameters: <String, dynamic>{
         'type': type,
         'oid': oid,
         'rpid': rpid,
         'action': action,
-        'csrf': await Request.getCsrf(),
+        'csrf': await HttpRuntime.instance.getCsrf(),
       },
+      decode: (json) => BiliApiDecoder.success(json),
     );
-    if (res.data['code'] == 0) {
-      return {'status': true, 'data': res.data['data']};
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': res.data['message'],
-      };
-    }
   }
 
-  static Future getEmoteList({String? business}) async {
-    var res = await Request().get(Api.myEmote, data: {
-      'business': business ?? 'reply',
-      'web_location': '333.1245',
-    });
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': EmoteModelData.fromJson(res.data['data']),
-      };
-    } else {
-      return {
-        'status': false,
-        'date': [],
-        'msg': res.data['message'],
-      };
-    }
+  static Future<ApiResult<EmoteModelData>> getEmoteList({String? business}) {
+    return HttpRuntime.instance.client.getJson<EmoteModelData>(
+      Api.myEmote,
+      endpoint: 'reply.emotes',
+      queryParameters: <String, dynamic>{
+        'business': business ?? 'reply',
+        'web_location': '333.1245',
+      },
+      decode: (json) => BiliApiDecoder.data<EmoteModelData>(
+        json,
+        decode: (value) => EmoteModelData.fromJson(
+          BiliApiDecoder.object(value, field: 'data'),
+        ),
+      ),
+    );
   }
 }

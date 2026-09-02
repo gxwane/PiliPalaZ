@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 // import 'package:hive/hive.dart';
 
 import '../../../http/dynamics.dart';
+import '../../../http/api_result.dart';
 import '../../../models/dynamics/result.dart';
 // import '../../../utils/storage.dart';
 
@@ -18,7 +19,11 @@ class DynamicsTabController extends GetxController {
   // bool userLogin = false;
   int mid = -1;
 
-  Future queryFollowDynamic(String type, String dynamicsType, int? mid) async {
+  Future<ApiResult<DynamicsDataModel>> queryFollowDynamic(
+    String type,
+    String dynamicsType,
+    int? mid,
+  ) async {
     this.dynamicsType = dynamicsType;
     if (mid != null) this.mid = mid;
     if (type != 'onLoad') {
@@ -36,19 +41,20 @@ class DynamicsTabController extends GetxController {
       mid: dynamicsType == "up" ? mid : -1,
     );
     isLoadingMore.value = false;
-    if (res['status']) {
-      if (type == 'onLoad' && res['data'].items.isEmpty) {
+    if (res case ApiSuccess<DynamicsDataModel>(:final data)) {
+      final items = data.items ?? <DynamicItemModel>[];
+      if (type == 'onLoad' && items.isEmpty) {
         SmartDialog.showToast('没有更多了');
-        return;
+        return res;
       }
       if (type == 'onLoad') {
-        dynamicsList.addAll(res['data'].items);
+        dynamicsList.addAll(items);
       } else {
-        dynamicsList.value = res['data'].items;
+        dynamicsList.value = items;
       }
       // print('dynamicsList: $dynamicsList');
       dynamicsList.refresh();
-      offset = res['data'].offset;
+      offset = data.offset ?? '';
       // print("page: $page[dynamicsType]!");
     }
     return res;

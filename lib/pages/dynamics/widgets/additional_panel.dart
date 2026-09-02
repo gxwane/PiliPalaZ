@@ -3,6 +3,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/http/search.dart';
+import 'package:pilipalaz/http/api_result.dart';
 
 /// TODO 点击跳转
 Widget addWidget(item, context, type, {floor = 1}) {
@@ -33,7 +34,12 @@ Widget addWidget(item, context, type, {floor = 1}) {
             String bvid = match.group(0)!;
             String cover = dynamicProperty[type].cover;
             try {
-              int cid = await SearchHttp.ab2c(bvid: bvid);
+              final cidResult = await SearchHttp.ab2c(bvid: bvid);
+              if (cidResult case ApiFailure<int>(:final message)) {
+                SmartDialog.showToast(message);
+                return;
+              }
+              final cid = (cidResult as ApiSuccess<int>).data;
               Get.toNamed('/video?bvid=$bvid&cid=$cid',
                   arguments: {'pic': cover, 'heroTag': bvid});
             } catch (err) {

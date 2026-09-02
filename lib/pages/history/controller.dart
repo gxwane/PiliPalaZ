@@ -3,6 +3,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/user.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/user/history.dart';
 import 'package:pilipalaz/utils/storage.dart';
 
@@ -22,7 +23,7 @@ class HistoryController extends GetxController {
     historyStatus();
   }
 
-  Future queryHistoryList({type = 'init'}) async {
+  Future<ApiResult<HistoryData>> queryHistoryList({type = 'init'}) async {
     int max = 0;
     int viewAt = 0;
     if (type == 'onload') {
@@ -32,11 +33,11 @@ class HistoryController extends GetxController {
     isLoadingMore.value = true;
     var res = await UserHttp.historyList(max, viewAt);
     isLoadingMore.value = false;
-    if (res['status']) {
+    if (res case ApiSuccess<HistoryData>(:final data)) {
       if (type == 'onload') {
-        historyList.addAll(res['data'].list);
+        historyList.addAll(data.list ?? <HisListItem>[]);
       } else {
-        historyList.value = res['data'].list;
+        historyList.value = data.list ?? <HisListItem>[];
       }
     }
     return res;
@@ -68,7 +69,7 @@ class HistoryController extends GetxController {
                 SmartDialog.showLoading(msg: '请求中');
                 var res = await UserHttp.pauseHistory(!pauseStatus.value);
                 SmartDialog.dismiss();
-                if (res.data['code'] == 0) {
+                if (res is ApiSuccess<void>) {
                   SmartDialog.showToast(
                       !pauseStatus.value ? '暂停观看历史' : '恢复观看历史');
                   pauseStatus.value = !pauseStatus.value;
@@ -87,11 +88,11 @@ class HistoryController extends GetxController {
   // 观看历史暂停状态
   Future historyStatus() async {
     var res = await UserHttp.historyStatus();
-    if (res['status']) {
-      pauseStatus.value = res['data'];
-      localCache.put(LocalCacheKey.historyPause, res['data']);
+    if (res case ApiSuccess<bool>(:final data)) {
+      pauseStatus.value = data;
+      localCache.put(LocalCacheKey.historyPause, data);
     } else {
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast((res as ApiFailure<bool>).message);
     }
   }
 
@@ -112,11 +113,13 @@ class HistoryController extends GetxController {
                 SmartDialog.showLoading(msg: '请求中');
                 var res = await UserHttp.clearHistory();
                 SmartDialog.dismiss();
-                if (res.data['code'] == 0) {
+                if (res is ApiSuccess<void>) {
                   SmartDialog.showToast('清空观看历史');
+                  historyList.clear();
+                } else {
+                  SmartDialog.showToast((res as ApiFailure<void>).message);
                 }
                 Get.back();
-                historyList.clear();
               },
               child: const Text('确认清空'),
             )
@@ -136,9 +139,11 @@ class HistoryController extends GetxController {
     }
 
     var res = await UserHttp.delHistory(resKid);
-    if (res['status']) {
+    if (res is ApiSuccess<void>) {
       historyList.removeWhere((e) => e.kid == kid);
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast('已删除');
+    } else {
+      SmartDialog.showToast((res as ApiFailure<void>).message);
     }
   }
 

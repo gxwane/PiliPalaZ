@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/html.dart';
 import 'package:pilipalaz/http/reply.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/video/reply/data.dart';
 import 'package:pilipalaz/models/common/reply_sort_type.dart';
 import 'package:pilipalaz/models/video/reply/item.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
@@ -72,13 +74,13 @@ class HtmlRenderController extends GetxController {
       type: type,
       sort: _sortType.index,
     );
-    if (res['status']) {
-      List<ReplyItemModel> replies = res['data'].replies;
-      acount.value = res['data'].cursor.allCount ?? 0;
-      nextOffset = res['data'].cursor.paginationReply.nextOffset ?? "";
+    if (res case ApiSuccess<ReplyData>(:final data)) {
+      List<ReplyItemModel> replies = data.replies ?? <ReplyItemModel>[];
+      acount.value = data.cursor?.allCount ?? 0;
+      nextOffset = data.cursor?.paginationReply?.nextOffset ?? "";
       if (replies.isNotEmpty) {
         noMore.value = '加载中...';
-        if (res['data'].cursor.isEnd == true) {
+        if (data.cursor?.isEnd == true) {
           noMore.value = '没有更多了';
         }
       } else {
@@ -87,21 +89,21 @@ class HtmlRenderController extends GetxController {
       }
       if (reqType == 'init') {
         // 添加置顶回复
-        if (res['data'].upper.top != null) {
-          bool flag = res['data']
-              .topReplies
-              .any((reply) => reply.rpid == res['data'].upper.top.rpid);
+        if (data.upper?.top != null) {
+          bool flag = (data.topReplies ?? <ReplyItemModel>[]).any(
+            (reply) => reply.rpid == data.upper!.top!.rpid,
+          );
           if (!flag) {
-            replies.insert(0, res['data'].upper.top);
+            replies.insert(0, data.upper!.top!);
           }
         }
-        replies.insertAll(0, res['data'].topReplies);
+        replies.insertAll(0, data.topReplies ?? <ReplyItemModel>[]);
         replyList.value = replies;
       } else {
         replyList.addAll(replies);
       }
     } else {
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast((res as ApiFailure<ReplyData>).message);
     }
     isLoadingMore = false;
     return res;

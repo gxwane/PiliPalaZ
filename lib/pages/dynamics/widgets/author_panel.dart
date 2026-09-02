@@ -3,6 +3,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/http/user.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
 import 'package:pilipalaz/utils/utils.dart';
 import 'package:share_plus/share_plus.dart';
@@ -159,7 +160,11 @@ class MorePanel extends StatelessWidget {
                 try {
                   String bvid = item.modules.moduleDynamic.major.archive.bvid;
                   var res = await UserHttp.toViewLater(bvid: bvid);
-                  SmartDialog.showToast(res['msg']);
+                  SmartDialog.showToast(
+                    res is ApiSuccess<void>
+                        ? 'yeah！稍后再看'
+                        : (res as ApiFailure<void>).message,
+                  );
                   Get.back();
                 } catch (err) {
                   SmartDialog.showToast('出错了：${err.toString()}');

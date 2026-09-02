@@ -1,63 +1,52 @@
 import '../models/user/danmaku_block.dart';
-import 'index.dart';
+import 'api.dart';
+import 'api_decoder.dart';
+import 'api_result.dart';
+import 'http_runtime.dart';
 
 class DanmakuFilterHttp {
-  static Future danmakuFilter() async {
-    var res = await Request().get(Api.danmakuFilter);
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': DanmakuBlockDataModel.fromJson(res.data['data'])
-      };
-    } else {
-      return {
-        'status': false,
-        'data': [],
-        'msg': res.data['message'],
-      };
-    }
-  }
-
-  static Future danmakuFilterDel({required int ids}) async {
-    var res = await Request().post(
-      Api.danmakuFilterDel,
-      queryParameters: {
-        'ids': ids,
-        'csrf': await Request.getCsrf(),
-      },
+  static Future<ApiResult<DanmakuBlockDataModel>> danmakuFilter() {
+    return HttpRuntime.instance.client.getJson<DanmakuBlockDataModel>(
+      Api.danmakuFilter,
+      endpoint: 'danmakuFilter.list',
+      decode: (json) => BiliApiDecoder.data<DanmakuBlockDataModel>(
+        json,
+        decode: (value) => DanmakuBlockDataModel.fromJson(
+          BiliApiDecoder.object(value, field: 'data'),
+        ),
+      ),
     );
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'msg': '操作成功',
-      };
-    } else {
-      return {
-        'status': false,
-        'msg': res.data['message'],
-      };
-    }
   }
 
-  static Future danmakuFilterAdd({required String filter, required int type}) async {
-    var res = await Request().post(
+  static Future<ApiResult<void>> danmakuFilterDel({required int ids}) async {
+    return HttpRuntime.instance.client.postJson<void>(
+      Api.danmakuFilterDel,
+      endpoint: 'danmakuFilter.delete',
+      queryParameters: <String, dynamic>{
+        'ids': ids,
+        'csrf': await HttpRuntime.instance.getCsrf(),
+      },
+      decode: (json) => BiliApiDecoder.success(json),
+    );
+  }
+
+  static Future<ApiResult<Rule>> danmakuFilterAdd({
+    required String filter,
+    required int type,
+  }) async {
+    return HttpRuntime.instance.client.postJson<Rule>(
       Api.danmakuFilterAdd,
-      queryParameters: {
+      endpoint: 'danmakuFilter.add',
+      queryParameters: <String, dynamic>{
         'type': type,
         'filter': filter,
-        'csrf': await Request.getCsrf(),
+        'csrf': await HttpRuntime.instance.getCsrf(),
       },
+      decode: (json) => BiliApiDecoder.data<Rule>(
+        json,
+        decode: (value) =>
+            Rule.fromJson(BiliApiDecoder.object(value, field: 'data')),
+      ),
     );
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': Rule.fromJson(res.data['data']),
-      };
-    } else {
-      return {
-        'status': false,
-        'msg': res.data['message'],
-      };
-    }
   }
 }

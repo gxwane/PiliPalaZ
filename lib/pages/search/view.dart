@@ -2,6 +2,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/search/hot.dart';
 import 'controller.dart';
 import 'widgets/hot_keyword.dart';
 import 'widgets/search_text.dart';
@@ -17,7 +19,7 @@ class SearchPage extends StatefulWidget {
 
 class _SearchPageState extends State<SearchPage> with RouteAware {
   final SSearchController _searchController = Get.put(SSearchController());
-  late Future? _futureBuilderFuture;
+  late Future<ApiResult<HotSearchModel>>? _futureBuilderFuture;
 
   @override
   void initState() {
@@ -169,15 +171,15 @@ class _SearchPageState extends State<SearchPage> with RouteAware {
           LayoutBuilder(
             builder: (context, boxConstraints) {
               final double width = boxConstraints.maxWidth;
-              return FutureBuilder(
+              return FutureBuilder<ApiResult<HotSearchModel>>(
                 future: _futureBuilderFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.done) {
                     if (snapshot.data == null) {
                       return const SizedBox();
                     }
-                    Map data = snapshot.data as Map;
-                    if (data['status']) {
+                    final result = snapshot.data;
+                    if (result is ApiSuccess<HotSearchModel>) {
                       return Obx(
                         () => HotKeyword(
                           width: width,
@@ -196,7 +198,8 @@ class _SearchPageState extends State<SearchPage> with RouteAware {
                         shrinkWrap: true,
                         slivers: [
                           HttpError(
-                            errMsg: data['msg'],
+                            errMsg:
+                                (result as ApiFailure<HotSearchModel>).message,
                             fn: () => setState(() {
                               _futureBuilderFuture =
                                   _searchController.queryHotSearchList();

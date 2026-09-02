@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/reply.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/video/reply/data.dart';
 import 'package:pilipalaz/models/common/reply_type.dart';
 import 'package:pilipalaz/models/video/reply/item.dart';
 
@@ -27,12 +29,12 @@ class VideoReplyReplyController extends GetxController {
     currentPage = 0;
   }
 
-  Future queryReplyList({type = 'init'}) async {
+  Future<ApiResult<ReplyReplyData>?> queryReplyList({type = 'init'}) async {
     if (type == 'init') {
       currentPage = 0;
     }
     if (isLoadingMore) {
-      return;
+      return null;
     }
     isLoadingMore = true;
     final res = await ReplyHttp.replyReplyList(
@@ -41,12 +43,13 @@ class VideoReplyReplyController extends GetxController {
       pageNum: currentPage + 1,
       type: replyType.index,
     );
-    if (res['status']) {
-      if (res['data'].root != null) root = res['data'].root;
-      final List<ReplyItemModel> replies = res['data'].replies;
+    if (res case ApiSuccess<ReplyReplyData>(:final data)) {
+      if (data.root != null) root = data.root;
+      final List<ReplyItemModel> replies =
+          data.replies ?? <ReplyItemModel>[];
       if (replies.isNotEmpty) {
         noMore.value = '加载中...';
-        if (replies.length == res['data'].page.count) {
+        if (replies.length == data.page?.count) {
           noMore.value = '没有更多了';
         }
         currentPage++;
@@ -59,7 +62,8 @@ class VideoReplyReplyController extends GetxController {
       } else {
         // 每次回复之后，翻页请求有且只有相同的一条回复数据
         if (replies.length == 1 && replies.last.rpid == replyList.last.rpid) {
-          return;
+          isLoadingMore = false;
+          return res;
         }
         replyList.addAll(replies);
         // res['data'].replies.addAll(replyList);

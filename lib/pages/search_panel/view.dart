@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'package:pilipalaz/common/skeleton/media_bangumi.dart';
 import 'package:pilipalaz/common/skeleton/video_card_h.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/http/search.dart';
 import 'package:pilipalaz/models/common/search_type.dart';
 
 import '../../common/constants.dart';
@@ -57,7 +59,7 @@ class _SearchPanelState extends State<SearchPanel>
     with AutomaticKeepAliveClientMixin {
   late SearchPanelController _searchPanelController;
 
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<SearchPageData>> _futureBuilderFuture;
   late ScrollController scrollController;
 
   @override
@@ -100,15 +102,15 @@ class _SearchPanelState extends State<SearchPanel>
       onRefresh: () async {
         await _searchPanelController.onRefresh();
       },
-      child: FutureBuilder(
+      child: FutureBuilder<ApiResult<SearchPageData>>(
         future: _futureBuilderFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
             if (snapshot.data != null) {
-              Map data = snapshot.data;
+              final result = snapshot.data;
               var ctr = _searchPanelController;
               RxList list = ctr.resultList;
-              if (data['status']) {
+              if (result is ApiSuccess<SearchPageData>) {
                 return Obx(() {
                   list.length;
                   switch (widget.searchType) {
@@ -136,7 +138,8 @@ class _SearchPanelState extends State<SearchPanel>
                   physics: const NeverScrollableScrollPhysics(),
                   slivers: [
                     HttpError(
-                      errMsg: data['msg'],
+                      errMsg:
+                          (result as ApiFailure<SearchPageData>).message,
                       fn: () {
                         setState(() {
                           _futureBuilderFuture = _searchPanelController

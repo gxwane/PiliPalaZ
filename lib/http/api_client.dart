@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -166,6 +167,9 @@ final class ApiClient {
         cancelToken: cancelToken,
       ),
       convert: (value) {
+        if (value is String) {
+          value = jsonDecode(value);
+        }
         if (value is! Map) {
           throw const MalformedApiResponseException('JSON 响应的顶层结构不是对象');
         }

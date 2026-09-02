@@ -1,6 +1,7 @@
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/user.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/http/video.dart';
 import 'package:pilipalaz/models/user/fav_detail.dart';
 import 'package:pilipalaz/models/user/fav_folder.dart';
@@ -28,10 +29,12 @@ class FavDetailController extends GetxController {
     super.onInit();
   }
 
-  Future<dynamic> queryUserFavFolderDetail({type = 'init'}) async {
+  Future<ApiResult<FavDetailData>?> queryUserFavFolderDetail({
+    type = 'init',
+  }) async {
     if (type == 'onLoad' && favList.length >= mediaCount) {
       loadingText.value = '没有更多了';
-      return;
+      return null;
     }
     isLoadingMore = true;
     var res = await UserHttp.userFavFolderDetail(
@@ -39,13 +42,13 @@ class FavDetailController extends GetxController {
       ps: 20,
       mediaId: mediaId!,
     );
-    if (res['status']) {
-      favInfo.value = res['data'].info;
+    if (res case ApiSuccess<FavDetailData>(:final data)) {
+      favInfo.value = Map<dynamic, dynamic>.from(data.info ?? const {});
       if (currentPage == 1 && type == 'init') {
-        favList.value = res['data'].medias;
-        mediaCount = res['data'].info['media_count'];
+        favList.value = data.medias ?? <FavDetailItemData>[];
+        mediaCount = (data.info?['media_count'] as num?)?.toInt() ?? 0;
       } else if (type == 'onLoad') {
-        favList.addAll(res['data'].medias);
+        favList.addAll(data.medias ?? <FavDetailItemData>[]);
       }
       if (favList.length >= mediaCount) {
         loadingText.value = '没有更多了';

@@ -3,6 +3,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/http/search.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/utils/app_scheme.dart';
 
 import '../../../models/dynamics/result.dart';
@@ -230,7 +231,12 @@ InlineSpan? richNode(item, context) {
               child: GestureDetector(
                 onTap: () async {
                   try {
-                    int cid = await SearchHttp.ab2c(bvid: i.rid);
+                    final cidResult = await SearchHttp.ab2c(bvid: i.rid);
+                    if (cidResult case ApiFailure<int>(:final message)) {
+                      SmartDialog.showToast(message);
+                      return;
+                    }
+                    final cid = (cidResult as ApiSuccess<int>).data;
                     Get.toNamed('/video?bvid=${i.rid}&cid=$cid',
                         arguments: {'pic': null, 'heroTag': i.rid});
                   } catch (err) {

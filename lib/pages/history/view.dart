@@ -5,6 +5,8 @@ import 'package:pilipalaz/common/skeleton/video_card_h.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/common/widgets/no_data.dart';
 import 'package:pilipalaz/pages/history/index.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/user/history.dart';
 
 import '../../common/constants.dart';
 import '../../utils/grid.dart';
@@ -19,7 +21,7 @@ class HistoryPage extends StatefulWidget {
 
 class _HistoryPageState extends State<HistoryPage> {
   final HistoryController _historyController = Get.put(HistoryController());
-  Future? _futureBuilderFuture;
+  Future<ApiResult<HistoryData>>? _futureBuilderFuture;
   late ScrollController scrollController;
 
   @override
@@ -184,15 +186,15 @@ class _HistoryPageState extends State<HistoryPage> {
           physics: const AlwaysScrollableScrollPhysics(),
           controller: _historyController.scrollController,
           slivers: [
-            FutureBuilder(
+            FutureBuilder<ApiResult<HistoryData>>(
               future: _futureBuilderFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.done) {
                   if (snapshot.data == null) {
                     return const SliverToBoxAdapter(child: SizedBox());
                   }
-                  Map data = snapshot.data;
-                  if (data['status']) {
+                  final result = snapshot.data;
+                  if (result is ApiSuccess<HistoryData>) {
                     return Obx(
                       () => _historyController.historyList.isNotEmpty
                           ? SliverGrid(
@@ -225,7 +227,9 @@ class _HistoryPageState extends State<HistoryPage> {
                     );
                   } else {
                     return HttpError(
-                      errMsg: data['msg'],
+                      errMsg:
+                          (result as ApiFailure<HistoryData>?)?.message ??
+                          '历史记录加载失败',
                       fn: () => setState(() {}),
                     );
                   }

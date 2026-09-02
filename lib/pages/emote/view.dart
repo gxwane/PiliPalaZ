@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../common/widgets/network_img_layer.dart';
 import '../../models/video/reply/emote.dart';
+import '../../http/api_result.dart';
 import 'controller.dart';
 
 import 'package:pilipalaz/common/widgets/spring_physics.dart';
@@ -18,7 +19,7 @@ class _EmotePanelState extends State<EmotePanel>
     with AutomaticKeepAliveClientMixin {
   final EmotePanelController _emotePanelController =
       Get.put(EmotePanelController());
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<EmoteModelData>> _futureBuilderFuture;
 
   @override
   bool get wantKeepAlive => true;
@@ -32,12 +33,12 @@ class _EmotePanelState extends State<EmotePanel>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return FutureBuilder(
+    return FutureBuilder<ApiResult<EmoteModelData>>(
         future: _futureBuilderFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
-            Map data = snapshot.data as Map;
-            if (data['status']) {
+            final result = snapshot.data;
+            if (result is ApiSuccess<EmoteModelData>) {
               List<Packages> emotePackage = _emotePanelController.emotePackage;
 
               return Column(
@@ -121,7 +122,12 @@ class _EmotePanelState extends State<EmotePanel>
                 ],
               );
             } else {
-              return Center(child: Text(data['msg']));
+              return Center(
+                child: Text(
+                  (result as ApiFailure<EmoteModelData>?)?.message ??
+                      '表情加载失败',
+                ),
+              );
             }
           } else {
             return const Center(child: Text('加载中...'));

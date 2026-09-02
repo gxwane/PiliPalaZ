@@ -8,6 +8,9 @@ import 'package:flutter_floating/floating/manager/floating_manager.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/live/room_info.dart';
+import 'package:pilipalaz/models/live/room_info_h5.dart';
 
 import 'controller.dart';
 import 'widgets/bottom_control.dart';
@@ -22,8 +25,8 @@ class LiveRoomPage extends StatefulWidget {
 class _LiveRoomPageState extends State<LiveRoomPage> {
   final LiveRoomController _liveRoomController = Get.put(LiveRoomController());
   PlPlayerController? plPlayerController;
-  late Future? _futureBuilder;
-  late Future? _futureBuilderFuture;
+  late Future<ApiResult<RoomInfoH5Model>>? _futureBuilder;
+  late Future<ApiResult<RoomInfoModel>>? _futureBuilderFuture;
 
   bool isShowCover = true;
   bool isPlay = true;
@@ -55,10 +58,10 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
 
   @override
   Widget build(BuildContext context) {
-    Widget videoPlayerPanel = FutureBuilder(
+    Widget videoPlayerPanel = FutureBuilder<ApiResult<RoomInfoModel>>(
       future: _futureBuilderFuture,
       builder: (BuildContext context, AsyncSnapshot snapshot) {
-        if (snapshot.hasData && snapshot.data['status']) {
+        if (snapshot.data is ApiSuccess<RoomInfoModel>) {
           return PLVideoPlayer(
             controller: plPlayerController!,
             bottomControl: BottomControl(
@@ -127,14 +130,13 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
                     MediaQuery.of(context).orientation == Orientation.portrait
                         ? 56
                         : 0,
-                title: FutureBuilder(
+                title: FutureBuilder<ApiResult<RoomInfoH5Model>>(
                   future: _futureBuilder,
                   builder: (context, snapshot) {
                     if (snapshot.data == null) {
                       return const SizedBox();
                     }
-                    Map data = snapshot.data as Map;
-                    if (data['status']) {
+                    if (snapshot.data is ApiSuccess<RoomInfoH5Model>) {
                       return Obx(
                         () => Row(
                           children: [

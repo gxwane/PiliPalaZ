@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 
+import '../http/api_result.dart';
 import '../http/search.dart';
 import 'id_utils.dart';
 import 'utils.dart';
@@ -42,7 +44,12 @@ class UrlUtils {
     final Map matchRes = IdUtils.matchAvorBv(input: pathSegment);
     if (matchRes.containsKey('BV')) {
       final String bv = matchRes['BV'];
-      final int cid = await SearchHttp.ab2c(bvid: bv);
+      final cidResult = await SearchHttp.ab2c(bvid: bv);
+      if (cidResult case ApiFailure<int>(:final message)) {
+        SmartDialog.showToast(message);
+        return;
+      }
+      final cid = (cidResult as ApiSuccess<int>).data;
       final String heroTag = Utils.makeHeroTag(bv);
       await Get.toNamed(
         '/video?bvid=$bv&cid=$cid',

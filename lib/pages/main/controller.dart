@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/common/widgets/app_update_center.dart';
 import 'package:pilipalaz/http/common.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/pages/dynamics/index.dart';
 import 'package:pilipalaz/pages/home/view.dart';
 import 'package:pilipalaz/pages/media/index.dart';
@@ -86,11 +87,11 @@ class MainController extends GetxController {
       (item) => item['label'] == "动态",
     );
     var res = await CommonHttp.unReadDynamic();
-    var data = res['data'];
     if (dynamicItemIndex != -1) {
-      navigationBars[dynamicItemIndex]['count'] = data == null
-          ? 0
-          : data.length; // 修改 count 属性为新的值
+      navigationBars[dynamicItemIndex]['count'] = switch (res) {
+        ApiSuccess<List<Map<String, dynamic>>>(:final data) => data.length,
+        ApiFailure<List<Map<String, dynamic>>>() => 0,
+      };
     }
     navigationBars.refresh();
   }

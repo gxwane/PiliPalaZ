@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/common/widgets/no_data.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/fans/result.dart';
 
 import '../../common/constants.dart';
@@ -21,7 +22,7 @@ class _FansPageState extends State<FansPage> {
   late String mid;
   late FansController _fansController;
   final ScrollController scrollController = ScrollController();
-  Future? _futureBuilderFuture;
+  Future<ApiResult<FansDataModel>>? _futureBuilderFuture;
 
   @override
   void initState() {
@@ -69,13 +70,13 @@ class _FansPageState extends State<FansPage> {
             physics: const AlwaysScrollableScrollPhysics(),
             controller: scrollController,
             slivers: [
-              FutureBuilder(
+              FutureBuilder<ApiResult<FansDataModel>>(
                 future: _futureBuilderFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.done &&
                       snapshot.data != null) {
-                    var data = snapshot.data;
-                    if (data['status']) {
+                    final result = snapshot.data;
+                    if (result is ApiSuccess<FansDataModel>) {
                       return Obx(() {
                         List<FansItemModel> list = _fansController.fansList;
                         return list.isNotEmpty
@@ -97,7 +98,9 @@ class _FansPageState extends State<FansPage> {
                       });
                     } else {
                       return HttpError(
-                        errMsg: data['msg'],
+                        errMsg:
+                            (result as ApiFailure<FansDataModel>?)?.message ??
+                            '粉丝列表加载失败',
                         fn: () => _fansController.queryFans('init'),
                       );
                     }

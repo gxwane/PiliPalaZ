@@ -9,6 +9,8 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
 import 'package:pilipalaz/utils/storage.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/dynamics/up.dart';
 
 import 'controller.dart';
 import 'widgets/up_panel.dart';
@@ -24,7 +26,7 @@ class DynamicsPage extends StatefulWidget {
 class _DynamicsPageState extends State<DynamicsPage>
     with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
   final DynamicsController _dynamicsController = Get.put(DynamicsController());
-  late Future _futureBuilderFutureUp;
+  late Future<ApiResult<FollowUpModel>> _futureBuilderFutureUp;
   Box userInfoCache = GStorage.userInfo;
   late ScrollController scrollController;
   late UpPanelPosition upPanelPosition;
@@ -90,15 +92,14 @@ class _DynamicsPageState extends State<DynamicsPage>
               ? Theme.of(context).colorScheme.surface
               : Colors.transparent,
           width: 56,
-          child: FutureBuilder(
+          child: FutureBuilder<ApiResult<FollowUpModel>>(
             future: _futureBuilderFutureUp,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.done) {
                 if (snapshot.data == null) {
                   return const SizedBox();
                 }
-                Map data = snapshot.data;
-                if (data['status']) {
+                if (snapshot.data is ApiSuccess<FollowUpModel>) {
                   return Obx(() => UpPanel(
                       _dynamicsController.upData.value, scrollController));
                 } else {

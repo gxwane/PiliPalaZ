@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/user.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/model_hot_video_item.dart';
 
 class LaterController extends GetxController {
@@ -10,13 +11,13 @@ class LaterController extends GetxController {
   int count = 0;
   RxBool isLoading = false.obs;
 
-  Future queryLaterList() async {
+  Future<ApiResult<WatchLaterData>> queryLaterList() async {
     isLoading.value = true;
     var res = await UserHttp.seeYouLater();
-    if (res['status']) {
-      count = res['data']['count'];
+    if (res case ApiSuccess<WatchLaterData>(:final data)) {
+      count = data.count;
       if (count > 0) {
-        laterList.value = res['data']['list'];
+        laterList.value = data.items;
       }
     }
     isLoading.value = false;
@@ -42,7 +43,7 @@ class LaterController extends GetxController {
             TextButton(
               onPressed: () async {
                 var res = await UserHttp.toViewDel(aid: aid);
-                if (res['status']) {
+                if (res is ApiSuccess<void>) {
                   if (aid != null) {
                     laterList.removeWhere((e) => e.aid == aid);
                   } else {
@@ -51,7 +52,11 @@ class LaterController extends GetxController {
                   }
                 }
                 Get.back();
-                SmartDialog.showToast(res['msg']);
+                SmartDialog.showToast(
+                  res is ApiSuccess<void>
+                      ? 'yeah！成功移除'
+                      : (res as ApiFailure<void>).message,
+                );
               },
               child: Text(aid != null ? '确认移除' : '确认删除'),
             )
@@ -80,11 +85,15 @@ class LaterController extends GetxController {
             TextButton(
               onPressed: () async {
                 var res = await UserHttp.toViewClear();
-                if (res['status']) {
+                if (res is ApiSuccess<void>) {
                   laterList.clear();
                 }
                 Get.back();
-                SmartDialog.showToast(res['msg']);
+                SmartDialog.showToast(
+                  res is ApiSuccess<void>
+                      ? '操作完成'
+                      : (res as ApiFailure<void>).message,
+                );
               },
               child: const Text('确认'),
             )

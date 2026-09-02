@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_print
 
 import 'package:pilipalaz/http/follow.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/utils/extension.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -100,7 +101,12 @@ class DynamicsController extends GetxController
         String bvid = item.modules.moduleDynamic.major.archive.bvid;
         String cover = item.modules.moduleDynamic.major.archive.cover;
         try {
-          int cid = await SearchHttp.ab2c(bvid: bvid);
+          final cidResult = await SearchHttp.ab2c(bvid: bvid);
+          if (cidResult case ApiFailure<int>(:final message)) {
+            SmartDialog.showToast(message);
+            return;
+          }
+          final cid = (cidResult as ApiSuccess<int>).data;
           Get.toNamed(
             '/video?bvid=$bvid&cid=$cid',
             arguments: {
@@ -186,7 +192,12 @@ class DynamicsController extends GetxController
         int aid = ugcSeason.aid!;
         String bvid = IdUtils.av2bv(aid);
         String cover = ugcSeason.cover!;
-        int cid = await SearchHttp.ab2c(bvid: bvid);
+        final cidResult = await SearchHttp.ab2c(bvid: bvid);
+        if (cidResult case ApiFailure<int>(:final message)) {
+          SmartDialog.showToast(message);
+          return;
+        }
+        final cid = (cidResult as ApiSuccess<int>).data;
         Get.toNamed(
           '/video?bvid=$bvid&cid=$cid',
           arguments: {
@@ -218,9 +229,10 @@ class DynamicsController extends GetxController
       ps: 50,
       orderType: 'attention',
     );
-    if (res['status']) {
+    if (res case ApiSuccess<FollowDataModel>(:final data)) {
+      final list = data.list ?? <FollowItemModel>[];
       allFollowedUps.addAll(
-        res['data'].list.map<UpItem>(
+        list.map<UpItem>(
           (FollowItemModel e) => UpItem(
             face: e.face,
             mid: e.mid,
@@ -233,17 +245,21 @@ class DynamicsController extends GetxController
         ),
       );
       allFollowedUpsPage += 1;
-      allFollowedUpsTotal = res['data'].total;
+      allFollowedUpsTotal = data.total ?? 0;
       upData.value.upList = allFollowedUps;
       upData.refresh();
     } else {
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast((res as ApiFailure<FollowDataModel>).message);
     }
   }
 
-  Future queryFollowUp({type = 'init'}) async {
+  Future<ApiResult<FollowUpModel>> queryFollowUp({type = 'init'}) async {
     if (!userLogin.value) {
-      return {'status': false, 'msg': '账号未登录'};
+      return const ApiFailure<FollowUpModel>(
+        kind: ApiFailureKind.apiRejected,
+        message: '账号未登录',
+        endpoint: 'dynamic.followUp',
+      );
     }
     if (type == 'init') {
       upData.value.upList = [];
@@ -254,24 +270,27 @@ class DynamicsController extends GetxController
       defaultValue: false,
     )) {
       allFollowedUpsPage = 1;
-      Future f1 = DynamicsHttp.followUp();
-      Future f2 = FollowHttp.followings(
+      final dynamicsFuture = DynamicsHttp.followUp();
+      final followingFuture = FollowHttp.followings(
         vmid: userInfo.mid,
         pn: allFollowedUpsPage,
         ps: 50,
         orderType: 'attention',
       );
-      List<dynamic> ress = await Future.wait([f1, f2]);
-      if (!ress[0]['status']) {
-        SmartDialog.showToast("获取关注动态失败：${ress[0]['msg']}");
+      final dynamicResult = await dynamicsFuture;
+      final followingResult = await followingFuture;
+      if (dynamicResult case ApiFailure<FollowUpModel>(:final message)) {
+        SmartDialog.showToast("获取关注动态失败：$message");
       } else {
-        upData.value.liveUsers = ress[0]['data'].liveUsers;
-        hasUpdatedUps = ress[0]['data'].upList!;
+        final data = (dynamicResult as ApiSuccess<FollowUpModel>).data;
+        upData.value.liveUsers = data.liveUsers;
+        hasUpdatedUps = data.upList ?? <UpItem>[];
       }
-      if (!ress[1]['status']) {
-        SmartDialog.showToast("获取关注列表失败：${ress[1]['msg']}");
+      if (followingResult case ApiFailure<FollowDataModel>(:final message)) {
+        SmartDialog.showToast("获取关注列表失败：$message");
       } else {
-        allFollowedUps = ress[1]['data'].list
+        final data = (followingResult as ApiSuccess<FollowDataModel>).data;
+        allFollowedUps = (data.list ?? <FollowItemModel>[])
             .map<UpItem>(
               (FollowItemModel e) => UpItem(
                 face: e.face,
@@ -285,16 +304,16 @@ class DynamicsController extends GetxController
             )
             .toList();
         allFollowedUpsPage += 1;
-        allFollowedUpsTotal = ress[1]['data'].total;
+        allFollowedUpsTotal = data.total ?? 0;
       }
       upData.value.upList = allFollowedUpsTotal > 0
           ? allFollowedUps
           : hasUpdatedUps;
-      return ress[0];
+      return dynamicResult;
     }
     var res = await DynamicsHttp.followUp();
-    if (res['status']) {
-      upData.value = res['data'];
+    if (res case ApiSuccess<FollowUpModel>(:final data)) {
+      upData.value = data;
       if (upData.value.upList!.isEmpty) {
         mid.value = -1;
       }

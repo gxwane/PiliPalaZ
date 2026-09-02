@@ -1,53 +1,44 @@
 import '../models/user/black.dart';
-import 'index.dart';
+import 'api.dart';
+import 'api_decoder.dart';
+import 'api_result.dart';
+import 'http_runtime.dart';
 
 class BlackHttp {
-  static Future blackList({required int pn, int? ps}) async {
-    var res = await Request().get(Api.blackLst, data: {
-      'pn': pn,
-      'ps': ps ?? 50,
-      're_version': 0,
-      'jsonp': 'jsonp',
-      'csrf': await Request.getCsrf(),
-    });
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': BlackListDataModel.fromJson(res.data['data'])
-      };
-    } else {
-      return {
-        'status': false,
-        'data': [],
-        'msg': res.data['message'],
-      };
-    }
+  static Future<ApiResult<BlackListDataModel>> blackList({
+    required int pn,
+    int? ps,
+  }) async {
+    return HttpRuntime.instance.client.getJson<BlackListDataModel>(
+      Api.blackLst,
+      endpoint: 'black.list',
+      queryParameters: <String, dynamic>{
+        'pn': pn,
+        'ps': ps ?? 50,
+        're_version': 0,
+        'jsonp': 'jsonp',
+        'csrf': await HttpRuntime.instance.getCsrf(),
+      },
+      decode: (json) => BiliApiDecoder.data<BlackListDataModel>(
+        json,
+        decode: (value) => BlackListDataModel.fromJson(
+          BiliApiDecoder.object(value, field: 'data'),
+        ),
+      ),
+    );
   }
 
-  // 移除黑名单
-  static Future removeBlack({required int fid}) async {
-    var res = await Request().post(
+  static Future<ApiResult<void>> removeBlack({required int fid}) async {
+    return HttpRuntime.instance.client.postJson<void>(
       Api.removeBlack,
-      queryParameters: {
+      endpoint: 'black.remove',
+      queryParameters: <String, dynamic>{
         'act': 6,
-        'csrf': await Request.getCsrf(),
+        'csrf': await HttpRuntime.instance.getCsrf(),
         'fid': fid,
         'jsonp': 'jsonp',
-        're_src': 116,
       },
+      decode: (json) => BiliApiDecoder.success(json),
     );
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': [],
-        'msg': '操作成功',
-      };
-    } else {
-      return {
-        'status': false,
-        'data': [],
-        'msg': res.data['message'],
-      };
-    }
   }
 }

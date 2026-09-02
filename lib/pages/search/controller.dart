@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:get/get_rx/src/rx_workers/utils/debouncer.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/search.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/search/hot.dart';
 import 'package:pilipalaz/models/search/suggest.dart';
 import 'package:pilipalaz/utils/storage.dart';
@@ -82,10 +83,10 @@ class SSearchController extends GetxController {
   }
 
   // 获取热搜关键词
-  Future queryHotSearchList() async {
+  Future<ApiResult<HotSearchModel>> queryHotSearchList() async {
     var result = await SearchHttp.hotSearchList();
-    if (result['status']) {
-      hotSearchList.value = result['data'].list;
+    if (result case ApiSuccess<HotSearchModel>(:final data)) {
+      hotSearchList.value = data.list ?? <HotSearchItem>[];
     }
     return result;
   }
@@ -101,13 +102,12 @@ class SSearchController extends GetxController {
     submit();
   }
 
-  Future querySearchSuggest(String value) async {
+  Future<ApiResult<SearchSuggestModel>> querySearchSuggest(String value) async {
     var result = await SearchHttp.searchSuggest(term: value);
-    if (result['status']) {
-      if (result['data'] is SearchSuggestModel) {
-        searchSuggestList.value = result['data'].tag;
-      }
+    if (result case ApiSuccess<SearchSuggestModel>(:final data)) {
+      searchSuggestList.value = data.tag ?? <SearchSuggestItem>[];
     }
+    return result;
   }
 
   onSelect(word) {

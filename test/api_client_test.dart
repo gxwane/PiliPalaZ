@@ -126,6 +126,32 @@ void main() {
       );
     });
 
+    test('decodes a JSON object returned as encoded text', () async {
+      final client = _clientWith(
+        (_) => ResponseBody.fromString(
+          jsonEncode(
+            jsonEncode(<String, Object?>{
+              'code': 0,
+              'data': <String, Object?>{'value': 7},
+            }),
+          ),
+          200,
+          headers: <String, List<String>>{
+            Headers.contentTypeHeader: <String>[Headers.jsonContentType],
+          },
+        ),
+      );
+
+      final result = await client.getJson<int>(
+        '/text-json',
+        decode: (json) =>
+            (json['data'] as Map<String, dynamic>)['value'] as int,
+      );
+
+      expect(result, isA<ApiSuccess<int>>());
+      expect((result as ApiSuccess<int>).data, 7);
+    });
+
     test('returns exact binary response bytes', () async {
       final client = _clientWith(
         (_) => ResponseBody.fromBytes(<int>[0, 255, 1], 200),

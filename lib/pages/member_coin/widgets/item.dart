@@ -5,6 +5,8 @@ import 'package:pilipalaz/common/widgets/badge.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/common/widgets/stat/view.dart';
 import 'package:pilipalaz/http/search.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:pilipalaz/models/member/coin.dart';
 import 'package:pilipalaz/utils/utils.dart';
 
@@ -25,8 +27,13 @@ class MemberCoinsItem extends StatelessWidget {
       margin: EdgeInsets.zero,
       child: InkWell(
         onTap: () async {
-          int cid =
+          final cidResult =
               await SearchHttp.ab2c(aid: coinItem.aid, bvid: coinItem.bvid);
+          if (cidResult case ApiFailure<int>(:final message)) {
+            SmartDialog.showToast(message);
+            return;
+          }
+          final cid = (cidResult as ApiSuccess<int>).data;
           Get.toNamed('/video?bvid=${coinItem.bvid}&cid=$cid',
               arguments: {'videoItem': coinItem, 'heroTag': heroTag});
         },

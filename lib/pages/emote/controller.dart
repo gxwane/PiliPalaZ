@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../http/reply.dart';
+import '../../http/api_result.dart';
 import '../../models/video/reply/emote.dart';
 
 class EmotePanelController extends GetxController
@@ -9,10 +10,10 @@ class EmotePanelController extends GetxController
   late List<Packages> emotePackage;
   late TabController tabController;
 
-  Future getEmote() async {
+  Future<ApiResult<EmoteModelData>> getEmote() async {
     var res = await ReplyHttp.getEmoteList(business: 'reply');
-    if (res['status']) {
-      emotePackage = res['data'].packages;
+    if (res case ApiSuccess<EmoteModelData>(:final data)) {
+      emotePackage = data.packages ?? <Packages>[];
       tabController = TabController(length: emotePackage.length, vsync: this);
     }
     return res;

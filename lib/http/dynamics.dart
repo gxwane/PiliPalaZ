@@ -1,145 +1,112 @@
-import 'dart:convert';
 import '../models/dynamics/result.dart';
 import '../models/dynamics/up.dart';
 import '../utils/wbi_sign.dart';
-import 'index.dart';
+import 'api.dart';
+import 'api_decoder.dart';
+import 'api_result.dart';
+import 'http_runtime.dart';
 
 class DynamicsHttp {
-  static Future followDynamic({
+  static Future<ApiResult<DynamicsDataModel>> followDynamic({
     String? type,
     String? offset,
     int? mid,
   }) async {
-    Map<String, dynamic> data = {
+    final data = <String, dynamic>{
       'type': type ?? 'all',
       'timezone_offset': '-480',
       'offset': offset,
-      'features': 'itemOpusStyle'
+      'features': 'itemOpusStyle',
     };
-
     if (mid != -1) {
       data['host_mid'] = mid;
       data.remove('timezone_offset');
     }
-
-    // pgc 类型不需要 Wbi 签名
     if (type == 'pgc') {
-      data.remove('offset'); // 维持原有的移除 offset 逻辑（如果有的话）
+      data.remove('offset');
     }
 
-    // 只有非 pgc 类型需要 Wbi 签名
-    Map<String, dynamic> signedData = type == 'pgc' ? data : await WbiSign().makSign(data);
-
-    var res = await Request().get(Api.followDynamic, data: signedData);
-    if (res.data['code'] == 0) {
-      try {
-        return {
-          'status': true,
-          'data': DynamicsDataModel.fromJson(res.data['data']),
-        };
-      } catch (err, stackTrace) {
-        print("====== DYNAMICS PARSING ERROR ======");
-        print(err.toString());
-        print(stackTrace);
-        print("====== RAW DATA ======");
-        String rawData = jsonEncode(res.data['data']);
-        print(rawData.length > 1000 ? rawData.substring(0, 1000) : rawData);
-        return {
-          'status': false,
-          'data': [],
-          'msg': err.toString(),
-        };
-      }
+    late final Map<String, dynamic> parameters;
+    if (type == 'pgc') {
+      parameters = data;
     } else {
-      print("====== DYNAMICS API ERROR ======");
-      print("Error code: ${res.data['code']}");
-      print("Message: ${res.data['message']}");
-
-      // 特殊处理：4101132 表示账号被限制访问该类型动态
-      String errorMsg = res.data['message'];
-      if (res.data['code'] == 4101132 && type == 'pgc') {
-        errorMsg = '当前账号无法访问番剧动态，可能被平台限制';
+      final signed = await WbiSign().sign(data);
+      if (signed case ApiFailure<Map<String, dynamic>> failure) {
+        return failure.cast<DynamicsDataModel>();
       }
-
-      return {
-        'status': false,
-        'data': [],
-        'msg': errorMsg,
-      };
+      parameters = (signed as ApiSuccess<Map<String, dynamic>>).data;
     }
+
+    final result = await HttpRuntime.instance.client.getJson<DynamicsDataModel>(
+      Api.followDynamic,
+      endpoint: 'dynamic.feed',
+      queryParameters: parameters,
+      decode: (json) => BiliApiDecoder.data<DynamicsDataModel>(
+        json,
+        decode: (value) => DynamicsDataModel.fromJson(
+          BiliApiDecoder.object(value, field: 'data'),
+        ),
+      ),
+    );
+    if (result case ApiFailure<DynamicsDataModel>(
+      apiCode: 4101132,
+    ) when type == 'pgc') {
+      return const ApiFailure<DynamicsDataModel>(
+        kind: ApiFailureKind.apiRejected,
+        message: '当前账号无法访问番剧动态，可能被平台限制',
+        endpoint: 'dynamic.feed',
+        apiCode: 4101132,
+      );
+    }
+    return result;
   }
 
-  static Future followUp() async {
-    var res = await Request().get(Api.followUp);
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': FollowUpModel.fromJson(res.data['data']),
-      };
-    } else {
-      return {
-        'status': false,
-        'data': [],
-        'msg': res.data['message'],
-      };
-    }
+  static Future<ApiResult<FollowUpModel>> followUp() {
+    return HttpRuntime.instance.client.getJson<FollowUpModel>(
+      Api.followUp,
+      endpoint: 'dynamic.followUp',
+      decode: (json) => BiliApiDecoder.data<FollowUpModel>(
+        json,
+        decode: (value) =>
+            FollowUpModel.fromJson(BiliApiDecoder.object(value, field: 'data')),
+      ),
+    );
   }
 
-  // 动态点赞
-  static Future likeDynamic({
+  static Future<ApiResult<void>> likeDynamic({
     required String? dynamicId,
     required int? up,
   }) async {
-    var res = await Request().post(
+    return HttpRuntime.instance.client.postJson<void>(
       Api.likeDynamic,
-      queryParameters: {
+      endpoint: 'dynamic.like',
+      queryParameters: <String, dynamic>{
         'dynamic_id': dynamicId,
         'up': up,
-        'csrf': await Request.getCsrf(),
+        'csrf': await HttpRuntime.instance.getCsrf(),
       },
+      decode: (json) => BiliApiDecoder.success(json),
     );
-    if (res.data['code'] == 0) {
-      return {
-        'status': true,
-        'data': res.data['data'],
-      };
-    } else {
-      return {
-        'status': false,
-        'data': [],
-        'msg': res.data['message'],
-      };
-    }
   }
 
-  //
-  static Future dynamicDetail({
-    String? id,
-  }) async {
-    var res = await Request().get(Api.dynamicDetail, data: {
-      'timezone_offset': -480,
-      'id': id,
-      'features': 'itemOpusStyle',
-    });
-    if (res.data['code'] == 0) {
-      try {
-        return {
-          'status': true,
-          'data': DynamicItemModel.fromJson(res.data['data']['item']),
-        };
-      } catch (err) {
-        return {
-          'status': false,
-          'data': [],
-          'msg': err.toString(),
-        };
-      }
-    } else {
-      return {
-        'status': false,
-        'data': [],
-        'msg': res.data['message'],
-      };
-    }
+  static Future<ApiResult<DynamicItemModel>> dynamicDetail({String? id}) {
+    return HttpRuntime.instance.client.getJson<DynamicItemModel>(
+      Api.dynamicDetail,
+      endpoint: 'dynamic.detail',
+      queryParameters: <String, dynamic>{
+        'timezone_offset': -480,
+        'id': id,
+        'features': 'itemOpusStyle',
+      },
+      decode: (json) => BiliApiDecoder.data<DynamicItemModel>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          return DynamicItemModel.fromJson(
+            BiliApiDecoder.object(data['item'], field: 'data.item'),
+          );
+        },
+      ),
+    );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import '../../http/search.dart';
+import '../../http/api_result.dart';
 import '../../utils/utils.dart';
 import '../constants.dart';
 import 'badge.dart';
@@ -64,8 +65,14 @@ class VideoCardH extends StatelessWidget {
                 return;
               }
               try {
-                final int cid = videoItem.cid ??
-                    await SearchHttp.ab2c(aid: aid, bvid: bvid);
+                final cidResult = videoItem.cid == null
+                    ? await SearchHttp.ab2c(aid: aid, bvid: bvid)
+                    : ApiSuccess<int>(videoItem.cid as int);
+                if (cidResult case ApiFailure<int>(:final message)) {
+                  SmartDialog.showToast(message);
+                  return;
+                }
+                final cid = (cidResult as ApiSuccess<int>).data;
                 Get.toNamed('/video?bvid=$bvid&cid=$cid',
                     arguments: {'videoItem': videoItem, 'heroTag': heroTag});
               } catch (err) {

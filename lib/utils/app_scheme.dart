@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/search.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/pages/video/reply_reply/view.dart';
 import 'package:pilipalaz/services/pgc_playback_coordinator.dart';
 import 'id_utils.dart';
@@ -238,8 +239,13 @@ class PiliScheme {
         bvid = IdUtils.av2bv(aidVal!);
       }
       SmartDialog.showLoading<dynamic>(msg: '获取中...');
-      final int cid = await SearchHttp.ab2c(bvid: bvidVal, aid: aidVal);
+      final cidResult = await SearchHttp.ab2c(bvid: bvidVal, aid: aidVal);
       SmartDialog.dismiss();
+      if (cidResult case ApiFailure<int>(:final message)) {
+        SmartDialog.showToast(message);
+        return;
+      }
+      final cid = (cidResult as ApiSuccess<int>).data;
       final String heroTag = Utils.makeHeroTag(aid);
       Get.toNamed<dynamic>(
         '/video?bvid=$bvid&cid=$cid',

@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/http/user.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/common/video_source_type.dart';
 import 'package:pilipalaz/pages/video/introduction/bangumi/index.dart';
 import 'package:pilipalaz/pages/danmaku/view.dart';
@@ -633,7 +634,11 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                     var res = await UserHttp.toViewLater(
                       bvid: videoDetailController.bvid,
                     );
-                    SmartDialog.showToast(res['msg']);
+                    SmartDialog.showToast(
+                      res is ApiSuccess<void>
+                          ? 'yeah！稍后再看'
+                          : (res as ApiFailure<void>).message,
+                    );
                   },
                   icon: const Icon(Icons.history_outlined),
                 ),

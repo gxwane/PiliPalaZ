@@ -3,6 +3,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/follow.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/http/member.dart';
 import 'package:pilipalaz/models/follow/result.dart';
 import 'package:pilipalaz/models/member/tags.dart';
@@ -35,13 +36,15 @@ class FollowController extends GetxController with GetTickerProviderStateMixin {
     name = Get.parameters['name'] ?? userInfo?.uname;
   }
 
-  Future queryFollowings(type) async {
+  Future<ApiResult<FollowDataModel>> queryFollowings(type) async {
     if (type == 'init') {
       pn = 1;
       loadingText.value == '加载中...';
     }
     if (loadingText.value == '没有更多了') {
-      return;
+      return ApiSuccess<FollowDataModel>(
+        FollowDataModel(total: total, list: followList.toList()),
+      );
     }
     var res = await FollowHttp.followings(
       vmid: mid,
@@ -49,19 +52,20 @@ class FollowController extends GetxController with GetTickerProviderStateMixin {
       ps: ps,
       orderType: 'attention',
     );
-    if (res['status']) {
+    if (res case ApiSuccess<FollowDataModel>(:final data)) {
+      final list = data.list ?? <FollowItemModel>[];
       if (type == 'init') {
-        followList.value = res['data'].list;
-        total = res['data'].total;
+        followList.value = list;
+        total = data.total ?? 0;
       } else if (type == 'onLoad') {
-        followList.addAll(res['data'].list);
+        followList.addAll(list);
       }
-      if ((pn == 1 && total < ps) || res['data'].list.isEmpty) {
+      if ((pn == 1 && total < ps) || list.isEmpty) {
         loadingText.value = '没有更多了';
       }
       pn += 1;
     } else {
-      SmartDialog.showToast(res['msg']);
+      SmartDialog.showToast((res as ApiFailure<FollowDataModel>).message);
     }
     return res;
   }

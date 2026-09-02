@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/http/user.dart';
+import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/user/fav_folder.dart';
 import 'package:pilipalaz/utils/storage.dart';
 
@@ -53,16 +54,22 @@ class MediaController extends GetxController {
     userLogin.value = userInfo != null;
   }
 
-  Future<dynamic> queryFavFolder() async {
+  Future<ApiResult<FavFolderData>> queryFavFolder() async {
     if (!userLogin.value) {
-      return {'status': false, 'data': [], 'msg': '未登录'};
+      return const ApiFailure<FavFolderData>(
+        kind: ApiFailureKind.apiRejected,
+        message: '未登录',
+        endpoint: 'favorite.folders',
+      );
     }
-    var res = await await UserHttp.userfavFolder(
+    var res = await UserHttp.userfavFolder(
       pn: 1,
       ps: 10,
       mid: mid ?? GStorage.userInfo.get('userInfoCache').mid,
     );
-    favFolderData.value = res['data'];
+    if (res case ApiSuccess<FavFolderData>(:final data)) {
+      favFolderData.value = data;
+    }
     return res;
   }
 }

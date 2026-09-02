@@ -2,6 +2,8 @@ import 'package:easy_debounce/easy_throttle.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/user/sub_folder.dart';
 import '../../common/constants.dart';
 import '../../utils/grid.dart';
 import 'controller.dart';
@@ -16,7 +18,7 @@ class SubPage extends StatefulWidget {
 
 class _SubPageState extends State<SubPage> {
   final SubController _subController = Get.put(SubController());
-  late Future _futureBuilderFuture;
+  late Future<ApiResult<SubFolderModelData>> _futureBuilderFuture;
   late ScrollController scrollController;
 
   @override
@@ -47,12 +49,12 @@ class _SubPageState extends State<SubPage> {
           style: Theme.of(context).textTheme.titleMedium,
         ),
       ),
-      body: FutureBuilder(
+      body: FutureBuilder<ApiResult<SubFolderModelData>>(
         future: _futureBuilderFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
-            Map? data = snapshot.data;
-            if (data != null && data['status']) {
+            final result = snapshot.data;
+            if (result is ApiSuccess<SubFolderModelData>) {
               return Obx(() => CustomScrollView(
                       cacheExtent: 3500,
                       controller: scrollController,
@@ -82,7 +84,9 @@ class _SubPageState extends State<SubPage> {
                 physics: const NeverScrollableScrollPhysics(),
                 slivers: [
                   HttpError(
-                    errMsg: data?['msg'],
+                    errMsg:
+                        (result as ApiFailure<SubFolderModelData>?)?.message ??
+                        '订阅加载失败',
                     fn: () => setState(() {}),
                   ),
                 ],

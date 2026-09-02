@@ -8,6 +8,8 @@ import 'package:pilipalaz/common/widgets/http_error.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/common/widgets/no_data.dart';
 import 'package:pilipalaz/pages/fav_detail/index.dart';
+import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/user/fav_detail.dart';
 
 import '../../common/constants.dart';
 import '../../utils/grid.dart';
@@ -25,7 +27,7 @@ class _FavDetailPageState extends State<FavDetailPage> {
   final FavDetailController _favDetailController =
       Get.put(FavDetailController());
   late StreamController<bool> titleStreamC; // a
-  Future? _futureBuilderFuture;
+  Future<ApiResult<FavDetailData>?>? _futureBuilderFuture;
   late String mediaId;
 
   @override
@@ -204,7 +206,7 @@ class _FavDetailPageState extends State<FavDetailPage> {
           SliverPadding(
             padding:
                 const EdgeInsets.symmetric(horizontal: StyleString.safeSpace),
-            sliver: FutureBuilder(
+            sliver: FutureBuilder<ApiResult<FavDetailData>?>(
               future: _futureBuilderFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState != ConnectionState.done ||
@@ -222,10 +224,12 @@ class _FavDetailPageState extends State<FavDetailPage> {
                     }, childCount: 10),
                   );
                 }
-                Map data = snapshot.data;
-                if (!data['status']) {
+                final result = snapshot.data;
+                if (result is! ApiSuccess<FavDetailData>) {
                   return HttpError(
-                    errMsg: data['msg'],
+                    errMsg:
+                        (result as ApiFailure<FavDetailData>?)?.message ??
+                        '收藏夹详情加载失败',
                     fn: () => setState(() {}),
                   );
                 }
