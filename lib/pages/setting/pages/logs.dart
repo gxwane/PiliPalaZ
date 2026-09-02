@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pilipalaz/common/constants.dart';
+import 'package:pilipalaz/common/widgets/feedback_dialog.dart';
 import 'package:pilipalaz/services/diagnostics/diagnostic_record.dart';
 import 'package:pilipalaz/services/diagnostics/diagnostic_report_formatter.dart';
 import 'package:pilipalaz/services/diagnostics/local_diagnostics.dart';
+import 'package:pilipalaz/services/feedback_coordinator.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class LogsPage extends StatefulWidget {
-  const LogsPage({super.key, this.diagnostics});
+  const LogsPage({
+    super.key,
+    this.diagnostics,
+    this.feedbackCoordinator = const FeedbackCoordinator(),
+  });
 
   final LocalDiagnostics? diagnostics;
+  final FeedbackCoordinator feedbackCoordinator;
 
   @override
   State<LogsPage> createState() => _LogsPageState();
@@ -41,7 +46,7 @@ class _LogsPageState extends State<LogsPage> {
   }
 
   Future<void> _preview(DiagnosticRecord record) async {
-    var includeDeviceInfo = true;
+    var includeDeviceInfo = false;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -85,6 +90,10 @@ class _LogsPageState extends State<LogsPage> {
                 child: const Text('复制'),
               ),
               TextButton(
+                onPressed: () => _copyAndFeedback(report),
+                child: const Text('复制并反馈'),
+              ),
+              TextButton(
                 onPressed: () => SharePlus.instance.share(
                   ShareParams(text: report, subject: 'PiliPalaZ 本地诊断'),
                 ),
@@ -99,6 +108,23 @@ class _LogsPageState extends State<LogsPage> {
         },
       ),
     );
+  }
+
+  Future<void> _copyAndFeedback(String report) async {
+    final result = await widget.feedbackCoordinator.open(
+      FeedbackKind.bug,
+      diagnosticReport: report,
+    );
+    if (!mounted) return;
+
+    final message = switch (result) {
+      FeedbackOpenResult.opened => '诊断报告已复制，请在 GitHub 表单中粘贴后提交',
+      FeedbackOpenResult.copiedOnly => '诊断报告已复制，但无法打开 GitHub',
+      FeedbackOpenResult.failed => '诊断报告复制失败，未打开反馈页面',
+    };
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _clear() async {
@@ -128,13 +154,6 @@ class _LogsPageState extends State<LogsPage> {
     ).showSnackBar(const SnackBar(content: Text('本地诊断已清空')));
   }
 
-  Future<void> _feedback() async {
-    await launchUrl(
-      Uri.parse(ProjectLinks.issues),
-      mode: LaunchMode.externalApplication,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -147,7 +166,7 @@ class _LogsPageState extends State<LogsPage> {
             onSelected: (value) {
               switch (value) {
                 case 'feedback':
-                  _feedback();
+                  showFeedbackDialog(context: context);
                 case 'clear':
                   _clear();
               }
