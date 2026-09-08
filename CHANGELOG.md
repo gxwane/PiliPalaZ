@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.3.2-beta.2] - 2026-09-08
+
 ### 新增
 
 - 增加结构化 GitHub 缺陷报告与功能建议入口；本地诊断可在审阅后由用户主动复制并打开反馈表单，设备兼容信息默认不包含，所有内容均不会自动上传。
@@ -452,7 +454,10 @@
 - 首次公开版本，包含直播、推荐、动态、投稿、番剧和视频播放。
 - 支持播放器手势、画质/音质/解码格式选择、点赞/投币/收藏、关注与用户主页、评论、历史记录和稍后再看。
 
-[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.3.2-beta.2...HEAD
+[1.3.2-beta.2]: https://github.com/gxwane/PiliPalaZ/compare/v1.3.2-beta.1...v1.3.2-beta.2
+[1.3.2-beta.1]: https://github.com/gxwane/PiliPalaZ/compare/v1.3.1...v1.3.2-beta.1
+[1.3.1]: https://github.com/gxwane/PiliPalaZ/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/gxwane/PiliPalaZ/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/gxwane/PiliPalaZ/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/gxwane/PiliPalaZ/compare/v1.2.1...v1.2.2
