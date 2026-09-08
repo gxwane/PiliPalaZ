@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' show Random;
@@ -88,7 +89,26 @@ final class HttpRuntime {
 
   static HttpRuntime? _instance;
 
-  static HttpRuntime get instance => _instance ??= HttpRuntime.fromStorage();
+  static final Object _instanceZoneKey = Object();
+
+  static HttpRuntime get instance {
+    final scopedInstance = Zone.current[_instanceZoneKey];
+    if (scopedInstance is HttpRuntime) {
+      return scopedInstance;
+    }
+    return _instance ??= HttpRuntime.fromStorage();
+  }
+
+  @visibleForTesting
+  static Future<T> runWithInstanceForTesting<T>(
+    HttpRuntime runtime,
+    Future<T> Function() body,
+  ) {
+    return runZoned<Future<T>>(
+      body,
+      zoneValues: <Object?, Object?>{_instanceZoneKey: runtime},
+    );
+  }
 
   static HttpRuntime ensureInitialized() => instance;
 

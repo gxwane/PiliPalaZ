@@ -21,6 +21,18 @@ final class SearchPageData {
 class SearchHttp {
   static Box<dynamic> get _onlineCache => GStorage.onlineCache;
 
+  static List<Map<String, dynamic>> prepareVideoResults(
+    List<dynamic> items,
+    Iterable<int> blockedMids,
+  ) {
+    final blocked = blockedMids.toSet();
+    return items.map((item) {
+      final video = BiliApiDecoder.object(item, field: 'data.result[]');
+      video['available'] = !blocked.contains(video['mid']);
+      return video;
+    }).toList();
+  }
+
   static Future<ApiResult<String>> defaultKeyword() {
     return HttpRuntime.instance.client.getJson<String>(
       Api.searchDefault,
@@ -113,13 +125,10 @@ class SearchHttp {
                 .get(OnlineCacheKey.blackMidsList, defaultValue: <int>[-1])
                 .map<int>((item) => item as int)
                 .toList();
-            for (final item in BiliApiDecoder.list(
-              data['result'],
-              field: 'data.result',
-            )) {
-              final video = BiliApiDecoder.object(item, field: 'data.result[]');
-              video['available'] = !blockedMids.contains(video['mid']);
-            }
+            data['result'] = prepareVideoResults(
+              BiliApiDecoder.list(data['result'], field: 'data.result'),
+              blockedMids,
+            );
           }
           return SearchPageData(_decodeItems(searchType, data));
         },
