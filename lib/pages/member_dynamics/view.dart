@@ -8,6 +8,7 @@ import 'package:pilipalaz/utils/utils.dart';
 
 import '../../common/constants.dart';
 import '../../common/widgets/http_error.dart';
+import '../../common/widgets/no_data.dart';
 import '../../utils/grid.dart';
 import '../../utils/storage.dart';
 import '../dynamics/widgets/dynamic_panel.dart';
@@ -43,6 +44,14 @@ class _MemberDynamicsPageState extends State<MemberDynamicsPage> {
     );
   }
 
+  Future<void> _refresh() async {
+    final future = _memberDynamicController.getMemberDynamic('onRefresh');
+    setState(() {
+      _futureBuilderFuture = future;
+    });
+    await future;
+  }
+
   @override
   void dispose() {
     super.dispose();
@@ -72,10 +81,12 @@ class _MemberDynamicsPageState extends State<MemberDynamicsPage> {
       child: RefreshIndicator(
         displacement: 10.0,
         edgeOffset: 10.0,
-        onRefresh: _memberDynamicController.onRefresh, // 下拉刷新时触发的异步操作
+        onRefresh: _refresh, // 下拉刷新时触发的异步操作
         child: CustomScrollView(
           cacheExtent: 3500,
-          physics: const ClampingScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: ClampingScrollPhysics(),
+          ),
           // 不能设置controller，否则NestedScrollView的联动会失效
           // controller: _memberDynamicController.scrollController,
           slivers: [
@@ -89,7 +100,7 @@ class _MemberDynamicsPageState extends State<MemberDynamicsPage> {
                     if (result is ApiSuccess<DynamicsDataModel>) {
                       return Obx(() {
                         if (list.isEmpty) {
-                          return const SliverToBoxAdapter();
+                          return const NoData(message: '暂无动态');
                         }
                         if (!dynamicsWaterfallFlow) {
                           return SliverCrossAxisGroup(
@@ -136,11 +147,11 @@ class _MemberDynamicsPageState extends State<MemberDynamicsPage> {
                       return HttpError(
                         errMsg:
                             (result as ApiFailure<DynamicsDataModel>).message,
-                        fn: () {},
+                        fn: _refresh,
                       );
                     }
                   } else {
-                    return HttpError(errMsg: '动态加载失败', fn: () {});
+                    return HttpError(errMsg: '动态加载失败', fn: _refresh);
                   }
                 } else {
                   return const SliverToBoxAdapter();

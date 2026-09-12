@@ -156,4 +156,120 @@ void main() {
     expect(failure.apiCode, 4101132);
     expect(failure.message, '当前账号无法访问番剧动态，可能被平台限制');
   });
+
+  group('Dynamics model resilience', () {
+    test('decodes live_rcmd card with integer live_id safely into string', () {
+      final json = <String, dynamic>{
+        'id_str': '123456789',
+        'type': 'DYNAMIC_TYPE_LIVE_RCMD',
+        'modules': {
+          'module_dynamic': {
+            'major': {
+              'type': 'MAJOR_TYPE_LIVE_RCMD',
+              'live_rcmd': {
+                'content':
+                    '{"type":1,"live_play_info":{"live_id":1000888,"room_id":2000666,"uid":401742377,"title":"原神直播","cover":"https://example.com/cover.jpg"}}',
+              },
+            },
+          },
+        },
+      };
+
+      final item = DynamicItemModel.fromJson(json);
+      final live = item.modules?.moduleDynamic?.major?.liveRcmd;
+      expect(live, isNotNull);
+      expect(live?.liveId, '1000888');
+      expect(live?.roomId, 2000666);
+      expect(live?.title, '原神直播');
+    });
+
+    test(
+      'isolates item-level deserialization failures and preserves valid items',
+      () {
+        final rawItems = <dynamic>[
+          {
+            'id_str': 'item_1',
+            'type': 'DYNAMIC_TYPE_WORD',
+            'modules': <String, dynamic>{},
+          },
+          // Corrupted item with incompatible type that triggers TypeError in raw deserialization
+          'not_a_map',
+          {
+            'id_str': 'item_3',
+            'type': 'DYNAMIC_TYPE_WORD',
+            'modules': <String, dynamic>{},
+          },
+        ];
+
+        final model = DynamicsDataModel.fromJson({
+          'has_more': false,
+          'items': rawItems,
+          'offset': 'done',
+        });
+
+        expect(model.items, hasLength(2));
+        expect(model.items![0].idStr, 'item_1');
+        expect(model.items![1].idStr, 'item_3');
+      },
+    );
+
+    test('parses counts without producing literal "null" string', () {
+      final commentNull = Comment.fromJson({'count': null, 'forbidden': false});
+      final commentZero = Comment.fromJson({'count': 0, 'forbidden': false});
+      final commentValid = Comment.fromJson({'count': 42, 'forbidden': false});
+
+      expect(commentNull.count, isNull);
+      expect(commentZero.count, isNull);
+      expect(commentValid.count, '42');
+
+      final forwardNull = ForWard.fromJson({'count': null, 'forbidden': false});
+      final forwardZero = ForWard.fromJson({'count': 0, 'forbidden': false});
+      final forwardValid = ForWard.fromJson({'count': 99, 'forbidden': false});
+
+      expect(forwardNull.count, isNull);
+      expect(forwardZero.count, isNull);
+      expect(forwardValid.count, '99');
+
+      final likeNull = Like.fromJson({
+        'count': null,
+        'forbidden': false,
+        'status': false,
+      });
+      final likeZero = Like.fromJson({
+        'count': 0,
+        'forbidden': false,
+        'status': false,
+      });
+      final likeValid = Like.fromJson({
+        'count': 100,
+        'forbidden': false,
+        'status': true,
+      });
+
+      expect(likeNull.count, isNull);
+      expect(likeZero.count, isNull);
+      expect(likeValid.count, '100');
+    });
+
+    test(
+      'handles empty list [] gracefully when map expected in DynamicMajorModel',
+      () {
+        final majorJson = <String, dynamic>{
+          'type': 'MAJOR_TYPE_NONE',
+          'archive': [], // PHP/Go backend returning [] instead of null or {}
+          'draw': [],
+          'opus': [],
+          'ugc_season': [],
+          'live_rcmd': [],
+        };
+
+        final major = DynamicMajorModel.fromJson(majorJson);
+        expect(major.archive, isNull);
+        expect(major.draw, isNull);
+        expect(major.opus, isNull);
+        expect(major.ugcSeason, isNull);
+        expect(major.liveRcmd, isNull);
+      },
+    );
+  });
 }

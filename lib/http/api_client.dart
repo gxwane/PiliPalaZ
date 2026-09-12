@@ -1,8 +1,9 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import 'api_result.dart';
 
@@ -222,7 +223,12 @@ final class ApiClient {
           endpoint: endpoint,
           statusCode: statusCode,
         );
-      } on TypeError {
+      } on TypeError catch (error, stackTrace) {
+        if (kDebugMode) {
+          debugPrint(
+            'ApiClient: TypeError decoding $endpoint: $error\n$stackTrace',
+          );
+        }
         return ApiFailure<T>(
           kind: ApiFailureKind.decoding,
           message: '响应字段类型不正确',

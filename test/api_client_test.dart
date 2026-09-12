@@ -165,6 +165,37 @@ void main() {
       expect(result, isA<ApiSuccess<Uint8List>>());
       expect((result as ApiSuccess<Uint8List>).data, <int>[0, 255, 1]);
     });
+
+    test(
+      'classifies a TypeError thrown during decoding as decoding failure',
+      () async {
+        final client = _clientWith(
+          (_) => ResponseBody.fromString(
+            jsonEncode(<String, Object?>{
+              'code': 0,
+              'data': <String, Object?>{'count': 123},
+            }),
+            200,
+            headers: <String, List<String>>{
+              Headers.contentTypeHeader: <String>[Headers.jsonContentType],
+            },
+          ),
+        );
+
+        final result = await client.getJson<String>(
+          '/stats',
+          endpoint: 'stats.detail',
+          decode: (json) =>
+              (json['data'] as Map<String, dynamic>)['count'] as String,
+        );
+
+        expect(result, isA<ApiFailure<String>>());
+        final failure = result as ApiFailure<String>;
+        expect(failure.kind, ApiFailureKind.decoding);
+        expect(failure.message, '响应字段类型不正确');
+        expect(failure.endpoint, 'stats.detail');
+      },
+    );
   });
 }
 

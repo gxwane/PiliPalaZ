@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class NoData extends StatelessWidget {
-  const NoData({super.key});
+  const NoData({super.key, this.message});
+
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
@@ -13,13 +15,10 @@ class NoData extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SvgPicture.asset(
-              "assets/images/error.svg",
-              height: 200,
-            ),
+            SvgPicture.asset("assets/images/error.svg", height: 200),
             const SizedBox(height: 20),
             Text(
-              '没有数据',
+              message ?? '没有数据',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleSmall,
             ),
