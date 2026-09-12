@@ -14,7 +14,9 @@ void main() {
     ).readAsStringSync();
 
     expect(android, contains('var _disposed = false;'));
-    expect(android, contains('if (_disposed)'));
+    expect(android, contains('bool get _isDisposed'));
+    expect(android, contains('if (platform.disposed) return true;'));
+    expect(android, contains('if (_isDisposed)'));
     expect(android, contains('_disposed = true;'));
     expect(native, contains('var _disposed = false;'));
     expect(native, contains('if (_disposed ||'));

@@ -35,10 +35,25 @@ class AndroidVideoController extends PlatformVideoController {
 
   var _disposed = false;
 
+  bool get _isDisposed {
+    if (_disposed) return true;
+    try {
+      if (platform.disposed) return true;
+    } catch (_) {
+      return true;
+    }
+    return false;
+  }
+
   NativePlayer get platform => player.platform as NativePlayer;
 
   Future<void> setProperty(String key, String value) async {
-    await platform.setProperty(key, value, waitForInitialization: false);
+    if (_isDisposed) {
+      return;
+    }
+    try {
+      await platform.setProperty(key, value, waitForInitialization: false);
+    } catch (_) {}
   }
 
   Future<void> setProperties(Map<String, String> properties) async {
@@ -50,7 +65,7 @@ class AndroidVideoController extends PlatformVideoController {
   /// Listener for updating the --wid property.
   Future<void> widListener() {
     return lock.synchronized(() async {
-      if (_disposed) {
+      if (_isDisposed) {
         return;
       }
       final width = rect.value?.width.toInt() ?? 1;
@@ -61,11 +76,11 @@ class AndroidVideoController extends PlatformVideoController {
       final voValue = widValue == '0' ? 'null' : configuration.vo!;
       final vidValue = widValue == '0' ? 'no' : 'auto';
       // It is important to re-initialize --vo after --android-surface-size.
-      if (_disposed) {
+      if (_isDisposed) {
         return;
       }
       await setProperty('vo', 'null');
-      if (_disposed) {
+      if (_isDisposed) {
         return;
       }
       await setProperties(
@@ -81,11 +96,16 @@ class AndroidVideoController extends PlatformVideoController {
       );
       // Instead of seeking to the start (Duration.zero), seek to the current playback position
       // without jumping the user to the start of the media.
-      final currentPosition = player.state.position;
-      if (_disposed) {
+      if (_isDisposed) {
         return;
       }
-      await player.seek(currentPosition);
+      try {
+        final currentPosition = player.state.position;
+        if (_isDisposed) {
+          return;
+        }
+        await player.seek(currentPosition);
+      } catch (_) {}
     });
   }
 

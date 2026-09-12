@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### 修复
+
+- 修复 `HeaderControl` 与 `BottomControl` 实现 `PreferredSizeWidget` 时未重写 `preferredSize` 导致的 `UnimplementedError` 崩溃。
+- 修复播放器在页面退出、切集或后台切换时因 `[Player] has been disposed` 导致的闪退，加固原生播放引擎释放与 Android 视频控制器的生命周期守卫。
+- 统一收敛并彻底清理播放器内部长按快进、音量显示、亮度调节等定时器与事件流订阅，杜绝内存泄漏。
+- 修复播放器视图挂载、画中画宽高比计算以及双击快进快退时的空指针解包隐患，提升极端网络与快速操作下的稳定性。
+
 ## [1.3.2-beta.3] - 2026-09-12
 
 ### 变更

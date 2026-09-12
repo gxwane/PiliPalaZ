@@ -160,6 +160,26 @@ class PlPlayerController with WidgetsBindingObserver {
   Timer? _timerForShowingVolume;
   Timer? _timerForGettingVolume;
   Timer? timerForTrackingMouse;
+  Timer? _timerForLongPressSpeed;
+
+  void _cancelAllTimers() {
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _timer?.cancel();
+    _timer = null;
+    _timerForSeek?.cancel();
+    _timerForSeek = null;
+    _timerForVolume?.cancel();
+    _timerForVolume = null;
+    _timerForShowingVolume?.cancel();
+    _timerForShowingVolume = null;
+    _timerForGettingVolume?.cancel();
+    _timerForGettingVolume = null;
+    timerForTrackingMouse?.cancel();
+    timerForTrackingMouse = null;
+    _timerForLongPressSpeed?.cancel();
+    _timerForLongPressSpeed = null;
+  }
 
   // final Durations durations;
 
@@ -598,8 +618,8 @@ class PlPlayerController with WidgetsBindingObserver {
       FlPiP().enable(
         ios: FlPiPiOSConfig(
           enabledWhenBackground: true,
-          videoPath: dataSource.videoSource!,
-          audioPath: dataSource.audioSource!,
+          videoPath: dataSource.videoSource ?? '',
+          audioPath: dataSource.audioSource ?? '',
           packageName: 'PiliPalaZ',
         ),
         android: FlPiPAndroidConfig(
@@ -744,8 +764,7 @@ class PlPlayerController with WidgetsBindingObserver {
         await _diagnosticSession?.checkpoint('stale_native_player_recreated');
       }
 
-      if (_videoPlayerController != null &&
-          _videoPlayerController!.state.playing) {
+      if (canControlPlayback && _videoPlayerController!.state.playing) {
         await pause(notify: false);
       }
 
@@ -990,8 +1009,8 @@ class PlPlayerController with WidgetsBindingObserver {
         'media_refresh_begin',
         <String, Object?>{'positionMs': currentPos.inMilliseconds},
       );
-      if (_videoPlayerController == null) {
-        SmartDialog.showToast('视频播放器为空，请重新进入本页面');
+      if (!canControlPlayback || _videoPlayerController == null) {
+        SmartDialog.showToast('视频播放器未就绪，请稍后重试');
         return false;
       }
       if (dataSource.videoSource?.isEmpty ?? true) {
@@ -1532,7 +1551,11 @@ class PlPlayerController with WidgetsBindingObserver {
     required Duration targetPosition,
     required Duration regression,
   }) async {
-    if (_positionCorrectionInFlight || session != _playbackSession) return;
+    if (_positionCorrectionInFlight ||
+        session != _playbackSession ||
+        !canControlPlayback) {
+      return;
+    }
     _positionCorrectionInFlight = true;
     _positionGuard.expectPosition(targetPosition);
     try {
@@ -1545,7 +1568,7 @@ class PlPlayerController with WidgetsBindingObserver {
             'isBuffering': isBuffering.value,
             'playerLog': _playerLog.value,
           });
-      if (session != _playbackSession) return;
+      if (session != _playbackSession || !canControlPlayback) return;
       await _videoPlayerController?.seek(targetPosition);
     } catch (err) {
       await _diagnosticSession?.checkpoint(
@@ -1568,9 +1591,7 @@ class PlPlayerController with WidgetsBindingObserver {
 
   /// 跳转至指定位置
   Future<void> seekTo(Duration position, {type = 'seek'}) async {
-    // if (position >= duration.value) {
-    //   position = duration.value - const Duration(milliseconds: 100);
-    // }
+    if (!canControlPlayback) return;
     if (position < Duration.zero) {
       position = Duration.zero;
     }
@@ -1579,29 +1600,31 @@ class PlPlayerController with WidgetsBindingObserver {
     updatePositionSecond();
     _heartDuration = position.inSeconds;
     if (duration.value.inSeconds != 0) {
-      if (type != 'slider') {
-        /// 拖动进度条调节时，不等待第一帧，防止抖动
-        await _videoPlayerController?.stream.buffer.first;
-      }
-      danmakuController?.clear();
-      await _videoPlayerController?.seek(position);
-      // if (playerStatus.stopped) {
-      //   play();
-      // }
+      try {
+        if (type != 'slider') {
+          /// 拖动进度条调节时，不等待第一帧，防止抖动
+          await _videoPlayerController?.stream.buffer.first;
+        }
+        danmakuController?.clear();
+        await _videoPlayerController?.seek(position);
+      } catch (_) {}
     } else {
       print('seek duration else');
       _timerForSeek?.cancel();
       _timerForSeek = Timer.periodic(const Duration(milliseconds: 200), (
         Timer t,
       ) async {
-        //_timerForSeek = null;
+        if (!canControlPlayback) {
+          t.cancel();
+          _timerForSeek = null;
+          return;
+        }
         if (duration.value.inSeconds != 0) {
-          await _videoPlayerController?.stream.buffer.first;
-          danmakuController?.clear();
-          await _videoPlayerController?.seek(position);
-          // if (playerStatus.status.value == PlayerStatus.paused) {
-          //   play();
-          // }
+          try {
+            await _videoPlayerController?.stream.buffer.first;
+            danmakuController?.clear();
+            await _videoPlayerController?.seek(position);
+          } catch (_) {}
           t.cancel();
           _timerForSeek = null;
         }
@@ -1611,16 +1634,10 @@ class PlPlayerController with WidgetsBindingObserver {
 
   /// 设置倍速
   Future<void> setPlaybackSpeed(double speed) async {
-    /// TODO  _duration.value丢失
-    await _videoPlayerController?.setRate(speed);
-    // 移除倍速时改变弹幕速度的能力
-    // try {
-    //   DanmakuOption currentOption = danmakuController!.option;
-    //   defaultDuration ??= currentOption.duration;
-    //   DanmakuOption updatedOption = currentOption.copyWith(
-    //       duration: ((defaultDuration! / speed) * playbackSpeed).round());
-    //   danmakuController!.updateOption(updatedOption);
-    // } catch (_) {}
+    if (!canControlPlayback) return;
+    try {
+      await _videoPlayerController?.setRate(speed);
+    } catch (_) {}
     // fix 长按倍速后放开不恢复
     if (doubleSpeedStatus.value == 0) {
       _playbackSpeed.value = speed;
@@ -1914,20 +1931,26 @@ class PlPlayerController with WidgetsBindingObserver {
     if (controlsLock.value) {
       return;
     }
+    _timerForLongPressSpeed?.cancel();
+    _timerForLongPressSpeed = null;
     if (val) {
       _doubleSpeedStatus.value = enableAutoLongPressSpeed
           ? playbackSpeed * 2
           : longPressSpeed;
       await setPlaybackSpeed(_doubleSpeedStatus.value);
       if (enableLongPressSpeedIncrease) {
-        Timer.periodic(const Duration(milliseconds: 500), (timer) async {
-          if (_doubleSpeedStatus.value > 0) {
+        _timerForLongPressSpeed = Timer.periodic(
+          const Duration(milliseconds: 500),
+          (timer) async {
+            if (!canControlPlayback || _doubleSpeedStatus.value <= 0) {
+              timer.cancel();
+              _timerForLongPressSpeed = null;
+              return;
+            }
             _doubleSpeedStatus.value = min(8, _doubleSpeedStatus.value * 1.15);
             await setPlaybackSpeed(_doubleSpeedStatus.value);
-          } else {
-            timer.cancel();
-          }
-        });
+          },
+        );
       }
     } else {
       print("playbackSpeed: $playbackSpeed");
@@ -2211,19 +2234,22 @@ class PlPlayerController with WidgetsBindingObserver {
       _statusListeners.remove(listener);
 
   /// 截屏
-  Future screenshot() async {
-    final Uint8List? screenshot = await _videoPlayerController!.screenshot(
-      format: 'image/png',
-    );
-    return screenshot;
+  Future<Uint8List?> screenshot({String format = 'image/png'}) async {
+    if (!canControlPlayback || _videoPlayerController == null) {
+      return null;
+    }
+    try {
+      final Uint8List? screenshot = await _videoPlayerController!.screenshot(
+        format: format,
+      );
+      return screenshot;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> videoPlayerClosed() async {
-    _timer?.cancel();
-    _timerForVolume?.cancel();
-    _timerForGettingVolume?.cancel();
-    timerForTrackingMouse?.cancel();
-    _timerForSeek?.cancel();
+    _cancelAllTimers();
   }
 
   // 记录播放记录
@@ -2343,8 +2369,7 @@ class PlPlayerController with WidgetsBindingObserver {
   }
 
   Future<void> _disposeNativePlayer() async {
-    _retryTimer?.cancel();
-    _timerForSeek?.cancel();
+    _cancelAllTimers();
     final Player? player = _videoPlayerController;
     _videoPlayerController = null;
     _videoController = null;
@@ -2356,12 +2381,34 @@ class PlPlayerController with WidgetsBindingObserver {
     }
     if (player != null) {
       try {
-        final NativePlayer nativePlayer = player.platform as NativePlayer;
-        await nativePlayer.command(
-          buildExternalAudioCommand(null, isWindows: Platform.isWindows),
-        );
+        final dynamic platform = player.platform;
+        if (platform is NativePlayer) {
+          try {
+            await platform.command(
+              buildExternalAudioCommand(null, isWindows: Platform.isWindows),
+            );
+          } catch (err) {
+            debugPrint('clear native audio files failed: $err');
+          }
+        }
+        if (platform != null) {
+          final dynamic releaseList = platform.release;
+          if (releaseList is List) {
+            final List<dynamic> callbacks = List<dynamic>.from(releaseList);
+            releaseList.clear();
+            for (final dynamic callback in callbacks) {
+              try {
+                if (callback is Function) {
+                  await callback();
+                }
+              } catch (err) {
+                debugPrint('native player pre-release callback failed: $err');
+              }
+            }
+          }
+        }
       } catch (err) {
-        debugPrint('clear native audio files failed: $err');
+        debugPrint('drain native player release callbacks failed: $err');
       }
       try {
         await player.dispose();
@@ -2404,26 +2451,15 @@ class PlPlayerController with WidgetsBindingObserver {
     //   return;
     // }
     // _playerCount.value = 0;
-    await pause();
+    try {
+      if (canControlPlayback) {
+        await pause();
+      }
+    } catch (_) {}
     WidgetsBinding.instance.removeObserver(this);
     try {
-      _timer?.cancel();
-      _timerForVolume?.cancel();
-      _timerForGettingVolume?.cancel();
-      timerForTrackingMouse?.cancel();
-      _timerForSeek?.cancel();
-      // _position.close();
+      _cancelAllTimers();
       _playerEventSubs?.cancel();
-      // _sliderPosition.close();
-      // _sliderTempPosition.close();
-      // _isSliderMoving.close();
-      // _duration.close();
-      // _buffered.close();
-      // _showControls.close();
-      // _controlsLock.close();
-
-      // playerStatus.status.close();
-      // dataStatus.status.close();
       _dataListenerForVideoFit?.cancel();
       _dataListenerForEnterFullScreen?.cancel();
       _playerListenerForEnterPip?.cancel();

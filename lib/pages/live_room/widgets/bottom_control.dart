@@ -12,17 +12,13 @@ import 'package:pilipalaz/utils/storage.dart';
 class BottomControl extends StatefulWidget implements PreferredSizeWidget {
   final PlPlayerController? controller;
   final LiveRoomController? liveRoomCtr;
-  const BottomControl({
-    this.controller,
-    this.liveRoomCtr,
-    super.key,
-  });
+  const BottomControl({this.controller, this.liveRoomCtr, super.key});
 
   @override
   State<BottomControl> createState() => _BottomControlState();
 
   @override
-  Size get preferredSize => throw UnimplementedError();
+  Size get preferredSize => const Size(double.infinity, kToolbarHeight);
 }
 
 class _BottomControlState extends State<BottomControl> {
@@ -102,20 +98,32 @@ class _BottomControlState extends State<BottomControl> {
                   // if (canUsePiP) {
                   //   await widget.floating!.enable(const ImmediatePiP());
                   // } else {}
-                  widget.controller!.controls = false;
+                  final controller = widget.controller;
+                  int rationalWidth = 16;
+                  int rationalHeight = 9;
+                  if (controller != null) {
+                    controller.controls = false;
+                    final vpc = controller.videoPlayerController;
+                    if (controller.canControlPlayback && vpc != null) {
+                      final state = vpc.state;
+                      final width = state.width ?? 0;
+                      final height = state.height ?? 0;
+                      if (width > 0 && height > 0) {
+                        rationalWidth = width;
+                        rationalHeight = height;
+                      }
+                    }
+                  }
                   FlPiP().enable(
                     ios: FlPiPiOSConfig(
-                        videoPath:
-                            widget.controller!.dataSource.videoSource ?? "",
-                        audioPath:
-                            widget.controller!.dataSource.audioSource ?? "",
-                        packageName: null),
+                      videoPath:
+                          widget.controller?.dataSource.videoSource ?? "",
+                      audioPath:
+                          widget.controller?.dataSource.audioSource ?? "",
+                      packageName: null,
+                    ),
                     android: FlPiPAndroidConfig(
-                      aspectRatio: Rational(
-                          widget
-                              .controller!.videoPlayerController!.state.width!,
-                          widget.controller!.videoPlayerController!.state
-                              .height!),
+                      aspectRatio: Rational(rationalWidth, rationalHeight),
                     ),
                   );
                 },
@@ -140,7 +148,8 @@ class _BottomControlState extends State<BottomControl> {
               color: Colors.white,
             ),
             fuc: () => widget.controller!.triggerFullScreen(
-                status: !widget.controller!.isFullScreen.value),
+              status: !widget.controller!.isFullScreen.value,
+            ),
           ),
         ],
       ),

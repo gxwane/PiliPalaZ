@@ -21,16 +21,40 @@ class MediaKitPlaybackEngine implements PlaybackEngine {
   final Player player;
 
   @override
-  bool get isPlaying => player.state.playing;
+  bool get isPlaying {
+    try {
+      return player.state.playing;
+    } catch (_) {
+      return false;
+    }
+  }
 
   @override
-  bool get isCompleted => player.state.completed;
+  bool get isCompleted {
+    try {
+      return player.state.completed;
+    } catch (_) {
+      return false;
+    }
+  }
 
   @override
-  Future<void> play() => player.play();
+  Future<void> play() async {
+    try {
+      await player.play();
+    } catch (e) {
+      debugPrint('MediaKitPlaybackEngine.play failed: $e');
+    }
+  }
 
   @override
-  Future<void> pause() => player.pause();
+  Future<void> pause() async {
+    try {
+      await player.pause();
+    } catch (e) {
+      debugPrint('MediaKitPlaybackEngine.pause failed: $e');
+    }
+  }
 }
 
 class PlaybackCommandCoordinator {

@@ -13,7 +13,6 @@ import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
-import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:pilipalaz/plugin/pl_player/controller.dart';
 import 'package:pilipalaz/plugin/pl_player/models/duration.dart';
@@ -67,7 +66,7 @@ class PLVideoPlayer extends StatefulWidget {
 class _PLVideoPlayerState extends State<PLVideoPlayer>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController animationController;
-  late VideoController videoController;
+  VideoController? videoController;
   late VideoIntroController? videoIntroController;
   late BangumiIntroController? bangumiIntroController;
 
@@ -80,6 +79,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   final RxDouble _brightnessValue = 0.0.obs;
   final RxBool _brightnessIndicator = false.obs;
   Timer? _brightnessTimer;
+  StreamSubscription<double>? _systemBrightnessSub;
+  StreamSubscription<double>? _appBrightnessSub;
 
   final RxDouble _volumeValue = 0.0.obs;
   final RxBool _volumeIndicator = false.obs;
@@ -175,7 +176,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
-    videoController = widget.controller.videoController!;
+    videoController = widget.controller.videoController;
     videoIntroController = widget.videoIntroController;
     bangumiIntroController = widget.bangumiIntroController;
     widget.controller.headerControl = widget.headerControl;
@@ -243,25 +244,39 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     Future.microtask(() async {
       try {
         _brightnessValue.value = await ScreenBrightness.instance.system;
+        if (!mounted) return;
         if (setSystemBrightness) {
-          ScreenBrightness.instance.onSystemScreenBrightnessChanged.listen((
-            value,
-          ) {
-            if (mounted) {
-              _brightnessValue.value = value;
-            }
-          });
+          _systemBrightnessSub = ScreenBrightness
+              .instance
+              .onSystemScreenBrightnessChanged
+              .listen((value) {
+                if (mounted) {
+                  _brightnessValue.value = value;
+                }
+              });
         } else {
-          ScreenBrightness.instance.onApplicationScreenBrightnessChanged.listen(
-            (value) {
-              if (mounted) {
-                _brightnessValue.value = value;
-              }
-            },
-          );
+          _appBrightnessSub = ScreenBrightness
+              .instance
+              .onApplicationScreenBrightnessChanged
+              .listen((value) {
+                if (mounted) {
+                  _brightnessValue.value = value;
+                }
+              });
         }
       } catch (_) {}
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant PLVideoPlayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller ||
+        videoController != widget.controller.videoController) {
+      setState(() {
+        videoController = widget.controller.videoController;
+      });
+    }
   }
 
   Future<void> setVolume(double value) async {
@@ -304,6 +319,14 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
   @override
   void dispose() {
+    _brightnessTimer?.cancel();
+    _brightnessTimer = null;
+    _volumeTimer?.cancel();
+    _volumeTimer = null;
+    _systemBrightnessSub?.cancel();
+    _systemBrightnessSub = null;
+    _appBrightnessSub?.cancel();
+    _appBrightnessSub = null;
     animationController.dispose();
     FlutterVolumeController.removeListener();
     super.dispose();
@@ -815,27 +838,31 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     final PlPlayerController playerController = widget.controller;
     final Color colorTheme = Theme.of(context).colorScheme.primary;
     const TextStyle textStyle = TextStyle(color: Colors.white, fontSize: 12);
-    Widget video = Video(
-      key: ValueKey(
-        '${playerController.videoFit.value}'
-        '${playerController.continuePlayInBackground.value}'
-        '${playerController.subtitleFontSize.value}'
-        '${playerController.subtitleBottomPadding.value}',
-      ),
-      controller: videoController,
-      controls: NoVideoControls,
-      pauseUponEnteringBackgroundMode:
-          !playerController.continuePlayInBackground.value,
-      resumeUponEnteringForegroundMode: true,
-      // 字幕尺寸调节
-      subtitleViewConfiguration: SubtitleViewConfiguration(
-        style: playerController.subtitleStyle.value,
-        padding: EdgeInsets.only(
-          bottom: playerController.subtitleBottomPadding.value,
-        ),
-      ),
-      fit: playerController.videoFit.value,
-    );
+    final activeVideoController =
+        videoController ?? playerController.videoController;
+    Widget video = activeVideoController != null
+        ? Video(
+            key: ValueKey(
+              '${playerController.videoFit.value}'
+              '${playerController.continuePlayInBackground.value}'
+              '${playerController.subtitleFontSize.value}'
+              '${playerController.subtitleBottomPadding.value}',
+            ),
+            controller: activeVideoController,
+            controls: NoVideoControls,
+            pauseUponEnteringBackgroundMode:
+                !playerController.continuePlayInBackground.value,
+            resumeUponEnteringForegroundMode: true,
+            // 字幕尺寸调节
+            subtitleViewConfiguration: SubtitleViewConfiguration(
+              style: playerController.subtitleStyle.value,
+              padding: EdgeInsets.only(
+                bottom: playerController.subtitleBottomPadding.value,
+              ),
+            ),
+            fit: playerController.videoFit.value,
+          )
+        : const SizedBox.expand(child: ColoredBox(color: Colors.black));
     return Stack(
       fit: StackFit.passthrough,
       key: _playerKey,
@@ -988,6 +1015,19 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                           print(playerController.dataSource.videoSource);
                           print(playerController.dataSource.audioSource);
                           playerController.controls = false;
+                          int rationalWidth = 16;
+                          int rationalHeight = 9;
+                          final vpc = playerController.videoPlayerController;
+                          if (playerController.canControlPlayback &&
+                              vpc != null) {
+                            final state = vpc.state;
+                            final width = state.width ?? 0;
+                            final height = state.height ?? 0;
+                            if (width > 0 && height > 0) {
+                              rationalWidth = width;
+                              rationalHeight = height;
+                            }
+                          }
                           FlPiP().enable(
                             ios: FlPiPiOSConfig(
                               videoPath:
@@ -998,14 +1038,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                             ),
                             android: FlPiPAndroidConfig(
                               aspectRatio: Rational(
-                                playerController
-                                    .videoPlayerController!
-                                    .state
-                                    .width!,
-                                playerController
-                                    .videoPlayerController!
-                                    .state
-                                    .height!,
+                                rationalWidth,
+                                rationalHeight,
                               ),
                             ),
                           );
@@ -1554,68 +1588,68 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                     ),
                     fuc: () {
                       SmartDialog.showToast('截图中');
-                      playerController.videoPlayerController
-                          ?.screenshot(format: 'image/png')
-                          .then((value) {
-                            if (value != null) {
-                              if (!context.mounted) return;
-                              SmartDialog.showToast('点击弹窗保存截图');
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    // title: const Text('点击保存'),
-                                    titlePadding: EdgeInsets.zero,
-                                    contentPadding: const EdgeInsets.all(8),
-                                    insetPadding: EdgeInsets.only(
-                                      left: context.width / 2,
-                                    ),
-                                    //移除圆角
-                                    shape: const RoundedRectangleBorder(),
-                                    content: GestureDetector(
-                                      onTap: () async {
-                                        String name = DateTime.now()
-                                            .toString()
-                                            .replaceAll(' ', '_')
-                                            .replaceAll(':', '-')
-                                            .split('.')
-                                            .first;
-                                        final SaveResult result =
-                                            await SaverGallery.saveImage(
-                                              value,
-                                              fileName: name,
-                                              extension: 'png',
-                                              androidRelativePath:
-                                                  "Pictures/Screenshots",
-                                              skipIfExists: false,
-                                            );
+                      playerController.screenshot(format: 'image/png').then((
+                        value,
+                      ) {
+                        if (value != null) {
+                          if (!context.mounted) return;
+                          SmartDialog.showToast('点击弹窗保存截图');
+                          showDialog(
+                            context: context,
+                            builder: (BuildContext context) {
+                              return AlertDialog(
+                                // title: const Text('点击保存'),
+                                titlePadding: EdgeInsets.zero,
+                                contentPadding: const EdgeInsets.all(8),
+                                insetPadding: EdgeInsets.only(
+                                  left: context.width / 2,
+                                ),
+                                //移除圆角
+                                shape: const RoundedRectangleBorder(),
+                                content: GestureDetector(
+                                  onTap: () async {
+                                    String name = DateTime.now()
+                                        .toString()
+                                        .replaceAll(' ', '_')
+                                        .replaceAll(':', '-')
+                                        .split('.')
+                                        .first;
+                                    final SaveResult result =
+                                        await SaverGallery.saveImage(
+                                          value,
+                                          fileName: name,
+                                          extension: 'png',
+                                          androidRelativePath:
+                                              "Pictures/Screenshots",
+                                          skipIfExists: false,
+                                        );
 
-                                        if (result.isSuccess) {
-                                          Get.back();
-                                          SmartDialog.showToast(
-                                            '$name.png已保存到相册/截图',
-                                          );
-                                        } else {
-                                          await SmartDialog.showToast(
-                                            '保存失败，${result.errorMessage}',
-                                          );
-                                        }
-                                      },
-                                      child: ConstrainedBox(
-                                        constraints: BoxConstraints(
-                                          maxWidth: context.width / 3,
-                                          maxHeight: context.height / 3,
-                                        ),
-                                        child: Image.memory(value),
-                                      ),
+                                    if (result.isSuccess) {
+                                      Get.back();
+                                      SmartDialog.showToast(
+                                        '$name.png已保存到相册/截图',
+                                      );
+                                    } else {
+                                      await SmartDialog.showToast(
+                                        '保存失败，${result.errorMessage}',
+                                      );
+                                    }
+                                  },
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxWidth: context.width / 3,
+                                      maxHeight: context.height / 3,
                                     ),
-                                  );
-                                },
+                                    child: Image.memory(value),
+                                  ),
+                                ),
                               );
-                            } else {
-                              SmartDialog.showToast('截图失败');
-                            }
-                          });
+                            },
+                          );
+                        } else {
+                          SmartDialog.showToast('截图失败');
+                        }
+                      });
                     },
                   ),
                 ),
@@ -1721,12 +1755,14 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                               onSubmitted: (Duration value) {
                                 _hideSeekBackwardButton.value = true;
                                 _mountSeekBackwardButton.value = false;
-                                final Player player =
-                                    widget.controller.videoPlayerController!;
-                                Duration result = player.state.position - value;
+                                final currentPosition =
+                                    widget.controller.position.value;
+                                final totalDuration =
+                                    widget.controller.duration.value;
+                                Duration result = currentPosition - value;
                                 result = result.clamp(
                                   Duration.zero,
-                                  player.state.duration,
+                                  totalDuration,
                                 );
                                 widget.controller.seekTo(
                                   result,
@@ -1769,12 +1805,14 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                               onSubmitted: (Duration value) {
                                 _hideSeekForwardButton.value = true;
                                 _mountSeekForwardButton.value = false;
-                                final Player player =
-                                    widget.controller.videoPlayerController!;
-                                Duration result = player.state.position + value;
+                                final currentPosition =
+                                    widget.controller.position.value;
+                                final totalDuration =
+                                    widget.controller.duration.value;
+                                Duration result = currentPosition + value;
                                 result = result.clamp(
                                   Duration.zero,
-                                  player.state.duration,
+                                  totalDuration,
                                 );
                                 widget.controller.seekTo(
                                   result,

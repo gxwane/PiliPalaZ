@@ -209,6 +209,29 @@ void main() {
       reason: 'completed replay must reset the timeline exactly once',
     );
   });
+
+  test('MediaKitPlaybackEngine guards player state and playback methods', () {
+    final commands = File(
+      'lib/plugin/pl_player/playback_commands.dart',
+    ).readAsStringSync();
+
+    expect(
+      commands,
+      contains('class MediaKitPlaybackEngine implements PlaybackEngine'),
+    );
+    expect(commands, contains('bool get isPlaying {'));
+    expect(commands, contains('bool get isCompleted {'));
+    expect(commands, contains('Future<void> play() async {'));
+    expect(commands, contains('Future<void> pause() async {'));
+    expect(
+      commands,
+      contains('debugPrint(\'MediaKitPlaybackEngine.play failed: \$e\');'),
+    );
+    expect(
+      commands,
+      contains('debugPrint(\'MediaKitPlaybackEngine.pause failed: \$e\');'),
+    );
+  });
 }
 
 Future<void> _flushMicrotasks() async {
