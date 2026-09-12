@@ -8,6 +8,7 @@ import '../models/member/coin.dart';
 import '../models/member/info.dart';
 import '../models/member/seasons.dart';
 import '../models/member/tags.dart';
+import '../services/service_locator.dart';
 import '../utils/storage.dart';
 import '../utils/utils.dart';
 import '../utils/wbi_sign.dart';
@@ -21,12 +22,7 @@ abstract final class MemberHttp {
   static ApiClient get _client => HttpRuntime.instance.client;
 
   static Future<ApiResult<MemberInfoModel>> memberInfo({int? mid}) async {
-    final accessKey =
-        GStorage.localCache.get(
-              LocalCacheKey.accessKey,
-              defaultValue: <String, Object?>{},
-            )['value']
-            as String?;
+    final accessKey = authSessionManager.accessToken;
     final parameters = <String, String>{
       if (accessKey?.isNotEmpty == true) 'access_key': accessKey!,
       'appkey': Constants.appKey,

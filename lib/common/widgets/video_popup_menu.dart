@@ -8,6 +8,7 @@ import '../../http/api_result.dart';
 import '../../http/video.dart';
 import '../../models/home/rcmd/result.dart';
 import '../../pages/mine/controller.dart';
+import '../../services/service_locator.dart';
 import '../../utils/storage.dart';
 
 class VideoCustomAction {
@@ -56,10 +57,7 @@ class VideoCustomActions {
         'dislike',
         Icon(MdiIcons.thumbDownOutline, size: 16),
         () async {
-          String? accessKey = GStorage.localCache.get(
-            LocalCacheKey.accessKey,
-            defaultValue: {},
-          )['value'];
+          final accessKey = authSessionManager.accessToken;
           if (accessKey == null || accessKey == "") {
             SmartDialog.showToast("请退出账号后重新登录");
             return;

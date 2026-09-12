@@ -10,6 +10,7 @@ import '../models/rcmd_video_item.dart';
 import '../models/user/fav_folder.dart';
 import '../models/video/ai.dart';
 import '../models/video_detail_res.dart';
+import '../services/service_locator.dart';
 import '../utils/id_utils.dart';
 import '../utils/recommend_filter.dart';
 import '../utils/storage.dart';
@@ -906,14 +907,7 @@ abstract final class VideoHttp {
   }
 
   static String? get _accessKey {
-    final cached = localCache.get(
-      LocalCacheKey.accessKey,
-      defaultValue: const <String, Object?>{},
-    );
-    if (cached is Map && cached['value'] is String) {
-      return cached['value'] as String;
-    }
-    return null;
+    return authSessionManager.accessToken;
   }
 
   static ApiFailure<void> _missingAccessKey(String endpoint) {

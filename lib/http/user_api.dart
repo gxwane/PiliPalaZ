@@ -1,5 +1,5 @@
 import '../models/user/stat.dart';
-import '../utils/storage.dart';
+import '../services/service_locator.dart';
 import 'api.dart';
 import 'api_client.dart';
 import 'api_decoder.dart';
@@ -21,10 +21,7 @@ final class UserApi {
       Api.userStat,
       endpoint: 'user.stat',
       queryParameters: <String, dynamic>{
-        'access_key': GStorage.localCache.get(
-          LocalCacheKey.accessKey,
-          defaultValue: <String, dynamic>{},
-        )['value'],
+        'access_key': authSessionManager.accessToken,
         'vmid': mid,
       },
       decode: (json) => BiliApiDecoder.data<UserStat>(

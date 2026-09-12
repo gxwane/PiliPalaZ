@@ -12,15 +12,9 @@ import 'package:path_provider/path_provider.dart';
 class Utils {
   static final Random random = Random();
 
-  static Future<String> getCookiePath() async {
-    final Directory tempDir = await getApplicationSupportDirectory();
-    final String tempPath = "${tempDir.path}/${StoragePathName.cookie}/";
-    final Directory dir = Directory(tempPath);
-    final bool b = await dir.exists();
-    if (!b) {
-      dir.createSync(recursive: true);
-    }
-    return tempPath;
+  static Future<Directory> getLegacyCookieDirectory() async {
+    final Directory supportDirectory = await getApplicationSupportDirectory();
+    return Directory('${supportDirectory.path}/${StoragePathName.cookie}');
   }
 
   static String numFormat(dynamic number) {

@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/common/widgets/custom_toast.dart';
+import 'package:pilipalaz/common/widgets/auth_startup_notice.dart';
 import 'package:pilipalaz/http/http_runtime.dart';
 import 'package:pilipalaz/models/common/color_type.dart';
 import 'package:pilipalaz/models/common/theme_type.dart';
@@ -21,6 +22,7 @@ import 'package:pilipalaz/pages/search/index.dart';
 import 'package:pilipalaz/pages/video/index.dart';
 import 'package:pilipalaz/router/app_pages.dart';
 import 'package:pilipalaz/pages/main/view.dart';
+import 'package:pilipalaz/services/auth/auth_session_manager.dart';
 import 'package:pilipalaz/services/service_locator.dart';
 import 'package:pilipalaz/utils/app_scheme.dart';
 import 'package:pilipalaz/utils/data.dart';
@@ -86,13 +88,17 @@ void main() async {
     );
   }
   await setupServiceLocator();
-  final httpRuntime = HttpRuntime.ensureInitialized();
+  final authStartupResult = await authSessionManager.initialize();
+  final httpRuntime = HttpRuntime.ensureInitialized(
+    authSessionManager: authSessionManager,
+    cookieJar: secureCookieJar,
+  );
   await httpRuntime.initializeSession();
   RecommendFilter();
   SmartDialog.config.toast = SmartConfigToast(
     displayType: SmartToastType.onlyRefresh,
   );
-  runApp(const MyApp());
+  runApp(MyApp(authStartupResult: authStartupResult));
 
   // 小白条、导航栏沉浸
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -109,7 +115,9 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({required this.authStartupResult, super.key});
+
+  final AuthStartupResult authStartupResult;
 
   @override
   Widget build(BuildContext context) {
@@ -222,13 +230,16 @@ class MyApp extends StatelessWidget {
           getPages: Routes.getPages,
           home: const MainApp(),
           builder: (BuildContext context, Widget? child) {
-            return FlutterSmartDialog(
-              toastBuilder: (String msg) => CustomToast(msg: msg),
-              child: MediaQuery(
-                data: MediaQuery.of(
-                  context,
-                ).copyWith(textScaler: TextScaler.linear(textScale)),
-                child: child!,
+            return AuthStartupNotice(
+              result: authStartupResult,
+              child: FlutterSmartDialog(
+                toastBuilder: (String msg) => CustomToast(msg: msg),
+                child: MediaQuery(
+                  data: MediaQuery.of(
+                    context,
+                  ).copyWith(textScaler: TextScaler.linear(textScale)),
+                  child: child!,
+                ),
               ),
             );
           },

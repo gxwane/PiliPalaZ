@@ -1,7 +1,8 @@
-// ignore_for_file: avoid_print
+import 'dart:async';
 
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/http_runtime.dart';
+import 'package:pilipalaz/services/service_locator.dart';
 import 'package:pilipalaz/utils/event_bus.dart';
 import 'package:pilipalaz/utils/id_utils.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -24,10 +25,10 @@ class WebviewController extends GetxController {
     pageTitle = Get.parameters['pageTitle']!;
     uaType = Get.parameters['uaType'] ?? 'mob';
 
-    webviewInit(uaType: uaType);
+    unawaited(webviewInit(uaType: uaType));
   }
 
-  webviewInit({String uaType = 'mob'}) {
+  Future<void> webviewInit({String uaType = 'mob'}) async {
     controller
       ..setUserAgent(HttpRuntime.instance.headerUa(type: uaType))
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -56,21 +57,20 @@ class WebviewController extends GetxController {
           },
           onPageFinished: (String url) {
             if (type.value == 'liveRoom') {
-              print("adding");
               //注入js
-              controller
-                  .runJavaScriptReturningResult('''
+              unawaited(
+                controller.runJavaScriptReturningResult('''
                 document.styleSheets[0].insertRule('div.open-app-btn.bili-btn-warp {display:none;}', 0);
                 document.styleSheets[0].insertRule('#app__display-area > div.control-panel {display:none;}', 0);
-                ''')
-                  .then((value) => print(value));
+                '''),
+              );
             } else if (type.value == 'whisper') {
-              controller
-                  .runJavaScriptReturningResult('''
+              unawaited(
+                controller.runJavaScriptReturningResult('''
                 document.querySelector('#internationalHeader').remove();
                 document.querySelector('#message-navbar').remove();
-              ''')
-                  .then((value) => print(value));
+              '''),
+              );
             }
           },
           // 加载完成
@@ -93,7 +93,15 @@ class WebviewController extends GetxController {
             return NavigationDecision.navigate;
           },
         ),
-      )
-      ..loadRequest(Uri.parse(url));
+      );
+    final uri = Uri.parse(url);
+    await webviewSessionBridge.prepare(uri);
+    await controller.loadRequest(uri);
+  }
+
+  @override
+  void onClose() {
+    unawaited(webviewSessionBridge.clear());
+    super.onClose();
   }
 }

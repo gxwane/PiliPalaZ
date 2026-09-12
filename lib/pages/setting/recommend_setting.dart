@@ -3,6 +3,7 @@ import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/models/common/rcmd_type.dart';
 import 'package:pilipalaz/pages/setting/widgets/select_dialog.dart';
+import 'package:pilipalaz/services/service_locator.dart';
 import 'package:pilipalaz/utils/recommend_filter.dart';
 import 'package:pilipalaz/utils/storage.dart';
 
@@ -17,12 +18,7 @@ class RecommendSetting extends StatefulWidget {
 
 class _RecommendSettingState extends State<RecommendSetting> {
   Box setting = GStorage.setting;
-  static Box localCache = GStorage.localCache;
   late dynamic defaultRcmdType;
-  Box userInfoCache = GStorage.userInfo;
-  late dynamic userInfo;
-  bool userLogin = false;
-  late dynamic accessKeyInfo;
   // late int filterUnfollowedRatio;
   late int minDurationForRcmd;
   late int minLikeRatioForRecommend;
@@ -32,36 +28,37 @@ class _RecommendSettingState extends State<RecommendSetting> {
   void initState() {
     super.initState();
     // 首页默认推荐类型
-    defaultRcmdType =
-        setting.get(SettingBoxKey.defaultRcmdType, defaultValue: 'web');
-    userInfo = userInfoCache.get('userInfoCache');
-    userLogin = userInfo != null;
-    accessKeyInfo = localCache.get(LocalCacheKey.accessKey, defaultValue: null);
+    defaultRcmdType = setting.get(
+      SettingBoxKey.defaultRcmdType,
+      defaultValue: 'web',
+    );
     // filterUnfollowedRatio = setting
     //     .get(SettingBoxKey.filterUnfollowedRatio, defaultValue: 0);
-    minDurationForRcmd =
-        setting.get(SettingBoxKey.minDurationForRcmd, defaultValue: 0);
-    minLikeRatioForRecommend =
-        setting.get(SettingBoxKey.minLikeRatioForRecommend, defaultValue: 0);
-    banWordForRecommend =
-        setting.get(SettingBoxKey.banWordForRecommend, defaultValue: '');
+    minDurationForRcmd = setting.get(
+      SettingBoxKey.minDurationForRcmd,
+      defaultValue: 0,
+    );
+    minLikeRatioForRecommend = setting.get(
+      SettingBoxKey.minLikeRatioForRecommend,
+      defaultValue: 0,
+    );
+    banWordForRecommend = setting.get(
+      SettingBoxKey.banWordForRecommend,
+      defaultValue: '',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     TextStyle titleStyle = Theme.of(context).textTheme.titleMedium!;
-    TextStyle subTitleStyle = Theme.of(context)
-        .textTheme
-        .labelMedium!
-        .copyWith(color: Theme.of(context).colorScheme.outline);
+    TextStyle subTitleStyle = Theme.of(context).textTheme.labelMedium!.copyWith(
+      color: Theme.of(context).colorScheme.outline,
+    );
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
         titleSpacing: 0,
-        title: Text(
-          '推荐流设置',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        title: Text('推荐流设置', style: Theme.of(context).textTheme.titleMedium),
       ),
       body: ListView(
         children: [
@@ -69,10 +66,7 @@ class _RecommendSettingState extends State<RecommendSetting> {
             dense: false,
             title: Text('首页推荐类型', style: titleStyle),
             leading: const Icon(Icons.model_training_outlined),
-            subtitle: Text(
-              '当前使用「$defaultRcmdType端」推荐¹',
-              style: subTitleStyle,
-            ),
+            subtitle: Text('当前使用「$defaultRcmdType端」推荐¹', style: subTitleStyle),
             onTap: () async {
               String? result = await showDialog(
                 context: context,
@@ -88,7 +82,7 @@ class _RecommendSettingState extends State<RecommendSetting> {
               );
               if (result != null) {
                 if (result == 'app') {
-                  if (accessKeyInfo == null) {
+                  if (authSessionManager.accessToken?.isNotEmpty != true) {
                     SmartDialog.showToast('尚未登录，无法收到个性化推荐');
                   }
                 }
@@ -128,11 +122,12 @@ class _RecommendSettingState extends State<RecommendSetting> {
                 context: context,
                 builder: (context) {
                   return SelectDialog<int>(
-                      title: '选择点赞率（0即不过滤）',
-                      value: minLikeRatioForRecommend,
-                      values: [0, 1, 2, 3, 4].map((e) {
-                        return {'title': '$e %', 'value': e};
-                      }).toList());
+                    title: '选择点赞率（0即不过滤）',
+                    value: minLikeRatioForRecommend,
+                    values: [0, 1, 2, 3, 4].map((e) {
+                      return {'title': '$e %', 'value': e};
+                    }).toList(),
+                  );
                 },
               );
               if (result != null) {
@@ -159,13 +154,16 @@ class _RecommendSettingState extends State<RecommendSetting> {
                 builder: (context) {
                   return AlertDialog(
                     title: const Text('标题关键词过滤'),
-                    content: Column(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('使用空格隔开，如：尝试 测试'),
-                      TextField(
-                        controller: textController,
-                        //decoration: InputDecoration(hintText: hintText),
-                      )
-                    ]),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('使用空格隔开，如：尝试 测试'),
+                        TextField(
+                          controller: textController,
+                          //decoration: InputDecoration(hintText: hintText),
+                        ),
+                      ],
+                    ),
                     actions: <Widget>[
                       TextButton(
                         child: const Text('清空'),
@@ -186,8 +184,10 @@ class _RecommendSettingState extends State<RecommendSetting> {
                           Navigator.of(context).pop();
                           String filter = textController.text.trim();
                           banWordForRecommend = filter;
-                          setting.put(SettingBoxKey.banWordForRecommend,
-                              banWordForRecommend);
+                          setting.put(
+                            SettingBoxKey.banWordForRecommend,
+                            banWordForRecommend,
+                          );
                           setState(() {});
                           RecommendFilter.update();
                           if (filter.isNotEmpty) {
@@ -216,11 +216,12 @@ class _RecommendSettingState extends State<RecommendSetting> {
                 context: context,
                 builder: (context) {
                   return SelectDialog<int>(
-                      title: '选择时长（0即不过滤）',
-                      value: minDurationForRcmd,
-                      values: [0, 30, 60, 90, 120].map((e) {
-                        return {'title': '$e 秒', 'value': e};
-                      }).toList());
+                    title: '选择时长（0即不过滤）',
+                    value: minDurationForRcmd,
+                    values: [0, 30, 60, 90, 120].map((e) {
+                      return {'title': '$e 秒', 'value': e};
+                    }).toList(),
+                  );
                 },
               );
               if (result != null) {
@@ -299,10 +300,10 @@ class _RecommendSettingState extends State<RecommendSetting> {
               '* 设定较严苛的条件可导致推荐项数锐减或多次请求，请酌情选择。\n'
               '* 后续可能会增加更多过滤条件，敬请期待。',
               style: Theme.of(context).textTheme.labelSmall!.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.outline.withOpacity(0.7)),
+                color: Theme.of(context).colorScheme.outline.withOpacity(0.7),
+              ),
             ),
-          )
+          ),
         ],
       ),
     );

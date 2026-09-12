@@ -9,10 +9,12 @@ import 'package:dio/io.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:flutter/foundation.dart';
 
+import '../services/auth/auth_session_manager.dart';
+import '../services/auth/secure_cookie_jar.dart';
+import '../services/auth/stored_session.dart';
 import '../utils/id_utils.dart';
 import '../utils/login.dart';
 import '../utils/storage.dart';
-import '../utils/utils.dart';
 import 'api.dart';
 import 'api_client.dart';
 import 'api_result.dart';
@@ -22,16 +24,33 @@ import 'interceptor_anonymity.dart';
 import 'log_sanitizer.dart';
 
 final class HttpRuntime {
-  HttpRuntime._({required this.dio, required CookieJar cookieJar})
-    : _cookieJar = cookieJar,
-      client = ApiClient(dio),
-      _cookieManager = CookieManager(cookieJar);
-
-  factory HttpRuntime.forTesting({required Dio dio, CookieJar? cookieJar}) {
-    return HttpRuntime._(dio: dio, cookieJar: cookieJar ?? CookieJar());
+  HttpRuntime._({
+    required this.dio,
+    required CookieJar cookieJar,
+    AuthSessionManager? authSessionManager,
+  }) : _cookieJar = cookieJar,
+       _authSessionManager = authSessionManager,
+       client = ApiClient(dio),
+       _cookieManager = CookieManager(cookieJar) {
+    authSessionManager?.registerRuntimeCredentialClear(clearSession);
   }
 
-  factory HttpRuntime.fromStorage() {
+  factory HttpRuntime.forTesting({
+    required Dio dio,
+    CookieJar? cookieJar,
+    AuthSessionManager? authSessionManager,
+  }) {
+    return HttpRuntime._(
+      dio: dio,
+      cookieJar: cookieJar ?? CookieJar(),
+      authSessionManager: authSessionManager,
+    );
+  }
+
+  factory HttpRuntime.fromStorage({
+    AuthSessionManager? authSessionManager,
+    CookieJar? cookieJar,
+  }) {
     final setting = GStorage.setting;
     final options = BaseOptions(
       baseUrl: HttpString.apiBaseUrl,
@@ -84,7 +103,11 @@ final class HttpRuntime {
           (status >= 200 && status < 300 ||
               HttpString.validateStatusCodes.contains(status));
     };
-    return HttpRuntime._(dio: dio, cookieJar: CookieJar());
+    return HttpRuntime._(
+      dio: dio,
+      cookieJar: cookieJar ?? CookieJar(),
+      authSessionManager: authSessionManager,
+    );
   }
 
   static HttpRuntime? _instance;
@@ -110,10 +133,19 @@ final class HttpRuntime {
     );
   }
 
-  static HttpRuntime ensureInitialized() => instance;
+  static HttpRuntime ensureInitialized({
+    AuthSessionManager? authSessionManager,
+    CookieJar? cookieJar,
+  }) {
+    return _instance ??= HttpRuntime.fromStorage(
+      authSessionManager: authSessionManager,
+      cookieJar: cookieJar,
+    );
+  }
 
   final Dio dio;
   final ApiClient client;
+  final AuthSessionManager? _authSessionManager;
   CookieJar _cookieJar;
   CookieManager _cookieManager;
   bool _sessionInitialized = false;
@@ -126,18 +158,15 @@ final class HttpRuntime {
       return const ApiSuccess<void>(null);
     }
     try {
-      final cookiePath = await Utils.getCookiePath();
-      _cookieJar = PersistCookieJar(
-        ignoreExpires: true,
-        storage: FileStorage(cookiePath),
-      );
-      _cookieManager = CookieManager(_cookieJar);
       dio.interceptors.add(_cookieManager);
       dio.interceptors.add(AnonymityInterceptor());
       _sessionInitialized = true;
 
-      final userInfo = GStorage.userInfo.get('userInfoCache');
-      final isLoggedIn = userInfo != null && userInfo.mid != null;
+      final authSession = _authSessionManager?.session;
+      if (_cookieJar case final SecureCookieJar secureCookieJar) {
+        await secureCookieJar.restore(authSession?.cookies ?? const []);
+      }
+      final isLoggedIn = _authSessionManager?.isAuthenticated == true;
       if (isLoggedIn) {
         final tCookies = await _cookieJar.loadForRequest(
           Uri.parse(HttpString.tUrl),
@@ -146,16 +175,9 @@ final class HttpRuntime {
           await client.getText(HttpString.tUrl, endpoint: 'session.bootstrap');
         }
       }
-      setOptionsHeaders(userInfo, isLoggedIn);
+      setSessionHeaders(authSession);
 
       await activateBuvid();
-
-      final cookies = await _cookieJar.loadForRequest(
-        Uri.parse(HttpString.baseUrl),
-      );
-      dio.options.headers['cookie'] = cookies
-          .map((cookie) => '${cookie.name}=${cookie.value}')
-          .join('; ');
       return const ApiSuccess<void>(null);
     } catch (_) {
       return const ApiFailure<void>(
@@ -164,6 +186,28 @@ final class HttpRuntime {
         endpoint: 'session.initialize',
       );
     }
+  }
+
+  Future<void> replaceSession(StoredSession session) async {
+    if (_cookieJar case final SecureCookieJar secureCookieJar) {
+      await secureCookieJar.restore(session.cookies);
+    } else {
+      await _cookieJar.deleteAll();
+      for (final stored in session.cookies) {
+        final cookie = stored.toCookie();
+        if (cookie != null) {
+          await _cookieJar.saveFromResponse(Uri.parse(stored.origin), [cookie]);
+        }
+      }
+    }
+    setSessionHeaders(session);
+  }
+
+  Future<void> clearSession() async {
+    await _cookieJar.deleteAll();
+    dio.options.headers.remove('cookie');
+    dio.options.headers.remove('x-bili-mid');
+    dio.options.headers.remove('x-bili-aurora-eid');
   }
 
   Future<String> getCsrf() async {
@@ -197,12 +241,14 @@ final class HttpRuntime {
     ).join();
   }
 
-  void setOptionsHeaders(dynamic userInfo, bool isLoggedIn) {
-    if (isLoggedIn) {
-      dio.options.headers['x-bili-mid'] = userInfo.mid.toString();
-      dio.options.headers['x-bili-aurora-eid'] = IdUtils.genAuroraEid(
-        userInfo.mid,
-      );
+  void setSessionHeaders(StoredSession? session) {
+    dio.options.headers.remove('cookie');
+    dio.options.headers.remove('x-bili-mid');
+    dio.options.headers.remove('x-bili-aurora-eid');
+    final mid = session?.mid;
+    if (session?.isAuthenticated == true && mid != null) {
+      dio.options.headers['x-bili-mid'] = mid.toString();
+      dio.options.headers['x-bili-aurora-eid'] = IdUtils.genAuroraEid(mid);
     }
     dio.options.headers['env'] = 'prod';
     dio.options.headers['app-key'] = 'android64';

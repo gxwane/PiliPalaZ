@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:hive/hive.dart';
-import 'package:pilipalaz/http/http_runtime.dart';
 import 'package:pilipalaz/models/common/theme_type.dart';
+import 'package:pilipalaz/services/auth/login_session_commit.dart';
+import 'package:pilipalaz/services/service_locator.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
 import 'package:pilipalaz/utils/login.dart';
 import 'package:pilipalaz/utils/storage.dart';
@@ -16,7 +17,6 @@ import 'widgets/select_dialog.dart';
 class SettingController extends GetxController {
   Box userInfoCache = GStorage.userInfo;
   Box setting = GStorage.setting;
-  Box localCache = GStorage.localCache;
 
   RxBool userLogin = false.obs;
   RxBool hiddenSettingUnlocked = false.obs;
@@ -32,7 +32,7 @@ class SettingController extends GetxController {
   void onInit() {
     super.onInit();
     userInfo = userInfoCache.get('userInfoCache');
-    userLogin.value = userInfo != null;
+    userLogin.value = authSessionManager.isAuthenticated;
     hiddenSettingUnlocked.value = setting.get(
       SettingBoxKey.hiddenSettingUnlocked,
       defaultValue: false,
@@ -75,30 +75,28 @@ class SettingController extends GetxController {
             TextButton(onPressed: () => Get.back(), child: const Text('点错了')),
             TextButton(
               onPressed: () async {
-                // 清空cookie
-                await HttpRuntime.instance.cookieJar.deleteAll();
-                HttpRuntime.instance.dio.options.headers['cookie'] = '';
-                // 清空本地存储的用户标识
-                userInfoCache.put('userInfoCache', null);
-                localCache.put(LocalCacheKey.accessKey, {
-                  'mid': -1,
-                  'value': '',
-                  'refresh': '',
-                });
-                try {
-                  final WebViewController controller = WebViewController();
-                  controller.clearCache();
-                  controller.clearLocalStorage();
-                  WebViewCookieManager().clearCookies();
-                } catch (e) {
-                  print(e);
-                }
-                userLogin.value = false;
-                if (Get.isRegistered<MainController>()) {
-                  MainController mainController = Get.find<MainController>();
-                  mainController.userLogin.value = false;
-                }
-                await LoginUtils.refreshLoginStatus(false);
+                final coordinator = LogoutSessionCoordinator(
+                  logout: () => authSessionManager.logout(),
+                  clearWebView: () => webviewSessionBridge.clear(),
+                  clearWebCache: () async {
+                    final WebViewController controller = WebViewController();
+                    await controller.clearCache();
+                    await controller.clearLocalStorage();
+                  },
+                  resetUserState: () {
+                    userInfo = null;
+                    userLogin.value = false;
+                    if (Get.isRegistered<MainController>()) {
+                      MainController mainController =
+                          Get.find<MainController>();
+                      mainController.userLogin.value = false;
+                    }
+                  },
+                  refreshLoginStatus: (status) =>
+                      LoginUtils.refreshLoginStatus(status),
+                  onCleanupPending: (msg) => SmartDialog.showToast(msg),
+                );
+                await coordinator.execute();
                 Get.back();
               },
               child: const Text('确认'),

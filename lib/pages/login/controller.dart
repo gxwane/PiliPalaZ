@@ -8,11 +8,11 @@ import 'package:get/get.dart';
 import 'package:pilipalaz/http/login.dart';
 import 'package:gt3_flutter_plugin/gt3_flutter_plugin.dart';
 import 'package:pilipalaz/models/login/index.dart';
+import 'package:pilipalaz/services/auth/login_session_commit.dart';
+import 'package:pilipalaz/services/service_locator.dart';
 import '../../utils/login.dart';
 import 'package:hive/hive.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
-import '../../http/constants.dart';
 import '../../http/api_result.dart';
 import '../../http/http_runtime.dart';
 import '../../http/user.dart';
@@ -91,8 +91,12 @@ class LoginPageController extends GetxController
             ) when data.accepted) {
               t.cancel();
               statusQRCode.value = '扫码成功';
-              await afterLoginByApp(data.payload, data.payload['cookie_info']);
-              Get.back();
+              if (await afterLoginByApp(
+                data.payload,
+                data.payload['cookie_info'],
+              )) {
+                Get.back();
+              }
             } else if (value case ApiSuccess<LoginResponse>(
               :final data,
             ) when data.code == 86038) {
@@ -120,76 +124,59 @@ class LoginPageController extends GetxController
     }
   }
 
-  Future afterLoginByApp(Map<String, dynamic> token_info, cookie_info) async {
+  Future<bool> afterLoginByApp(
+    Map<String, dynamic> tokenInfo,
+    Object? cookieInfo,
+  ) async {
+    late final UserInfoData data;
     try {
-      Box localCache = GStorage.localCache;
-      localCache.put(LocalCacheKey.accessKey, {
-        'mid': token_info['mid'],
-        'value': token_info['access_token'],
-        'refresh': token_info['refresh_token'],
-      });
-      List<dynamic> cookieInfo = cookie_info['cookies'];
-      List<Cookie> cookies = [];
-      String cookieStrings = cookieInfo
-          .map((cookie) {
-            String cstr =
-                '${cookie['name']}=${cookie['value']};Domain=.bilibili.com;Path=/;';
-            cookies.add(Cookie.fromSetCookieValue(cstr));
-            return cstr;
-          })
-          .join('');
-      List<String> Urls = [
-        HttpString.baseUrl,
-        HttpString.apiBaseUrl,
-        HttpString.tUrl,
-      ];
-      for (var url in Urls) {
-        await HttpRuntime.instance.cookieJar.saveFromResponse(
-          Uri.parse(url),
-          cookies,
-        );
-      }
-      HttpRuntime.instance.dio.options.headers['cookie'] = cookieStrings;
-      final WebViewCookieManager webViewCookieManager = WebViewCookieManager();
-      for (var cookie in cookies) {
-        await webViewCookieManager.setCookie(
-          WebViewCookie(
-            name: cookie.name,
-            value: cookie.value,
-            domain: cookie.domain ?? '.bilibili.com',
-            path: cookie.path ?? '/',
-          ),
-        );
-      }
-    } catch (e) {
-      SmartDialog.showToast('设置登录态失败，$e');
-    }
-    final result = await UserHttp.userInfo();
-    if (result case ApiSuccess<UserInfoData>(
-      :final data,
-    ) when data.isLogin == true) {
-      SmartDialog.showToast(
-        '登录成功，当前采用「'
-        '${GStorage.setting.get(SettingBoxKey.defaultRcmdType, defaultValue: 'web')}'
-        '端」推荐',
+      final candidate = parseLoginSession(tokenInfo, cookieInfo);
+      final committer = LoginSessionCommitter<UserInfoData>(
+        saveSecurely: authSessionManager.saveLogin,
+        replaceRuntime: HttpRuntime.instance.replaceSession,
+        verifyAccount: () async {
+          final result = await UserHttp.userInfo();
+          if (result case ApiSuccess<UserInfoData>(
+            :final data,
+          ) when data.isLogin == true) {
+            return data;
+          }
+          return null;
+        },
+        rollback: () async {
+          await authSessionManager.logout();
+          await webviewSessionBridge.clear();
+        },
       );
-      Box userInfoCache = GStorage.userInfo;
-      await userInfoCache.put('userInfoCache', data);
-      final HomeController homeCtr = Get.find<HomeController>();
-      homeCtr.updateLoginStatus(true);
-      homeCtr.userFace.value = data.face ?? '';
-      final MediaController mediaCtr = Get.find<MediaController>();
-      mediaCtr.mid = data.mid;
-      await LoginUtils.refreshLoginStatus(true);
-    } else {
-      // 获取用户信息失败
+      data = await committer.commit(candidate);
+    } on LoginSessionCommitFailure catch (_) {
       SmartDialog.showNotify(
-        msg:
-            '登录失败，请检查cookie是否正确，'
-            '${result is ApiFailure<UserInfoData> ? result.message : '账号状态无效'}',
+        msg: '登录态无法安全保存或校验，已清除本地身份信息，请重试。',
         notifyType: NotifyType.warning,
       );
+      return false;
+    } catch (_) {
+      SmartDialog.showNotify(
+        msg: '登录响应格式不正确，未保存任何身份信息，请重试。',
+        notifyType: NotifyType.warning,
+      );
+      return false;
     }
+
+    SmartDialog.showToast(
+      '登录成功，当前采用「'
+      '${GStorage.setting.get(SettingBoxKey.defaultRcmdType, defaultValue: 'web')}'
+      '端」推荐',
+    );
+    Box userInfoCache = GStorage.userInfo;
+    await userInfoCache.put('userInfoCache', data);
+    final HomeController homeCtr = Get.find<HomeController>();
+    homeCtr.updateLoginStatus(true);
+    homeCtr.userFace.value = data.face ?? '';
+    final MediaController mediaCtr = Get.find<MediaController>();
+    mediaCtr.mid = data.mid;
+    await LoginUtils.refreshLoginStatus(true);
+    return true;
   }
 
   // 申请极验验证码
@@ -223,7 +210,7 @@ class LoginPageController extends GetxController
         }
       },
       onError: (Map<String, dynamic> message) async {
-        SmartDialog.showToast("Captcha onError: $message");
+        SmartDialog.showToast('验证组件发生错误，请重试');
         String code = message["code"];
         // 处理验证中返回的错误 Handling errors returned in verification
         if (Platform.isAndroid) {
@@ -328,13 +315,11 @@ class LoginPageController extends GetxController
       if (data['status'] == 2) {
         SmartDialog.showToast(data['message']?.toString() ?? '本次登录需要安全验证');
         // return;
-        //{"code":0,"message":"0","ttl":1,"data":{"status":2,"message":"本次登录环境存在风险, 需使用手机号进行验证或绑定","url":"https://passport.bilibili.com/h5-app/passport/risk/verify?tmp_token=9e785433940891dfa78f033fb7928181&request_id=e5a6d6480df04097870be56c6e60f7ef&source=risk","token_info":null,"cookie_info":null,"sso":null,"is_new":false,"is_tourist":false}}
         String url = data['url']!;
         Uri currentUri = Uri.parse(url);
         var safeCenterRes = await LoginHttp.safeCenterGetInfo(
           tmpCode: currentUri.queryParameters['tmp_token']!,
         );
-        //{"code":0,"message":"0","ttl":1,"data":{"account_info":{"hide_tel":"111*****111","hide_mail":"aaa*****aaaa.aaa","bind_mail":true,"bind_tel":true,"tel_verify":true,"mail_verify":true,"unneeded_check":false,"bind_safe_question":false,"mid":1111111},"member_info":{"nickname":"xxxxxxx","face":"https://i0.hdslb.com/bfs/face/xxxxxxx.jpg","realname_status":false},"sns_info":{"bind_google":false,"bind_fb":false,"bind_apple":false,"bind_qq":true,"bind_weibo":true,"bind_wechat":false},"account_safe":{"score":80}}}
         final safeCenter = _acceptedResponse(safeCenterRes);
         if (safeCenter == null) {
           final rejected = _response(safeCenterRes);
@@ -483,18 +468,18 @@ class LoginPageController extends GetxController
                   final data = oauthToken.payload;
                   if (data['token_info'] == null ||
                       data['cookie_info'] == null) {
-                    SmartDialog.showToast(
-                      '登录异常，接口未返回身份信息，可能是因为账号风控，请尝试其它登录方式。\n${oauthToken.message}，\n $data',
-                    );
+                    SmartDialog.showToast('登录接口未返回完整身份信息，请尝试其它登录方式。');
                     return;
                   }
                   SmartDialog.showToast('正在保存身份信息');
-                  await afterLoginByApp(
+                  final committed = await afterLoginByApp(
                     data['token_info'],
                     data['cookie_info'],
                   );
-                  Get.back();
-                  Get.back();
+                  if (committed) {
+                    Get.back();
+                    Get.back();
+                  }
                 },
                 child: const Text("确认"),
               ),
@@ -505,14 +490,13 @@ class LoginPageController extends GetxController
         return;
       }
       if (data['token_info'] == null || data['cookie_info'] == null) {
-        SmartDialog.showToast(
-          '登录异常，接口未返回身份信息，可能是因为账号风控，请尝试其它登录方式。\n${response.message}，\n $data',
-        );
+        SmartDialog.showToast('登录接口未返回完整身份信息，请尝试其它登录方式。');
         return;
       }
       SmartDialog.showToast('正在保存身份信息');
-      await afterLoginByApp(data['token_info'], data['cookie_info']);
-      Get.back();
+      if (await afterLoginByApp(data['token_info'], data['cookie_info'])) {
+        Get.back();
+      }
     } else {
       // handle login result
       switch (response.code) {
@@ -582,10 +566,10 @@ class LoginPageController extends GetxController
     );
     final response = _response(res);
     if (response?.accepted == true) {
-      SmartDialog.showToast('登录成功');
       final data = response!.payload;
-      await afterLoginByApp(data['token_info'], data['cookie_info']);
-      Get.back();
+      if (await afterLoginByApp(data['token_info'], data['cookie_info'])) {
+        Get.back();
+      }
     } else {
       SmartDialog.showToast(_loginMessage(res));
     }
