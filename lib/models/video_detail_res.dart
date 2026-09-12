@@ -6,12 +6,7 @@ class VideoDetailResponse {
   int? ttl;
   VideoDetailData? data;
 
-  VideoDetailResponse({
-    this.code,
-    this.message,
-    this.ttl,
-    this.data,
-  });
+  VideoDetailResponse({this.code, this.message, this.ttl, this.data});
 
   VideoDetailResponse.fromJson(Map<String, dynamic> json) {
     code = json["code"];
@@ -122,8 +117,14 @@ class VideoDetailData {
         : List<DescV2>.from(json["desc_v2"]!.map((e) => DescV2.fromJson(e)));
     state = json["state"];
     duration = json["duration"];
-    rights =
-        Map.from(json["rights"]!).map((k, v) => MapEntry<String, int>(k, v));
+    rights = json["rights"] == null
+        ? null
+        : Map.from(json["rights"]).map(
+            (k, v) => MapEntry<String, int>(
+              k.toString(),
+              v is int ? v : int.tryParse(v.toString()) ?? 0,
+            ),
+          );
     owner = json["owner"] == null ? null : Owner.fromJson(json["owner"]);
     stat = json["stat"] == null ? null : Stat.fromJson(json["stat"]);
     videoDynamic = json["dynamic"];
@@ -139,14 +140,16 @@ class VideoDetailData {
     pages = json["pages"] == null
         ? []
         : List<Part>.from(json["pages"]!.map((e) => Part.fromJson(e)));
-    subtitle =
-        json["subtitle"] == null ? null : Subtitle.fromJson(json["subtitle"]);
+    subtitle = json["subtitle"] == null
+        ? null
+        : Subtitle.fromJson(json["subtitle"]);
     ugcSeason = json["ugc_season"] != null
         ? UgcSeason.fromJson(json["ugc_season"])
         : null;
     isSeasonDisplay = json["is_season_display"];
-    userGarb =
-        json["user_garb"] == null ? null : UserGarb.fromJson(json["user_garb"]);
+    userGarb = json["user_garb"] == null
+        ? null
+        : UserGarb.fromJson(json["user_garb"]);
     honorReply = json["honor_reply"] == null
         ? null
         : HonorReply.fromJson(json["honor_reply"]);
@@ -168,45 +171,45 @@ class VideoDetailData {
   }
 
   Map<String, dynamic> toJson() => {
-        "bvid": bvid,
-        "aid": aid,
-        "videos": videos,
-        "tid": tid,
-        "tname": tname,
-        "copyright": copyright,
-        "pic": pic,
-        "title": title,
-        "pubdate": pubdate,
-        "ctime": ctime,
-        "desc": desc,
-        "desc_v2": descV2 == null
-            ? []
-            : List<dynamic>.from(descV2!.map((e) => e.toJson())),
-        "state": state,
-        "duration": duration,
-        "rights": rights == null
-            ? {}
-            : Map.from(rights!).map((k, v) => MapEntry<String, dynamic>(k, v)),
-        "owner": owner?.toJson(),
-        "stat": stat?.toJson(),
-        "dynamic": videoDynamic,
-        "cid": cid,
-        "dimension": dimension?.toJson(),
-        "premiere": premiere,
-        "teenage_mode": teenageMode,
-        "is_chargeable_season": isChargeableSeason,
-        "is_story": isStory,
-        "no_cache": noCache,
-        "pages": pages == null
-            ? []
-            : List<dynamic>.from(pages!.map((e) => e.toJson())),
-        "subtitle": subtitle?.toJson(),
-        "is_season_display": isSeasonDisplay,
-        "user_garb": userGarb?.toJson(),
-        "honor_reply": honorReply?.toJson(),
-        "like_icon": likeIcon,
-        "need_jump_bv": needJumpBv,
-      };
+    "bvid": bvid,
+    "aid": aid,
+    "videos": videos,
+    "tid": tid,
+    "tname": tname,
+    "copyright": copyright,
+    "pic": pic,
+    "title": title,
+    "pubdate": pubdate,
+    "ctime": ctime,
+    "desc": desc,
+    "desc_v2": descV2 == null
+        ? []
+        : List<dynamic>.from(descV2!.map((e) => e.toJson())),
+    "state": state,
+    "duration": duration,
+    "rights": rights == null
+        ? {}
+        : Map.from(rights!).map((k, v) => MapEntry<String, dynamic>(k, v)),
+    "owner": owner?.toJson(),
+    "stat": stat?.toJson(),
+    "dynamic": videoDynamic,
+    "cid": cid,
+    "dimension": dimension?.toJson(),
+    "premiere": premiere,
+    "teenage_mode": teenageMode,
+    "is_chargeable_season": isChargeableSeason,
+    "is_story": isStory,
+    "no_cache": noCache,
+    "pages": pages == null
+        ? []
+        : List<dynamic>.from(pages!.map((e) => e.toJson())),
+    "subtitle": subtitle?.toJson(),
+    "is_season_display": isSeasonDisplay,
+    "user_garb": userGarb?.toJson(),
+    "honor_reply": honorReply?.toJson(),
+    "like_icon": likeIcon,
+    "need_jump_bv": needJumpBv,
+  };
 }
 
 class DescV2 {
@@ -214,11 +217,7 @@ class DescV2 {
   int? type;
   int? bizId;
 
-  DescV2({
-    this.rawText,
-    this.type,
-    this.bizId,
-  });
+  DescV2({this.rawText, this.type, this.bizId});
 
   fromRawJson(String str) {
     return DescV2.fromJson(json.decode(str));
@@ -248,11 +247,7 @@ class Dimension {
   int? height;
   int? rotate;
 
-  Dimension({
-    this.width,
-    this.height,
-    this.rotate,
-  });
+  Dimension({this.width, this.height, this.rotate});
 
   fromRawJson(String str) => Dimension.fromJson(json.decode(str));
 
@@ -279,9 +274,7 @@ class Dimension {
 class HonorReply {
   List<Honor>? honor;
 
-  HonorReply({
-    this.honor,
-  });
+  HonorReply({this.honor});
 
   fromRawJson(String str) => HonorReply.fromJson(json.decode(str));
 
@@ -296,8 +289,9 @@ class HonorReply {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
 
-    data["honor"] =
-        honor == null ? [] : List<dynamic>.from(honor!.map((x) => x.toJson()));
+    data["honor"] = honor == null
+        ? []
+        : List<dynamic>.from(honor!.map((x) => x.toJson()));
     return data;
   }
 }
@@ -308,12 +302,7 @@ class Honor {
   String? desc;
   int? weeklyRecommendNum;
 
-  Honor({
-    this.aid,
-    this.type,
-    this.desc,
-    this.weeklyRecommendNum,
-  });
+  Honor({this.aid, this.type, this.desc, this.weeklyRecommendNum});
 
   fromRawJson(String str) => Honor.fromJson(json.decode(str));
 
@@ -343,11 +332,7 @@ class Owner {
   String? name;
   String? face;
 
-  Owner({
-    this.mid,
-    this.name,
-    this.face,
-  });
+  Owner({this.mid, this.name, this.face});
 
   fromRawJson(String str) => Owner.fromJson(json.decode(str));
 
@@ -503,10 +488,7 @@ class Subtitle {
   bool? allowSubmit;
   List<dynamic>? list;
 
-  Subtitle({
-    this.allowSubmit,
-    this.list,
-  });
+  Subtitle({this.allowSubmit, this.list});
 
   fromRawJson(String str) => Subtitle.fromJson(json.decode(str));
 
@@ -531,9 +513,7 @@ class Subtitle {
 class UserGarb {
   String? urlImageAniCut;
 
-  UserGarb({
-    this.urlImageAniCut,
-  });
+  UserGarb({this.urlImageAniCut});
 
   fromRawJson(String str) => UserGarb.fromJson(json.decode(str));
 
@@ -587,8 +567,8 @@ class UgcSeason {
     attribute = json['attribute'];
     sections = json['sections'] != null
         ? json['sections']
-            .map<SectionItem>((e) => SectionItem.fromJson(e))
-            .toList()
+              .map<SectionItem>((e) => SectionItem.fromJson(e))
+              .toList()
         : [];
     stat = Stat.fromJson(json['stat']);
     epCount = json['ep_count'];
@@ -598,13 +578,7 @@ class UgcSeason {
 }
 
 class SectionItem {
-  SectionItem({
-    this.seasonId,
-    this.id,
-    this.title,
-    this.type,
-    this.episodes,
-  });
+  SectionItem({this.seasonId, this.id, this.title, this.type, this.episodes});
 
   int? seasonId;
   int? id;

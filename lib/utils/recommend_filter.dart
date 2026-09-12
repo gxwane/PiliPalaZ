@@ -4,12 +4,12 @@ import 'storage.dart';
 
 class RecommendFilter {
   // static late int filterUnfollowedRatio;
-  static late int minDurationForRcmd;
-  static late int minLikeRatioForRecommend;
-  static late bool exemptFilterForFollowed;
-  static late bool applyFilterToRelatedVideos;
-  static late bool disableRelatedVideos;
-  static late List<String> banWordList;
+  static int minDurationForRcmd = 0;
+  static int minLikeRatioForRecommend = 0;
+  static bool exemptFilterForFollowed = true;
+  static bool applyFilterToRelatedVideos = true;
+  static bool disableRelatedVideos = false;
+  static List<String> banWordList = const <String>[];
 
   RecommendFilter() {
     update();
@@ -19,20 +19,31 @@ class RecommendFilter {
     var setting = GStorage.setting;
     // filterUnfollowedRatio =
     //     setting.get(SettingBoxKey.filterUnfollowedRatio, defaultValue: 0);
-    minDurationForRcmd =
-        setting.get(SettingBoxKey.minDurationForRcmd, defaultValue: 0);
-    minLikeRatioForRecommend =
-        setting.get(SettingBoxKey.minLikeRatioForRecommend, defaultValue: 0);
-    banWordList = (setting.get(SettingBoxKey.banWordForRecommend,
-            defaultValue: '') as String)
-        .split(' ');
-    exemptFilterForFollowed =
-        setting.get(SettingBoxKey.exemptFilterForFollowed, defaultValue: true);
-    applyFilterToRelatedVideos = setting
-        .get(SettingBoxKey.applyFilterToRelatedVideos, defaultValue: true);
+    minDurationForRcmd = setting.get(
+      SettingBoxKey.minDurationForRcmd,
+      defaultValue: 0,
+    );
+    minLikeRatioForRecommend = setting.get(
+      SettingBoxKey.minLikeRatioForRecommend,
+      defaultValue: 0,
+    );
+    banWordList =
+        (setting.get(SettingBoxKey.banWordForRecommend, defaultValue: '')
+                as String)
+            .split(' ');
+    exemptFilterForFollowed = setting.get(
+      SettingBoxKey.exemptFilterForFollowed,
+      defaultValue: true,
+    );
+    applyFilterToRelatedVideos = setting.get(
+      SettingBoxKey.applyFilterToRelatedVideos,
+      defaultValue: true,
+    );
 
-    disableRelatedVideos =
-        setting.get(SettingBoxKey.disableRelatedVideos, defaultValue: false);
+    disableRelatedVideos = setting.get(
+      SettingBoxKey.disableRelatedVideos,
+      defaultValue: false,
+    );
   }
 
   static bool filter(dynamic videoItem, {bool relatedVideos = false}) {

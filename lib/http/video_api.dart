@@ -23,6 +23,8 @@ final class VideoApi {
 
   static VideoApi get instance => _instance ??= VideoApi();
 
+  static void resetForTesting() => _instance = null;
+
   final ApiClient _client;
   final WbiSigner _signer;
 

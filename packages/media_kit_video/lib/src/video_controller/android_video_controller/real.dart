@@ -123,15 +123,17 @@ class AndroidVideoController extends PlatformVideoController {
         if (_disposed) {
           return;
         }
+        final int rawWidth = event.dw ?? event.w ?? 0;
+        final int rawHeight = event.dh ?? event.h ?? 0;
         final int width;
         final int height;
         if (event.rotate == 0 || event.rotate == 180) {
-          width = event.dw ?? 0;
-          height = event.dh ?? 0;
+          width = rawWidth;
+          height = rawHeight;
         } else {
           // width & height are swapped for 90 or 270 degrees rotation.
-          width = event.dh ?? 0;
-          height = event.dw ?? 0;
+          width = rawHeight;
+          height = rawWidth;
         }
 
         final isZero = width == 0 || height == 0;
@@ -151,6 +153,10 @@ class AndroidVideoController extends PlatformVideoController {
             'height': height.toString(),
           },
         );
+
+        if (_isDisposed) {
+          return;
+        }
 
         rect.value = Rect.fromLTWH(
           0.0,
@@ -305,9 +311,12 @@ class AndroidVideoController extends PlatformVideoController {
                     );
                     final int id = call.arguments['id'];
                     final int wid = call.arguments['wid'];
-                    _controllers[handle]?.rect.value = rect;
-                    _controllers[handle]?.id.value = id;
-                    _controllers[handle]?.wid.value = wid;
+                    final controller = _controllers[handle];
+                    if (controller != null && !controller._isDisposed) {
+                      controller.rect.value = rect;
+                      controller.id.value = id;
+                      controller.wid.value = wid;
+                    }
                     break;
                   }
                 case 'VideoOutput.WaitUntilFirstFrameRenderedNotify':

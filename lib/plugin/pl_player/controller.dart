@@ -55,6 +55,8 @@ Box setting = GStorage.setting;
 Box onlineCache = GStorage.onlineCache;
 
 class PlPlayerController with WidgetsBindingObserver {
+  static bool isHeadlessTestMode = false;
+
   static Player? _videoPlayerController;
   VideoController? _videoController;
   PlaybackCommandCoordinator? _playbackCommands;
@@ -124,7 +126,7 @@ class PlPlayerController with WidgetsBindingObserver {
   PlaylistMode _looping = PlaylistMode.none;
   bool _autoPlay = false;
   final PlaybackPositionGuard _positionGuard = PlaybackPositionGuard();
-  Future<void> _sourceOperation = Future<void>.value();
+  Future<void>? _sourceOperation;
   Timer? _retryTimer;
   final PlaybackLifecycle _playbackLifecycle = PlaybackLifecycle();
   final Rx<PlaybackLifecycleState> playbackLifecycleState =
@@ -243,7 +245,7 @@ class PlPlayerController with WidgetsBindingObserver {
   bool get canControlPlayback =>
       _playbackLifecycle.canControlPlayback &&
       _playbackCommands != null &&
-      _videoPlayerController != null;
+      (_videoPlayerController != null || isHeadlessTestMode);
 
   bool get isPlaying => canControlPlayback && playerStatus.playing;
 
@@ -715,14 +717,15 @@ class PlPlayerController with WidgetsBindingObserver {
       initialPosition: seekTo,
       initialDuration: duration,
     );
-    dataStatus.status.value = DataStatus.loading;
     _retryTimer?.cancel();
-    final Future<void> previousOperation = _sourceOperation;
+    final Future<void>? previousOperation = _sourceOperation;
     final Completer<void> operationCompleter = Completer<void>();
     _sourceOperation = operationCompleter.future;
-    try {
-      await previousOperation;
-    } catch (_) {}
+    if (previousOperation != null) {
+      try {
+        await previousOperation;
+      } catch (_) {}
+    }
 
     try {
       if (session != _playbackSession) return;
@@ -766,6 +769,41 @@ class PlPlayerController with WidgetsBindingObserver {
 
       if (canControlPlayback && _videoPlayerController!.state.playing) {
         await pause(notify: false);
+      }
+
+      if (isHeadlessTestMode) {
+        _playbackCommands = PlaybackCommandCoordinator(
+          engine: HeadlessTestPlaybackEngine((bool playing) {
+            playerStatus.status.value = playing
+                ? PlayerStatus.playing
+                : PlayerStatus.paused;
+            videoPlayerServiceHandler.onStatusChange(
+              playerStatus.status.value,
+              isBuffering.value,
+            );
+          }),
+          audioSession: audioSessionHandler,
+          onControlsVisibilityChanged: (bool visible) {
+            controls = visible;
+          },
+          onFeedback: () {},
+          restartFromBeginning: () =>
+              this.seekTo(const Duration(seconds: 0), type: 'slider'),
+        );
+        _duration.value = duration ?? const Duration(minutes: 5);
+        updateDurationSecond();
+        dataStatus.status.value = DataStatus.loaded;
+        playerStatus.status.value = _autoPlay
+            ? PlayerStatus.playing
+            : PlayerStatus.paused;
+        videoPlayerServiceHandler.onStatusChange(
+          playerStatus.status.value,
+          isBuffering.value,
+        );
+        if (_playbackLifecycle.markReady(session)) {
+          playbackLifecycleState.value = _playbackLifecycle.state;
+        }
+        return;
       }
 
       // if (_playerCount.value == 0) {
@@ -823,6 +861,9 @@ class PlPlayerController with WidgetsBindingObserver {
       print('plPlayer err:  $err');
     } finally {
       operationCompleter.complete();
+      if (identical(_sourceOperation, operationCompleter.future)) {
+        _sourceOperation = null;
+      }
     }
   }
 
@@ -1098,13 +1139,15 @@ class PlPlayerController with WidgetsBindingObserver {
     int session, {
     Map<String, Object?>? initialState,
   }) async {
-    final Future<void> previousOperation = _sourceOperation;
+    final Future<void>? previousOperation = _sourceOperation;
     final Completer<void> operationCompleter = Completer<void>();
     _sourceOperation = operationCompleter.future;
     try {
-      try {
-        await previousOperation;
-      } catch (_) {}
+      if (previousOperation != null) {
+        try {
+          await previousOperation;
+        } catch (_) {}
+      }
       if (session != _playbackSession || _videoPlayerController == null) {
         return;
       }
@@ -1203,6 +1246,9 @@ class PlPlayerController with WidgetsBindingObserver {
       SmartDialog.showToast('软件解码仍然失败，请尝试切换画质或关闭硬解');
     } finally {
       operationCompleter.complete();
+      if (identical(_sourceOperation, operationCompleter.future)) {
+        _sourceOperation = null;
+      }
     }
   }
 
@@ -1597,8 +1643,11 @@ class PlPlayerController with WidgetsBindingObserver {
     }
     _positionGuard.expectPosition(position);
     _position.value = position;
+    _sliderPosition.value = position;
     updatePositionSecond();
+    updateSliderPositionSecond();
     _heartDuration = position.inSeconds;
+    if (isHeadlessTestMode) return;
     if (duration.value.inSeconds != 0) {
       try {
         if (type != 'slider') {
@@ -1635,9 +1684,11 @@ class PlPlayerController with WidgetsBindingObserver {
   /// 设置倍速
   Future<void> setPlaybackSpeed(double speed) async {
     if (!canControlPlayback) return;
-    try {
-      await _videoPlayerController?.setRate(speed);
-    } catch (_) {}
+    if (!isHeadlessTestMode) {
+      try {
+        await _videoPlayerController?.setRate(speed);
+      } catch (_) {}
+    }
     // fix 长按倍速后放开不恢复
     if (doubleSpeedStatus.value == 0) {
       _playbackSpeed.value = speed;
@@ -2317,12 +2368,14 @@ class PlPlayerController with WidgetsBindingObserver {
     if (!force && floatingManager.containsFloating(globalId)) return;
     if (!force && !_resourceOwnership.owns(owner!)) return;
 
-    final Future<void> previousOperation = _sourceOperation;
+    final Future<void>? previousOperation = _sourceOperation;
     final Completer<void> operationCompleter = Completer<void>();
     _sourceOperation = operationCompleter.future;
-    try {
-      await previousOperation;
-    } catch (_) {}
+    if (previousOperation != null) {
+      try {
+        await previousOperation;
+      } catch (_) {}
+    }
 
     final PlayerDiagnosticSession? diagnostic = _diagnosticSession;
     try {
@@ -2365,6 +2418,9 @@ class PlPlayerController with WidgetsBindingObserver {
       }
     } finally {
       operationCompleter.complete();
+      if (identical(_sourceOperation, operationCompleter.future)) {
+        _sourceOperation = null;
+      }
     }
   }
 
@@ -2443,14 +2499,6 @@ class PlPlayerController with WidgetsBindingObserver {
   }
 
   Future<void> dispose() async {
-    // 每次减1，最后销毁
-    // if (type == 'single' && playerCount.value > 1) {
-    //   _playerCount.value -= 1;
-    //   _heartDuration = 0;
-    //   pause();
-    //   return;
-    // }
-    // _playerCount.value = 0;
     try {
       if (canControlPlayback) {
         await pause();

@@ -57,6 +57,31 @@ class MediaKitPlaybackEngine implements PlaybackEngine {
   }
 }
 
+class HeadlessTestPlaybackEngine implements PlaybackEngine {
+  HeadlessTestPlaybackEngine([this.onPlayingChanged]);
+
+  final void Function(bool isPlaying)? onPlayingChanged;
+  bool _playing = false;
+
+  @override
+  bool get isPlaying => _playing;
+
+  @override
+  bool get isCompleted => false;
+
+  @override
+  Future<void> play() async {
+    _playing = true;
+    onPlayingChanged?.call(true);
+  }
+
+  @override
+  Future<void> pause() async {
+    _playing = false;
+    onPlayingChanged?.call(false);
+  }
+}
+
 class PlaybackCommandCoordinator {
   PlaybackCommandCoordinator({
     required this.engine,

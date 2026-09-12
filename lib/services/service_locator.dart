@@ -6,12 +6,13 @@ import 'package:pilipalaz/services/auth/secure_cookie_jar.dart';
 import 'package:pilipalaz/services/auth/webview_session_bridge.dart';
 import 'package:pilipalaz/utils/storage.dart';
 
+import 'package:pilipalaz/plugin/pl_player/playback_commands.dart';
 import 'audio_handler.dart';
 import 'audio_session.dart';
 import 'package:flutter_floating/floating/floating.dart';
 
 late VideoPlayerServiceHandler videoPlayerServiceHandler;
-late AudioSessionHandler audioSessionHandler;
+late PlaybackAudioSession audioSessionHandler;
 late CredentialStore credentialStore;
 late LegacyCredentialSource legacyCredentialSource;
 late AuthSessionManager authSessionManager;

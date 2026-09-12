@@ -840,7 +840,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     const TextStyle textStyle = TextStyle(color: Colors.white, fontSize: 12);
     final activeVideoController =
         videoController ?? playerController.videoController;
-    Widget video = activeVideoController != null
+    final bool showNativeVideo =
+        !PlPlayerController.isHeadlessTestMode && activeVideoController != null;
+    Widget video = showNativeVideo
         ? Video(
             key: ValueKey(
               '${playerController.videoFit.value}'
@@ -862,7 +864,18 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             ),
             fit: playerController.videoFit.value,
           )
-        : const SizedBox.expand(child: ColoredBox(color: Colors.black));
+        : const SizedBox.expand(
+            child: ColoredBox(
+              color: Colors.black,
+              child: Center(
+                child: Text(
+                  'Headless Video Placeholder',
+                  key: Key('headless_video_placeholder'),
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ),
+            ),
+          );
     return Stack(
       fit: StackFit.passthrough,
       key: _playerKey,

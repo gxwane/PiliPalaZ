@@ -133,6 +133,16 @@ final class HttpRuntime {
     );
   }
 
+  @visibleForTesting
+  static void setInstanceForTesting(HttpRuntime? runtime) {
+    _instance = runtime;
+  }
+
+  @visibleForTesting
+  static void resetForTesting() {
+    _instance = null;
+  }
+
   static HttpRuntime ensureInitialized({
     AuthSessionManager? authSessionManager,
     CookieJar? cookieJar,

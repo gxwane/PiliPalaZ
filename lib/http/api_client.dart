@@ -235,7 +235,12 @@ final class ApiClient {
           endpoint: endpoint,
           statusCode: statusCode,
         );
-      } catch (_) {
+      } catch (error, stackTrace) {
+        if (kDebugMode) {
+          debugPrint(
+            'ApiClient: Unknown decoding error for $endpoint: $error\n$stackTrace',
+          );
+        }
         return ApiFailure<T>(
           kind: ApiFailureKind.decoding,
           message: '响应数据无法解析',

@@ -77,8 +77,8 @@ class IntroDetail extends StatelessWidget {
               ),
             const SizedBox(width: 8),
             SelectableText(
-              key: PageStorageKey<String>(videoDetail!.bvid!),
-              videoDetail!.bvid!,
+              key: PageStorageKey<String>(videoDetail?.bvid ?? ''),
+              videoDetail?.bvid ?? '',
               style: const TextStyle(fontSize: 13),
             ),
             const SizedBox(width: 5),

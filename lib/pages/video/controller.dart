@@ -494,6 +494,7 @@ class VideoDetailController extends GetxController
       final ApiResult<PlayUrlModel> result = sourceType.isPgc
           ? await PgcApi.instance.playUrl(epId: epId!, cid: cid.value)
           : await VideoApi.instance.playUrl(cid: cid.value, bvid: bvid);
+      debugPrint('QUERY_VIDEO_URL: result=$result');
       if (result case ApiSuccess<PlayUrlModel>(data: final playData)) {
         data = playData;
         if (data.isDrm) {

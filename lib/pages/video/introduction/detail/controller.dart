@@ -122,7 +122,7 @@ class VideoIntroController extends GetxController {
         final VideoDetailController videoDetailCtr =
             Get.find<VideoDetailController>(tag: heroTag);
         final cid = videoDetailCtr.cid.value;
-        final current = value.pages?.firstWhere(
+        final current = value.pages?.firstWhereOrNull(
           (element) => element.cid == cid,
         );
 

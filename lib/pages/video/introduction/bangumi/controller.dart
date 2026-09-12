@@ -114,7 +114,7 @@ class BangumiIntroController extends GetxController {
       final VideoDetailController videoDetailCtr =
           Get.find<VideoDetailController>(tag: heroTag);
       final cid = videoDetailCtr.cid.value;
-      final current = value.episodes?.firstWhere(
+      final current = value.episodes?.firstWhereOrNull(
         (element) => element.cid == cid,
       );
 

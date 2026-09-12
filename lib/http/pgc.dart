@@ -24,6 +24,8 @@ final class PgcApi {
 
   static PgcApi get instance => _instance ??= PgcApi();
 
+  static void resetForTesting() => _instance = null;
+
   final ApiClient _client;
 
   Future<ApiResult<BangumiListDataModel>> catalog({

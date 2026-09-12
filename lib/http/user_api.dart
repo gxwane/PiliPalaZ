@@ -14,6 +14,8 @@ final class UserApi {
 
   static UserApi get instance => _instance ??= UserApi();
 
+  static void resetForTesting() => _instance = null;
+
   final ApiClient _client;
 
   Future<ApiResult<UserStat>> stat({required int mid}) {
