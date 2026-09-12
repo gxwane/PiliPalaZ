@@ -1,95 +1,72 @@
-import 'dart:typed_data';
-
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:pilipalaz/services/gallery_permission_policy.dart';
 import 'package:saver_gallery/saver_gallery.dart';
-import 'dart:io';
 
 class DownloadUtils {
-  // 获取存储权限
-  static Future<bool> requestStoragePer(BuildContext context) async {
-    await Permission.storage.request();
-    PermissionStatus status = await Permission.storage.status;
-    if (status == PermissionStatus.denied ||
-        status == PermissionStatus.permanentlyDenied) {
-      if (!context.mounted) return false;
-      await showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('提示'),
-            content: const Text('存储权限未授权'),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  openAppSettings();
-                },
-                child: const Text('去授权'),
-              )
-            ],
-          );
-        },
-      );
-      return false;
-    } else {
-      return true;
-    }
-  }
-
-  // 获取相册权限
-  static Future<bool> requestPhotoPer() async {
-    await Permission.photos.request();
-    PermissionStatus status = await Permission.photos.status;
-    if (status == PermissionStatus.denied ||
-        status == PermissionStatus.permanentlyDenied) {
-      // SmartDialog.show(
-      //   useSystem: true,
-      //   animationType: SmartAnimationType.centerFade_otherSlide,
-      //   builder: (BuildContext context) {
-      //     return AlertDialog(
-      //       title: const Text('提示'),
-      //       content: const Text('相册权限未授权'),
-      //       actions: [
-      //         TextButton(
-      //           onPressed: () async {
-      //             openAppSettings();
-      //           },
-      //           child: const Text('去授权'),
-      //         )
-      //       ],
-      //     );
-      //   },
-      // );
-      return false;
-    } else {
-      return true;
-    }
-  }
-
-  static Future<bool> checkPermissionDependOnSdkInt(BuildContext context) async {
-    if (Platform.isAndroid) {
+  static Future<bool> checkPermissionDependOnSdkInt(
+    BuildContext context,
+  ) async {
+    final platform = defaultTargetPlatform;
+    int? androidSdk;
+    if (platform == TargetPlatform.android) {
       final androidInfo = await DeviceInfoPlugin().androidInfo;
-      if (androidInfo.version.sdkInt <= 32) {
-        if (!context.mounted) return false;
-        return await requestStoragePer(context);
-      } else {
-        return await requestPhotoPer();
-      }
+      androidSdk = androidInfo.version.sdkInt;
     }
-    return await requestStoragePer(context);
+
+    final kind = galleryPermissionFor(
+      platform: platform,
+      androidSdk: androidSdk,
+    );
+    switch (kind) {
+      case GalleryPermissionKind.none:
+        return true;
+      case GalleryPermissionKind.legacyStorage:
+        final status = await Permission.storage.request();
+        if (status.isGranted) {
+          return true;
+        }
+        if (status.isPermanentlyDenied && context.mounted) {
+          await showDialog<void>(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text('提示'),
+                content: const Text('存储权限未授权'),
+                actions: [
+                  TextButton(
+                    onPressed: openAppSettings,
+                    child: const Text('去授权'),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+        return false;
+      case GalleryPermissionKind.photosAddOnly:
+        return (await Permission.photosAddOnly.request()).isGranted;
+    }
   }
-  static Future<bool> downloadImg(BuildContext context, String imgUrl,
-      {String imgType = 'cover'}) async {
+
+  static Future<bool> downloadImg(
+    BuildContext context,
+    String imgUrl, {
+    String imgType = 'cover',
+  }) async {
     try {
       if (!await checkPermissionDependOnSdkInt(context)) {
-      //   // return false;
+        return false;
       }
       SmartDialog.showLoading(msg: '正在下载原图');
-      var response = await Dio()
-          .get(imgUrl, options: Options(responseType: ResponseType.bytes));
+      var response = await Dio().get(
+        imgUrl,
+        options: Options(responseType: ResponseType.bytes),
+      );
       SmartDialog.dismiss();
       SmartDialog.showLoading(msg: '正在保存图片至图库');
       String picName =
@@ -113,7 +90,7 @@ class DownloadUtils {
     } catch (err) {
       SmartDialog.dismiss();
       SmartDialog.showToast(err.toString());
-      return true;
+      return false;
     }
   }
 }

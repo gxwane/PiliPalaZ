@@ -42,6 +42,14 @@ post_install do |installer|
       if !deployment_target.nil? && !deployment_target.empty? && deployment_target.to_f < 13.0
         config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
       end
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] += [
+        'PERMISSION_PHOTOS=0',
+        'PERMISSION_PHOTOS_ADD_ONLY=1',
+        'PERMISSION_CAMERA=0',
+        'PERMISSION_MEDIA_LIBRARY=0',
+        'PERMISSION_NOTIFICATIONS=0',
+      ]
     end
   end
 end
