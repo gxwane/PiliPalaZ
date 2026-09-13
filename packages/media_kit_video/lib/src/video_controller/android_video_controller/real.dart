@@ -12,6 +12,7 @@ import 'package:synchronized/synchronized.dart';
 
 import 'package:media_kit/media_kit.dart';
 
+import 'package:media_kit_video/src/utils/dimensions.dart';
 import 'package:media_kit_video/src/utils/query_decoders.dart';
 import 'package:media_kit_video/src/video_controller/platform_video_controller.dart';
 
@@ -125,16 +126,13 @@ class AndroidVideoController extends PlatformVideoController {
         }
         final int rawWidth = event.dw ?? event.w ?? 0;
         final int rawHeight = event.dh ?? event.h ?? 0;
-        final int width;
-        final int height;
-        if (event.rotate == 0 || event.rotate == 180) {
-          width = rawWidth;
-          height = rawHeight;
-        } else {
-          // width & height are swapped for 90 or 270 degrees rotation.
-          width = rawHeight;
-          height = rawWidth;
-        }
+        final VideoDimension dimension = computeRotatedDimensions(
+          rawWidth: rawWidth,
+          rawHeight: rawHeight,
+          rotate: event.rotate,
+        );
+        final int width = dimension.width;
+        final int height = dimension.height;
 
         final isZero = width == 0 || height == 0;
         final isSame = width == rect.value?.width.toInt() &&

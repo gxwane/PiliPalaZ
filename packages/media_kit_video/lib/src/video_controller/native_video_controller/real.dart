@@ -12,6 +12,7 @@ import 'package:synchronized/synchronized.dart';
 
 import 'package:media_kit/media_kit.dart';
 
+import 'package:media_kit_video/src/utils/dimensions.dart';
 import 'package:media_kit_video/src/utils/query_decoders.dart';
 import 'package:media_kit_video/src/video_controller/platform_video_controller.dart';
 
@@ -84,16 +85,13 @@ class NativeVideoController extends PlatformVideoController {
 
         final int handle = await player.handle;
 
-        final int width;
-        final int height;
-        if (event.rotate == 0 || event.rotate == 180) {
-          width = event.dw ?? 0;
-          height = event.dh ?? 0;
-        } else {
-          // width & height are swapped for 90 or 270 degrees rotation.
-          width = event.dh ?? 0;
-          height = event.dw ?? 0;
-        }
+        final VideoDimension dimension = computeRotatedDimensions(
+          rawWidth: event.dw ?? 0,
+          rawHeight: event.dh ?? 0,
+          rotate: event.rotate,
+        );
+        final int width = dimension.width;
+        final int height = dimension.height;
 
         if (_disposed ||
             videoParamsWidth == width && videoParamsHeight == height) {
