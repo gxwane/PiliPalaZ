@@ -26,6 +26,7 @@ class VideoCardH extends StatelessWidget {
     this.showView = true,
     this.showDanmaku = true,
     this.showPubdate = false,
+    this.onTap,
   });
   // ignore: prefer_typing_uninitialized_variables
   final videoItem;
@@ -36,6 +37,7 @@ class VideoCardH extends StatelessWidget {
   final bool showView;
   final bool showDanmaku;
   final bool showPubdate;
+  final Future<void> Function()? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -45,10 +47,16 @@ class VideoCardH extends StatelessWidget {
     try {
       type = videoItem.type;
     } catch (_) {}
-    List<VideoCustomAction> actions =
-        VideoCustomActions(videoItem, context).actions;
+    List<VideoCustomAction> actions = VideoCustomActions(
+      videoItem,
+      context,
+    ).actions;
     final String heroTag = Utils.makeHeroTag(aid);
     Future<void> handleTap() async {
+      if (onTap != null) {
+        await onTap!();
+        return;
+      }
       if (type == 'ketang') {
         SmartDialog.showToast('课堂视频暂不支持播放');
         return;
@@ -62,15 +70,18 @@ class VideoCardH extends StatelessWidget {
           return;
         }
         final cid = (cidResult as ApiSuccess<int>).data;
-        Get.toNamed('/video?bvid=$bvid&cid=$cid',
-            arguments: {'videoItem': videoItem, 'heroTag': heroTag});
+        Get.toNamed(
+          '/video?bvid=$bvid&cid=$cid',
+          arguments: {'videoItem': videoItem, 'heroTag': heroTag},
+        );
       } catch (err) {
         SmartDialog.showToast(err.toString());
       }
     }
 
-    return Stack(children: [
-      Semantics(
+    return Stack(
+      children: [
+        Semantics(
           label: Utils.videoItemSemantics(videoItem),
           excludeSemantics: true,
           button: true,
@@ -97,50 +108,57 @@ class VideoCardH extends StatelessWidget {
                     AspectRatio(
                       aspectRatio: StyleString.aspectRatio,
                       child: LayoutBuilder(
-                        builder: (BuildContext context,
-                            BoxConstraints boxConstraints) {
-                          final double maxWidth = boxConstraints.maxWidth;
-                          final double maxHeight = boxConstraints.maxHeight;
-                          // print('heroTagH: $heroTag');
-                          return Stack(
-                            children: [
-                              GestureDetector(
-                                onLongPress: () {
-                                  // 弹窗显示封面
-                                  MyDialog.show(context,
-                                      OverlayPop(videoItem: videoItem));
-                                },
-                                behavior: HitTestBehavior.translucent,
-                                child: Hero(
-                                  tag: heroTag,
-                                  child: NetworkImgLayer(
-                                    src: videoItem.pic as String,
-                                    width: maxWidth,
-                                    height: maxHeight,
+                        builder:
+                            (
+                              BuildContext context,
+                              BoxConstraints boxConstraints,
+                            ) {
+                              final double maxWidth = boxConstraints.maxWidth;
+                              final double maxHeight = boxConstraints.maxHeight;
+                              // print('heroTagH: $heroTag');
+                              return Stack(
+                                children: [
+                                  GestureDetector(
+                                    onLongPress: () {
+                                      // 弹窗显示封面
+                                      MyDialog.show(
+                                        context,
+                                        OverlayPop(videoItem: videoItem),
+                                      );
+                                    },
+                                    behavior: HitTestBehavior.translucent,
+                                    child: Hero(
+                                      tag: heroTag,
+                                      child: NetworkImgLayer(
+                                        src: videoItem.pic as String,
+                                        width: maxWidth,
+                                        height: maxHeight,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                              if (videoItem.duration != 0)
-                                PBadge(
-                                  text: Utils.timeFormat(videoItem.duration!),
-                                  right: 6.0,
-                                  bottom: 6.0,
-                                  type: 'gray',
-                                ),
-                              if (type != 'video')
-                                PBadge(
-                                  text: type,
-                                  left: 6.0,
-                                  bottom: 6.0,
-                                  type: 'primary',
-                                ),
-                              // if (videoItem.rcmdReason != null &&
-                              //     videoItem.rcmdReason.content != '')
-                              //   pBadge(videoItem.rcmdReason.content, context,
-                              //       6.0, 6.0, null, null),
-                            ],
-                          );
-                        },
+                                  if (videoItem.duration != 0)
+                                    PBadge(
+                                      text: Utils.timeFormat(
+                                        videoItem.duration!,
+                                      ),
+                                      right: 6.0,
+                                      bottom: 6.0,
+                                      type: 'gray',
+                                    ),
+                                  if (type != 'video')
+                                    PBadge(
+                                      text: type,
+                                      left: 6.0,
+                                      bottom: 6.0,
+                                      type: 'primary',
+                                    ),
+                                  // if (videoItem.rcmdReason != null &&
+                                  //     videoItem.rcmdReason.content != '')
+                                  //   pBadge(videoItem.rcmdReason.content, context,
+                                  //       6.0, 6.0, null, null),
+                                ],
+                              );
+                            },
                       ),
                     ),
                     VideoContent(
@@ -150,19 +168,21 @@ class VideoCardH extends StatelessWidget {
                       showView: showView,
                       showDanmaku: showDanmaku,
                       showPubdate: showPubdate,
-                    )
+                    ),
                   ],
                 );
               },
             ),
-          )),
-      if (source == 'normal')
-        Positioned(
-          bottom: 0,
-          right: 10,
-          child: VideoPopupMenu(size: 29, iconSize: 17, actions: actions),
+          ),
         ),
-    ]);
+        if (source == 'normal')
+          Positioned(
+            bottom: 0,
+            right: 10,
+            child: VideoPopupMenu(size: 29, iconSize: 17, actions: actions),
+          ),
+      ],
+    );
   }
 }
 
@@ -224,17 +244,16 @@ class VideoContent extends StatelessWidget {
                           text: i['text'] as String,
                           style: TextStyle(
                             fontWeight: FontWeight.w500,
-                            fontSize: Theme.of(context)
-                                .textTheme
-                                .bodyMedium!
-                                .fontSize,
+                            fontSize: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium!.fontSize,
                             letterSpacing: 0.3,
                             color: i['type'] == 'em'
                                 ? Theme.of(context).colorScheme.primary
                                 : Theme.of(context).colorScheme.onSurface,
                           ),
                         ),
-                      ]
+                      ],
                     ],
                   ),
                 ),
@@ -276,17 +295,11 @@ class VideoContent extends StatelessWidget {
             Row(
               children: [
                 if (showView) ...[
-                  StatView(
-                    theme: 'gray',
-                    view: videoItem.stat.view as int,
-                  ),
+                  StatView(theme: 'gray', view: videoItem.stat.view as int),
                   const SizedBox(width: 8),
                 ],
                 if (showDanmaku)
-                  StatDanMu(
-                    theme: 'gray',
-                    danmu: videoItem.stat.danmu as int,
-                  ),
+                  StatDanMu(theme: 'gray', danmu: videoItem.stat.danmu as int),
                 const Spacer(),
                 if (source == 'normal') const SizedBox(width: 24),
               ],

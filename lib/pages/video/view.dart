@@ -256,10 +256,10 @@ class _VideoDetailPageState extends State<VideoDetailPage>
             plPlayerController!.playRepeat != PlayRepeat.pause &&
             plPlayerController!.playRepeat != PlayRepeat.singleCycle) {
           if (!videoDetailController.sourceType.isPgc) {
-            notExitFlag = videoIntroController.nextPlay();
+            notExitFlag = videoIntroController.nextPlay(autoTriggered: true);
           }
           if (videoDetailController.sourceType.isPgc) {
-            notExitFlag = bangumiIntroController.nextPlay();
+            notExitFlag = bangumiIntroController.nextPlay(autoTriggered: true);
           }
         }
 
@@ -421,6 +421,11 @@ class _VideoDetailPageState extends State<VideoDetailPage>
   // 返回当前页面时
   void didPopNext() {
     super.didPopNext();
+    if (videoDetailController.sourceType.isPgc) {
+      bangumiIntroController.playbackQueueController.markActive();
+    } else {
+      videoIntroController.playbackQueueController.markActive();
+    }
     // isShowing = true;
     // if (mounted) {
     //   setState(() => {});

@@ -6,6 +6,15 @@
 
 ### 变更
 
+- 统一播放队列体系（Unified Playback Queue）：
+  - 领域模型与跨源统一：抽象通用 `PlayQueueItem` 与 `PlayQueueSourceType`，全面统一分 P（`part`）、UGC 合集（`ugcSeason`）、PGC 影视剧集（`pgcEpisode`）、稍后再看（`watchLater`）以及相关视频（`related`）的播放与流转控制。
+  - 队列生命周期与堆栈式激活：实现 `PlaybackQueueController`，引入堆栈式活跃实例管理（`_activeStack`）与回退自动重新激活机制（`markActive`），避免页面多次进出时控制指针失效或悬空。
+  - 外部队列锁定保护：支持稍后再看或自定义队列锁定（`isExternalQueue`），防止多 P 视频或合集在切换集数重刷详情时冲刷或覆盖待播序列。
+  - 队列自愈与越界保护：支持条目实时移除、清空后续待播项、正反序排布、列表循环回绕以及单项排空停止，自动平滑自愈当前播放索引。
+  - 可视化播放队列面板（`PlayQueueBottomSheet`）：支持打开自动聚焦居中于当前播放条目、实时高亮播放中条目、播放模式快捷切换（播完暂停、顺序播放、列表循环、单曲循环、自动连播）、单项移除、清空待播与大会员权益守卫。
+  - 播放器底栏控制与连播集成：底栏上一集与下一集按钮深度绑定队列可用状态（`hasPrevious` 与 `hasNext`），达到端点自动置灰禁用，列表循环与自动连播模式下保持可用；选集按钮升级为统一播放队列入口。
+  - 稍后再看页面打通：顶部 AppBar 新增“播放全部”入口；单项卡片点击直接携带完整待播列表与当前起始索引无缝载入播放器。
+  - 后台音频服务与系统通知栏打通：`AudioHandler` 实现 `skipToNext()` 与 `skipToPrevious()`，在 `systemActions` 中注册上一曲/下一曲控制，全面打通 Android 锁屏界面通知与蓝牙耳机 AVRCP 硬件切歌指令。
 - 完善应用无障碍支持（Accessibility Hardening）：
   - 核心控件触控热区全面达标：播放器底栏控制项（上一集、下一集、选集、画面比例、字幕、倍速、全屏）、顶部控制按钮、视频互动操作项（点赞、投币、收藏、分享）与首页用户头像均满足 Android 48x48dp 与 iOS 44x44dp 触控热区规范要求。
   - 语义树与屏幕阅读器（TalkBack / VoiceOver）深度支持：补全各类控制按钮、视频卡片及互动组件的 `isButton` 标志、辅助标签及选中/长按提示状态；播放器控制层隐藏时自动通过 `ExcludeSemantics` 与 `ExcludeFocus` 剪枝，避免不可见组件干扰读屏焦点导航。

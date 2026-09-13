@@ -25,11 +25,14 @@ import 'package:screen_brightness/screen_brightness.dart';
 
 import '../../common/widgets/audio_video_progress_bar.dart';
 import 'package:pilipalaz/pages/video/introduction/bangumi/controller.dart';
+import 'package:pilipalaz/controllers/playback_queue_controller.dart';
+import 'package:pilipalaz/pages/video/widgets/play_queue_bottom_sheet.dart';
 import '../../common/widgets/list_sheet.dart';
 import '../../services/service_locator.dart';
 import '../../utils/utils.dart';
 import 'models/bottom_control_type.dart';
 import 'models/bottom_progress_behavior.dart';
+import 'models/play_repeat.dart';
 import 'models/play_status.dart';
 import 'models/player_gesture_action.dart';
 import 'models/player_middle_gesture.dart';
@@ -333,6 +336,17 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     super.dispose();
   }
 
+  PlaybackQueueController? get _queueController {
+    try {
+      final heroTag =
+          videoIntroController?.heroTag ?? bangumiIntroController?.heroTag;
+      if (heroTag != null && heroTag.isNotEmpty) {
+        return Get.find<PlaybackQueueController>(tag: heroTag);
+      }
+    } catch (_) {}
+    return PlaybackQueueController.activeInstance;
+  }
+
   bool get _isSeason =>
       videoIntroController?.videoDetail.value.ugcSeason != null;
 
@@ -342,9 +356,24 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
   bool get _isBangumi => bangumiIntroController?.bangumiDetail.value != null;
 
-  bool get _hasEpisodes => _isSeason || _isPage || _isBangumi;
+  bool get _hasEpisodes {
+    final qc = _queueController;
+    if (qc != null && qc.queue.isNotEmpty) {
+      return qc.queue.length > 1;
+    }
+    return _isSeason || _isPage || _isBangumi;
+  }
 
   void _playPrevious() {
+    final qc = _queueController;
+    if (qc != null) {
+      if (!qc.hasPrevious.value) {
+        SmartDialog.showToast('已经是第一项了');
+        return;
+      }
+      unawaited(qc.playPrevious());
+      return;
+    }
     bool? result;
     if (videoIntroController != null) {
       result = videoIntroController!.prevPlay();
@@ -357,6 +386,16 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   }
 
   void _playNext() {
+    final qc = _queueController;
+    if (qc != null) {
+      if (!qc.hasNext.value &&
+          widget.controller.playRepeat != PlayRepeat.listCycle) {
+        SmartDialog.showToast('已经是最后一项了');
+        return;
+      }
+      unawaited(qc.playNext());
+      return;
+    }
     bool? result;
     if (videoIntroController != null) {
       result = videoIntroController!.nextPlay();
@@ -369,6 +408,11 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   }
 
   void _showEpisodeList() {
+    final qc = _queueController;
+    if (qc != null && qc.queue.isNotEmpty) {
+      PlayQueueBottomSheet.show(context, controller: qc);
+      return;
+    }
     final episodes = <dynamic>[];
     Function? changeCallback;
     if (_isPage) {
@@ -597,20 +641,24 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     bool isEquivalentFullScreen = _isEquivalentFullScreen;
     Map<BottomControlType, Widget> videoProgressWidgets = {
       /// 上一集
-      BottomControlType.pre: Container(
-        width: 48,
-        height: 48,
-        alignment: Alignment.center,
-        child: ComBtn(
-          semanticsLabel: '上一集',
-          icon: const Icon(
-            Icons.skip_previous,
-            size: 22,
-            color: Colors.white,
+      BottomControlType.pre: Obx(() {
+        final qc = _queueController;
+        final hasPrev = qc != null ? qc.hasPrevious.value : true;
+        return Container(
+          width: 48,
+          height: 48,
+          alignment: Alignment.center,
+          child: ComBtn(
+            semanticsLabel: '上一集',
+            icon: Icon(
+              Icons.skip_previous,
+              size: 22,
+              color: hasPrev ? Colors.white : Colors.white38,
+            ),
+            fuc: hasPrev ? _playPrevious : null,
           ),
-          fuc: _playPrevious,
-        ),
-      ),
+        );
+      }),
 
       /// 播放暂停
       BottomControlType.playOrPause: PlayOrPauseButton(
@@ -618,20 +666,24 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       ),
 
       /// 下一集
-      BottomControlType.next: Container(
-        width: 48,
-        height: 48,
-        alignment: Alignment.center,
-        child: ComBtn(
-          semanticsLabel: '下一集',
-          icon: const Icon(
-            Icons.skip_next,
-            size: 22,
-            color: Colors.white,
+      BottomControlType.next: Obx(() {
+        final qc = _queueController;
+        final hasNxt = qc != null ? qc.hasNext.value : true;
+        return Container(
+          width: 48,
+          height: 48,
+          alignment: Alignment.center,
+          child: ComBtn(
+            semanticsLabel: '下一集',
+            icon: Icon(
+              Icons.skip_next,
+              size: 22,
+              color: hasNxt ? Colors.white : Colors.white38,
+            ),
+            fuc: hasNxt ? _playNext : null,
           ),
-          fuc: _playNext,
-        ),
-      ),
+        );
+      }),
 
       /// 时间进度
       // BottomControlType.time: Column(
@@ -678,11 +730,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         alignment: Alignment.center,
         child: ComBtn(
           semanticsLabel: '选集',
-          icon: const Icon(
-            Icons.list,
-            size: 22,
-            color: Colors.white,
-          ),
+          icon: const Icon(Icons.list, size: 22, color: Colors.white),
           fuc: _showEpisodeList,
         ),
       ),
@@ -696,7 +744,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
           label: '画面比例，当前${playerController.videoFitDEsc.value}',
           child: TextButton(
             onPressed: () => playerController.toggleVideoFit(),
-            style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
+            style: ButtonStyle(
+              padding: WidgetStateProperty.all(EdgeInsets.zero),
+            ),
             child: Obx(
               () => Text(
                 playerController.videoFitDEsc.value,
@@ -817,9 +867,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         height: 48,
         child: Obx(
           () => ComBtn(
-            semanticsLabel: playerController.isFullScreen.value
-                ? '退出全屏'
-                : '全屏',
+            semanticsLabel: playerController.isFullScreen.value ? '退出全屏' : '全屏',
             icon: Icon(
               playerController.isFullScreen.value
                   ? Icons.fullscreen_exit
@@ -1421,53 +1469,54 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         ),
 
         // 头部、底部控制条
-        Obx(
-          () {
-            final bool controlsVisible =
-                !playerController.controlsLock.value &&
-                playerController.showControls.value;
-            return ExcludeFocus(
+        Obx(() {
+          final bool controlsVisible =
+              !playerController.controlsLock.value &&
+              playerController.showControls.value;
+          return ExcludeFocus(
+            excluding: !controlsVisible,
+            child: ExcludeSemantics(
               excluding: !controlsVisible,
-              child: ExcludeSemantics(
-                excluding: !controlsVisible,
-                child: FocusTraversalGroup(
-                  policy: ReadingOrderTraversalPolicy(),
-                  child: Column(
-                    children: [
-                      if (widget.headerControl != null ||
-                          playerController.headerControl != null)
-                        ClipRect(
-                          child: AppBarAni(
-                            controller: animationController,
-                            visible: controlsVisible,
-                            position: 'top',
-                            child:
-                                widget.headerControl ?? playerController.headerControl!,
-                          ),
-                        ),
-                      const Spacer(),
+              child: FocusTraversalGroup(
+                policy: ReadingOrderTraversalPolicy(),
+                child: Column(
+                  children: [
+                    if (widget.headerControl != null ||
+                        playerController.headerControl != null)
                       ClipRect(
                         child: AppBarAni(
                           controller: animationController,
                           visible: controlsVisible,
-                          position: 'bottom',
+                          position: 'top',
                           child:
-                              widget.bottomControl ??
-                              BottomControl(
-                                controller: widget.controller,
-                                controls: buildBottomControl(),
-                                overflowButtonBuilder: (_, hiddenControls) =>
-                                    _buildBottomControlOverflowButton(hiddenControls),
-                              ),
+                              widget.headerControl ??
+                              playerController.headerControl!,
                         ),
                       ),
-                    ],
-                  ),
+                    const Spacer(),
+                    ClipRect(
+                      child: AppBarAni(
+                        controller: animationController,
+                        visible: controlsVisible,
+                        position: 'bottom',
+                        child:
+                            widget.bottomControl ??
+                            BottomControl(
+                              controller: widget.controller,
+                              controls: buildBottomControl(),
+                              overflowButtonBuilder: (_, hiddenControls) =>
+                                  _buildBottomControlOverflowButton(
+                                    hiddenControls,
+                                  ),
+                            ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        }),
 
         /// 进度条 live模式下禁用
         Obx(() {

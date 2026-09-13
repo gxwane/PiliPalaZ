@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:pilipalaz/plugin/pl_player/controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -22,10 +24,15 @@ import 'package:pilipalaz/utils/id_utils.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:pilipalaz/controllers/playback_queue_controller.dart';
+import 'package:pilipalaz/models/common/play_queue_item.dart';
 import 'package:pilipalaz/services/service_locator.dart';
 import 'package:pilipalaz/services/pgc_playback_coordinator.dart';
 
 class BangumiIntroController extends GetxController {
+  // 统一播放队列控制器
+  late final PlaybackQueueController playbackQueueController;
+
   // 视频bvid
   String bvid = Get.parameters['bvid']!;
   var seasonId = Get.parameters['seasonId'] != null
@@ -110,6 +117,21 @@ class BangumiIntroController extends GetxController {
     userInfo = userInfoCache.get('userInfoCache');
     userLogin = userInfo != null;
     hasFollow.value = userLogin ? bangumiItem?.followedState : false;
+
+    try {
+      playbackQueueController = Get.find<PlaybackQueueController>(tag: heroTag);
+    } catch (_) {
+      playbackQueueController = Get.put(
+        PlaybackQueueController(heroTag: heroTag),
+        tag: heroTag,
+      );
+    }
+
+    playbackQueueController.onPlayItem = (PlayQueueItem item) async {
+      await changeSeasonOrbangu(item.bvid, item.cid, item.aid, item.epId);
+      return true;
+    };
+
     bangumiDetail.listen((value) {
       final VideoDetailController videoDetailCtr =
           Get.find<VideoDetailController>(tag: heroTag);
@@ -218,6 +240,15 @@ class BangumiIntroController extends GetxController {
     epId = selected.epId;
     seasonId = detail.seasonId;
     hasFollow.value = userLogin ? detail.followedState : false;
+    if (detail.episodes != null && detail.episodes!.isNotEmpty) {
+      playbackQueueController.initFromPgc(
+        episodes: detail.episodes!,
+        currentCid: lastPlayCid.value,
+        currentEpId: epId,
+        seasonId: detail.seasonId,
+        cover: detail.cover,
+      );
+    }
   }
 
   // 获取点赞状态
@@ -460,6 +491,7 @@ class BangumiIntroController extends GetxController {
     this.bvid = bvid;
     epId = videoDetailCtr.epId;
     lastPlayCid.value = cid;
+    playbackQueueController.syncCurrent(bvid: bvid, cid: cid, epId: epId);
     // 触发媒体通知更新
     bangumiDetail.refresh();
     // 重新请求评论
@@ -539,73 +571,24 @@ class BangumiIntroController extends GetxController {
   }
 
   bool prevPlay() {
-    late List episodes;
-    if (bangumiDetail.value.episodes != null) {
-      episodes = bangumiDetail.value.episodes!;
+    if (!playbackQueueController.hasPrevious.value) {
+      return false;
     }
-    int currentIndex = episodes.indexWhere((e) => e.cid == lastPlayCid.value);
-    int prevIndex = currentIndex - 1;
-    PlayRepeat playRepeat = PlPlayerController.getInstance().playRepeat;
-    if (prevIndex < 0) {
-      if (playRepeat == PlayRepeat.listCycle) {
-        prevIndex = episodes.length - 1;
-      } else {
-        return false;
-      }
-    }
-    int cid = episodes[prevIndex].cid!;
-    String bvid = episodes[prevIndex].bvid!;
-    int aid = episodes[prevIndex].aid!;
-    final int? nextEpId = episodes[prevIndex].epId;
-    changeSeasonOrbangu(bvid, cid, aid, nextEpId);
+    unawaited(playbackQueueController.playPrevious());
     return true;
   }
 
   bool hasNextEpisode() {
-    late List episodes;
-    if (bangumiDetail.value.episodes == null) {
-      return false;
-    }
-    episodes = bangumiDetail.value.episodes!;
-    PlayRepeat playRepeat = PlPlayerController.getInstance().playRepeat;
-    if (playRepeat == PlayRepeat.listCycle) {
-      return true;
-    }
-    int currentIndex = episodes.indexWhere((e) => e.cid == lastPlayCid.value);
-    return currentIndex < episodes.length - 1;
+    return playbackQueueController.hasNext.value;
   }
 
   /// 列表循环或者顺序播放时，自动播放下一个；自动连播时，播放相关视频
-  bool nextPlay() {
-    late List<EpisodeItem> episodes;
-    PlayRepeat playRepeat = PlPlayerController.getInstance().playRepeat;
-
-    if (bangumiDetail.value.episodes != null) {
-      episodes = bangumiDetail.value.episodes!;
-    } else {
-      if (playRepeat == PlayRepeat.autoPlayRelated) {
-        return playRelated();
-      }
-    }
-    if (episodes.isEmpty) return false;
-    int currentIndex = episodes.indexWhere((e) => e.cid == lastPlayCid.value);
-    final int? resolvedNextIndex = PgcEpisodeNavigator.nextIndex(
-      episodeCount: episodes.length,
-      currentIndex: currentIndex,
-      cycle: playRepeat == PlayRepeat.listCycle,
-    );
-    if (resolvedNextIndex == null) {
-      if (playRepeat == PlayRepeat.autoPlayRelated) {
-        return playRelated();
-      }
+  bool nextPlay({bool autoTriggered = false}) {
+    if (!playbackQueueController.hasNext.value &&
+        PlPlayerController.getInstance().playRepeat != PlayRepeat.listCycle) {
       return false;
     }
-    final int nextIndex = resolvedNextIndex;
-    int cid = episodes[nextIndex].cid!;
-    String bvid = episodes[nextIndex].bvid!;
-    int aid = episodes[nextIndex].aid!;
-    final int? nextEpId = episodes[nextIndex].epId;
-    changeSeasonOrbangu(bvid, cid, aid, nextEpId);
+    unawaited(playbackQueueController.playNext(autoTriggered: autoTriggered));
     return true;
   }
 

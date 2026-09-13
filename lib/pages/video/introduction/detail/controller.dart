@@ -28,9 +28,14 @@ import 'package:pilipalaz/services/service_locator.dart';
 
 import '../../../../../http/search.dart';
 import '../../../../../models/model_hot_video_item.dart';
+import 'package:pilipalaz/controllers/playback_queue_controller.dart';
+import 'package:pilipalaz/models/common/play_queue_item.dart';
 import '../../related/index.dart';
 
 class VideoIntroController extends GetxController {
+  // 统一播放队列控制器
+  late final PlaybackQueueController playbackQueueController;
+
   // 视频bvid
   late String bvid;
 
@@ -111,6 +116,60 @@ class VideoIntroController extends GetxController {
       SettingBoxKey.enableOnlineTotal,
       defaultValue: false,
     );
+    try {
+      playbackQueueController = Get.find<PlaybackQueueController>(tag: heroTag);
+    } catch (_) {
+      playbackQueueController = Get.put(
+        PlaybackQueueController(heroTag: heroTag),
+        tag: heroTag,
+      );
+    }
+
+    if (Get.arguments is Map &&
+        (Get.arguments as Map).containsKey('watchLaterList')) {
+      final List<HotVideoItemModel> list =
+          ((Get.arguments as Map)['watchLaterList'] as List)
+              .cast<HotVideoItemModel>();
+      final int initialIndex =
+          (Get.arguments as Map)['watchLaterIndex'] as int? ?? 0;
+      playbackQueueController.initFromWatchLater(
+        items: list,
+        initialIndex: initialIndex,
+      );
+    }
+
+    playbackQueueController.onPlayItem = (PlayQueueItem item) async {
+      int resolvedCid = item.cid;
+      if (resolvedCid == 0) {
+        final cidResult = await SearchHttp.ab2c(aid: item.aid, bvid: item.bvid);
+        if (cidResult case ApiSuccess<int>(:final data)) {
+          resolvedCid = data;
+        } else {
+          SmartDialog.showToast('获取视频信息失败');
+          return false;
+        }
+      }
+      await changeSeasonOrbangu(item.bvid, resolvedCid, item.aid);
+      return true;
+    };
+
+    playbackQueueController.onRequestRelated = () async {
+      try {
+        final RelatedController relatedCtr = Get.find<RelatedController>(
+          tag: heroTag,
+        );
+        if (relatedCtr.relatedVideoList.isEmpty) {
+          final res = await relatedCtr.queryRelatedVideo();
+          if (res is ApiSuccess<List<HotVideoItemModel>>) {
+            return res.data;
+          }
+        }
+        return relatedCtr.relatedVideoList.cast<HotVideoItemModel>().toList();
+      } catch (_) {
+        return [];
+      }
+    };
+
     if (isShowOnlineTotal) {
       queryOnlineTotal();
       startTimer(); // 在页面加载时启动定时器
@@ -199,10 +258,42 @@ class VideoIntroController extends GetxController {
           lastPlayCid.value == 0) {
         lastPlayCid.value = videoDetail.value.pages!.first.cid!;
       }
-      // Get.find<VideoDetailController>(tag: heroTag).tabs.value = [
-      //   '简介',
-      //   '评论 ${result['data']!.stat!.reply}'
-      // ];
+      if (playbackQueueController.isExternalQueue.value) {
+        playbackQueueController.syncCurrent(bvid: bvid, cid: lastPlayCid.value);
+      } else if (videoDetail.value.pages != null &&
+          videoDetail.value.pages!.length > 1) {
+        playbackQueueController.initFromPages(
+          pages: videoDetail.value.pages!,
+          bvid: bvid,
+          aid: IdUtils.bv2av(bvid),
+          currentCid: lastPlayCid.value,
+          cover: videoDetail.value.pic,
+          author: videoDetail.value.owner?.name,
+        );
+      } else if (videoDetail.value.ugcSeason != null) {
+        playbackQueueController.initFromUgcSeason(
+          ugcSeason: videoDetail.value.ugcSeason!,
+          currentCid: lastPlayCid.value,
+        );
+      } else {
+        playbackQueueController.initFromPages(
+          pages:
+              videoDetail.value.pages ??
+              [
+                Part(
+                  cid: lastPlayCid.value,
+                  page: 1,
+                  pagePart: videoDetail.value.title,
+                  duration: videoDetail.value.duration,
+                ),
+              ],
+          bvid: bvid,
+          aid: IdUtils.bv2av(bvid),
+          currentCid: lastPlayCid.value,
+          cover: videoDetail.value.pic,
+          author: videoDetail.value.owner?.name,
+        );
+      }
       // 获取到粉丝数再返回
       await queryUserStat();
     } else {
@@ -582,6 +673,7 @@ class VideoIntroController extends GetxController {
     } catch (_) {}
     this.bvid = bvid;
     lastPlayCid.value = cid;
+    playbackQueueController.syncCurrent(bvid: bvid, cid: cid);
     queryVideoIntro();
   }
 
@@ -616,115 +708,25 @@ class VideoIntroController extends GetxController {
 
   /// 播放上一个
   bool prevPlay() {
-    final List episodes = [];
-    bool isPages = false;
-    if (videoDetail.value.pages != null &&
-        videoDetail.value.pages!.length > 1) {
-      isPages = true;
-      final List<Part> pages = videoDetail.value.pages!;
-      episodes.addAll(pages);
-    } else if (videoDetail.value.ugcSeason != null) {
-      final UgcSeason ugcSeason = videoDetail.value.ugcSeason!;
-      final List<SectionItem> sections = ugcSeason.sections!;
-      for (int i = 0; i < sections.length; i++) {
-        final List<EpisodeItem> episodesList = sections[i].episodes!;
-        episodes.addAll(episodesList);
-      }
+    if (!playbackQueueController.hasPrevious.value) {
+      return false;
     }
-
-    final int currentIndex = episodes.indexWhere(
-      (e) => e.cid == lastPlayCid.value,
-    );
-    int prevIndex = currentIndex - 1;
-    PlayRepeat playRepeat = PlPlayerController.getInstance().playRepeat;
-    // 列表循环
-    if (prevIndex < 0) {
-      if (playRepeat == PlayRepeat.listCycle) {
-        prevIndex = episodes.length - 1;
-      } else {
-        return false;
-      }
-    }
-    final int cid = episodes[prevIndex].cid!;
-    final String rBvid = isPages ? bvid : episodes[prevIndex].bvid;
-    final int rAid = isPages ? IdUtils.bv2av(bvid) : episodes[prevIndex].aid!;
-    changeSeasonOrbangu(rBvid, cid, rAid);
+    unawaited(playbackQueueController.playPrevious());
     return true;
   }
 
-  // 是否有下一集（必须存在分p、分集）
+  // 是否有下一集（支持分p、合集、稍后再看与自动连播）
   bool hasNextEpisode() {
-    final List episodes = [];
-    if (videoDetail.value.pages != null &&
-        videoDetail.value.pages!.length > 1) {
-      final List<Part> pages = videoDetail.value.pages!;
-      episodes.addAll(pages);
-    } else if (videoDetail.value.ugcSeason != null) {
-      final UgcSeason ugcSeason = videoDetail.value.ugcSeason!;
-      final List<SectionItem> sections = ugcSeason.sections!;
-      for (int i = 0; i < sections.length; i++) {
-        final List<EpisodeItem> episodesList = sections[i].episodes!;
-        episodes.addAll(episodesList);
-      }
-    }
-    if (episodes.isEmpty) {
-      return false;
-    }
-    PlayRepeat playRepeat = PlPlayerController.getInstance().playRepeat;
-    if (playRepeat == PlayRepeat.listCycle) {
-      return true;
-    }
-    final int currentIndex = episodes.indexWhere(
-      (e) => e.cid == lastPlayCid.value,
-    );
-    return currentIndex < episodes.length - 1;
+    return playbackQueueController.hasNext.value;
   }
 
   /// 列表循环或者顺序播放时，自动播放下一个
-  bool nextPlay() {
-    print("entering nextPlay");
-    final List episodes = [];
-    bool isPages = false;
-    if (videoDetail.value.pages != null &&
-        videoDetail.value.pages!.length > 1) {
-      isPages = true;
-      final List<Part> pages = videoDetail.value.pages!;
-      episodes.addAll(pages);
-    } else if (videoDetail.value.ugcSeason != null) {
-      final UgcSeason ugcSeason = videoDetail.value.ugcSeason!;
-      final List<SectionItem> sections = ugcSeason.sections!;
-      for (int i = 0; i < sections.length; i++) {
-        final List<EpisodeItem> episodesList = sections[i].episodes!;
-        episodes.addAll(episodesList);
-      }
-    }
-    PlayRepeat playRepeat = PlPlayerController.getInstance().playRepeat;
-    if (episodes.isEmpty) {
-      if (playRepeat == PlayRepeat.autoPlayRelated) {
-        return playRelated();
-      }
+  bool nextPlay({bool autoTriggered = false}) {
+    if (!playbackQueueController.hasNext.value &&
+        PlPlayerController.getInstance().playRepeat != PlayRepeat.listCycle) {
       return false;
     }
-
-    final int currentIndex = episodes.indexWhere(
-      (e) => e.cid == lastPlayCid.value,
-    );
-    int nextIndex = currentIndex + 1;
-
-    // 列表循环
-    if (nextIndex >= episodes.length) {
-      if (playRepeat == PlayRepeat.listCycle) {
-        nextIndex = 0;
-      } else if (playRepeat == PlayRepeat.autoPlayRelated) {
-        return playRelated();
-      } else {
-        return false;
-      }
-    }
-    final int cid = episodes[nextIndex].cid!;
-    final String rBvid = isPages ? bvid : episodes[nextIndex].bvid;
-    final int rAid = isPages ? IdUtils.bv2av(bvid) : episodes[nextIndex].aid!;
-    changeSeasonOrbangu(rBvid, cid, rAid);
+    unawaited(playbackQueueController.playNext(autoTriggered: autoTriggered));
     return true;
   }
 
