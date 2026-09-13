@@ -26,20 +26,24 @@ class ActionItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-        child: Semantics(
-            label: (text ?? "") + (selectStatus ? "已" : "") + semanticsLabel,
-            child: InkWell(
-              onTap: () => {
-                feedBack(),
-                onTap!(),
-              },
-              onLongPress: () => {
-                if (onLongPress != null) {onLongPress!()}
-              },
-              // borderRadius: StyleString.mdRadius,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
+      child: Semantics(
+        button: true,
+        selected: selectStatus,
+        label: (text ?? "") + (selectStatus ? "已" : "") + semanticsLabel,
+        hint: onLongPress != null ? "长按一键三连" : null,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: InkWell(
+            onTap: () {
+              feedBack();
+              onTap?.call();
+            },
+            onLongPress: () {
+              onLongPress?.call();
+            },
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
                   // const SizedBox(height: 2),
                   Icon(
                     selectStatus ? selectIcon!.icon! : icon!.icon!,
@@ -76,6 +80,9 @@ class ActionItem extends StatelessWidget {
                   ),
                 ],
               ),
-            )));
+            ),
+          ),
+        ),
+      );
   }
 }

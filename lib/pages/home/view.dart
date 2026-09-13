@@ -146,8 +146,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           child: AnimatedContainer(
             curve: Curves.easeInOutCubicEmphasized,
             duration: const Duration(milliseconds: 500),
-            height: snapshot.data ? 52 : 0,
-            padding: const EdgeInsets.fromLTRB(14, 6, 14, 0),
+            height: snapshot.data ? 56 : 0,
+            padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
             child: SearchBarAndUser(
               ctr: ctr,
             ),
@@ -173,48 +173,53 @@ class SearchBarAndUser extends StatelessWidget {
         SearchBar(ctr: ctr),
         const SizedBox(width: 4),
         Obx(() => ctr.userLogin.value
-            ? ClipRect(
-                child: IconButton(
-                  tooltip: '消息',
-                  onPressed: () => Get.toNamed('/whisper'),
-                  icon: const Icon(
-                    Icons.notifications_none,
-                  ),
+            ? IconButton(
+                tooltip: '消息',
+                onPressed: () => Get.toNamed('/whisper'),
+                icon: const Icon(
+                  Icons.notifications_none,
                 ),
               )
             : const SizedBox.shrink()),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
         Semantics(
-            label: "我的",
+            button: true,
+            label: ctr.userLogin.value ? "个人中心" : "点击登录",
             child: Obx(
-              () => ctr.userLogin.value
-                  ? Stack(
-                      children: [
-                        NetworkImgLayer(
-                          type: 'avatar',
-                          width: 34,
-                          height: 34,
-                          src: ctr.userFace.value,
-                        ),
-                        Positioned.fill(
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () => ctr.showUserInfoDialog(context),
-                              splashColor: Theme.of(context)
-                                  .colorScheme
-                                  .primaryContainer
-                                  .withOpacity(0.3),
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(50),
-                              ),
+              () => ConstrainedBox(
+                constraints:
+                    const BoxConstraints(minWidth: 48, minHeight: 48),
+                child: Center(
+                  child: ctr.userLogin.value
+                      ? Stack(
+                          children: [
+                            NetworkImgLayer(
+                              type: 'avatar',
+                              width: 34,
+                              height: 34,
+                              src: ctr.userFace.value,
                             ),
-                          ),
+                            Positioned.fill(
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => ctr.showUserInfoDialog(context),
+                                  splashColor: Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer
+                                      .withValues(alpha: 0.3),
+                                  borderRadius: const BorderRadius.all(
+                                    Radius.circular(50),
+                                  ),
+                                ),
+                              ),
+                            )
+                          ],
                         )
-                      ],
-                    )
-                  : DefaultUser(
-                      callback: () => ctr.showUserInfoDialog(context)),
+                      : DefaultUser(
+                          callback: () => ctr.showUserInfoDialog(context)),
+                ),
+              ),
             )),
       ],
     );
@@ -234,36 +239,43 @@ class UserAndSearchVertical extends StatelessWidget {
     return Column(
       children: [
         Semantics(
-            label: "我的",
+            button: true,
+            label: ctr.userLogin.value ? "个人中心" : "点击登录",
             child: Obx(
-              () => ctr.userLogin.value
-                  ? Stack(
-                      children: [
-                        NetworkImgLayer(
-                          type: 'avatar',
-                          width: 34,
-                          height: 34,
-                          src: ctr.userFace.value,
-                        ),
-                        Positioned.fill(
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () => ctr.showUserInfoDialog(context),
-                              splashColor: Theme.of(context)
-                                  .colorScheme
-                                  .primaryContainer
-                                  .withOpacity(0.3),
-                              borderRadius: const BorderRadius.all(
-                                Radius.circular(50),
-                              ),
+              () => ConstrainedBox(
+                constraints:
+                    const BoxConstraints(minWidth: 48, minHeight: 48),
+                child: Center(
+                  child: ctr.userLogin.value
+                      ? Stack(
+                          children: [
+                            NetworkImgLayer(
+                              type: 'avatar',
+                              width: 34,
+                              height: 34,
+                              src: ctr.userFace.value,
                             ),
-                          ),
+                            Positioned.fill(
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => ctr.showUserInfoDialog(context),
+                                  splashColor: Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer
+                                      .withValues(alpha: 0.3),
+                                  borderRadius: const BorderRadius.all(
+                                    Radius.circular(50),
+                                  ),
+                                ),
+                              ),
+                            )
+                          ],
                         )
-                      ],
-                    )
-                  : DefaultUser(
-                      callback: () => ctr.showUserInfoDialog(context)),
+                      : DefaultUser(
+                          callback: () => ctr.showUserInfoDialog(context)),
+                ),
+              ),
             )),
         const SizedBox(height: 8),
         Obx(() => ctr.userLogin.value
@@ -276,6 +288,7 @@ class UserAndSearchVertical extends StatelessWidget {
               )
             : const SizedBox.shrink()),
         IconButton(
+          tooltip: '搜索',
           icon: const Icon(
             Icons.search_outlined,
             semanticLabel: '搜索',
@@ -293,22 +306,29 @@ class DefaultUser extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 38,
-      height: 38,
-      child: IconButton(
-        tooltip: '默认用户头像',
-        style: ButtonStyle(
-          padding: WidgetStateProperty.all(EdgeInsets.zero),
-          backgroundColor: WidgetStateProperty.resolveWith((states) {
-            return Theme.of(context).colorScheme.onInverseSurface;
-          }),
-        ),
-        onPressed: () => callback?.call(),
-        icon: Icon(
-          Icons.person_rounded,
-          size: 22,
-          color: Theme.of(context).colorScheme.primary,
+    return Semantics(
+      button: true,
+      label: '默认用户头像',
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+        child: InkWell(
+          onTap: () => callback?.call(),
+          borderRadius: BorderRadius.circular(24),
+          child: Center(
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Theme.of(context).colorScheme.onInverseSurface,
+              ),
+              child: Icon(
+                Icons.person_rounded,
+                size: 22,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ),
         ),
       ),
     );

@@ -6,6 +6,11 @@
 
 ### 变更
 
+- 完善应用无障碍支持（Accessibility Hardening）：
+  - 核心控件触控热区全面达标：播放器底栏控制项（上一集、下一集、选集、画面比例、字幕、倍速、全屏）、顶部控制按钮、视频互动操作项（点赞、投币、收藏、分享）与首页用户头像均满足 Android 48x48dp 与 iOS 44x44dp 触控热区规范要求。
+  - 语义树与屏幕阅读器（TalkBack / VoiceOver）深度支持：补全各类控制按钮、视频卡片及互动组件的 `isButton` 标志、辅助标签及选中/长按提示状态；播放器控制层隐藏时自动通过 `ExcludeSemantics` 与 `ExcludeFocus` 剪枝，避免不可见组件干扰读屏焦点导航。
+  - 消除 Flutter 废弃 API 警告：将 `SemanticsService.announce` 升级至 `SemanticsService.sendAnnouncement`，适配多视图树分发并平滑回退；将颜色透明度 `.withOpacity()` 迁移至高精度 `.withValues(alpha: ...)`。
+  - 建立自动化无障碍基线测试套件：新增 `test/accessibility/accessibility_guidelines_test.dart`，涵盖触控热区（`androidTapTargetGuideline`、`iOSTapTargetGuideline`）、可访问语义标签（`labeledTapTargetGuideline`）、文字对比度（`textContrastGuideline`）与隐藏图层语义隔离测试。
 - 优化 Android 16 大屏、平板与折叠屏适配：平板及大屏设备自动解除固定竖屏限制，解耦手机偏好并支持全方向自适应旋转与运行时多窗口尺寸调整。
 - 升级 Android 挖孔展示策略至 `LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS`（API 30+），消除平板大屏横向 letterbox 黑边，实现真正的边缘到边缘体验。
 - 重构视频详情页响应式布局：平板横屏支持自适应双栏（左侧播放器与视频信息、右侧相关推荐与评论交流独立切换），折叠屏近正方形视口采用自适应分栏排布。

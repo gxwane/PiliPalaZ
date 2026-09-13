@@ -1493,8 +1493,8 @@ class _HeaderControlState extends State<HeaderControl> {
 
   Widget shootDanmakuButton() {
     return SizedBox(
-      width: 42,
-      height: 38,
+      width: 48,
+      height: 48,
       child: IconButton(
         tooltip: '发弹幕',
         style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
@@ -1506,40 +1506,42 @@ class _HeaderControlState extends State<HeaderControl> {
 
   Widget danmakuSwitcher() {
     return SizedBox(
-      width: 42,
-      height: 38,
+      width: 48,
+      height: 48,
       child: Obx(
-        () => IconButton(
-          tooltip: "${widget.controller!.isOpenDanmu.value ? '关闭' : '开启'}弹幕",
-          style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
-          onPressed: () {
-            widget.controller!.isOpenDanmu.value =
-                !widget.controller!.isOpenDanmu.value;
-            setting.put(
-              SettingBoxKey.enableShowDanmaku,
-              widget.controller!.isOpenDanmu.value,
-            );
-            SmartDialog.showToast(
-              "已${widget.controller!.isOpenDanmu.value ? '开启' : '关闭'}弹幕",
-              displayTime: const Duration(seconds: 1),
-            );
-          },
-          icon: Icon(
-            widget.controller!.isOpenDanmu.value
-                ? Icons.subtitles_outlined
-                : Icons.subtitles_off_outlined,
-            size: 24,
-            color: Colors.white,
-          ),
-        ),
+        () {
+          final bool isOpen = widget.controller!.isOpenDanmu.value;
+          return IconButton(
+            tooltip: "${isOpen ? '关闭' : '开启'}弹幕",
+            style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
+            onPressed: () {
+              widget.controller!.isOpenDanmu.value = !isOpen;
+              setting.put(
+                SettingBoxKey.enableShowDanmaku,
+                widget.controller!.isOpenDanmu.value,
+              );
+              SmartDialog.showToast(
+                "已${widget.controller!.isOpenDanmu.value ? '开启' : '关闭'}弹幕",
+                displayTime: const Duration(seconds: 1),
+              );
+            },
+            icon: Icon(
+              isOpen
+                  ? Icons.subtitles_outlined
+                  : Icons.subtitles_off_outlined,
+              size: 24,
+              color: Colors.white,
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget pipButton() {
     return SizedBox(
-      width: 42,
-      height: 38,
+      width: 48,
+      height: 48,
       child: IconButton(
         tooltip: '画中画',
         style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
@@ -1549,8 +1551,6 @@ class _HeaderControlState extends State<HeaderControl> {
             SmartDialog.showToast('播放器未初始化');
             return;
           }
-          print(widget.controller!.dataSource.videoSource);
-          print(widget.controller!.dataSource.audioSource);
           widget.controller!.controls = false;
           final VideoItem video = widget.videoDetailCtr!.firstVideo;
           final int videoWidth = video.width ?? 16;
@@ -1577,16 +1577,16 @@ class _HeaderControlState extends State<HeaderControl> {
 
   Widget likeVideoButton() {
     return SizedBox(
-      width: 42,
-      height: 38,
-      child: IconButton(
-        tooltip: videoIntroController.hasLike.value ? '已点赞' : '点赞',
-        style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
-        onPressed: () async {
-          videoIntroController.actionLikeVideo();
-        },
-        icon: Obx(
-          () => Icon(
+      width: 48,
+      height: 48,
+      child: Obx(
+        () => IconButton(
+          tooltip: videoIntroController.hasLike.value ? '已点赞' : '点赞',
+          style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
+          onPressed: () async {
+            videoIntroController.actionLikeVideo();
+          },
+          icon: Icon(
             videoIntroController.hasLike.value
                 ? Icons.thumb_up
                 : Icons.thumb_up_outlined,
@@ -1600,16 +1600,16 @@ class _HeaderControlState extends State<HeaderControl> {
 
   Widget coinVideoButton() {
     return SizedBox(
-      width: 42,
-      height: 38,
-      child: IconButton(
-        tooltip: videoIntroController.hasCoin.value ? '已投币' : '投币',
-        style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
-        onPressed: () async {
-          videoIntroController.actionCoinVideo();
-        },
-        icon: Obx(
-          () => Icon(
+      width: 48,
+      height: 48,
+      child: Obx(
+        () => IconButton(
+          tooltip: videoIntroController.hasCoin.value ? '已投币' : '投币',
+          style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
+          onPressed: () async {
+            videoIntroController.actionCoinVideo();
+          },
+          icon: Icon(
             videoIntroController.hasCoin.value
                 ? Icons.offline_bolt
                 : Icons.offline_bolt_outlined,
@@ -1623,8 +1623,8 @@ class _HeaderControlState extends State<HeaderControl> {
 
   Widget shareButton() {
     return SizedBox(
-      width: 42,
-      height: 38,
+      width: 48,
+      height: 48,
       child: IconButton(
         tooltip: '分享',
         style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
@@ -1658,13 +1658,13 @@ class _HeaderControlState extends State<HeaderControl> {
           children: [
             PlayerHeaderActionRow(
               backButton: SizedBox(
-                width: 42,
-                height: 38,
+                width: 48,
+                height: 48,
                 child: IconButton(
-                  tooltip: '上一页',
+                  tooltip: '返回',
                   icon: const FaIcon(
                     FontAwesomeIcons.arrowLeft,
-                    size: 15,
+                    size: 16,
                     color: Colors.white,
                   ),
                   onPressed: () {
@@ -1681,13 +1681,13 @@ class _HeaderControlState extends State<HeaderControl> {
                 ),
               ),
               homeButton: SizedBox(
-                width: 42,
-                height: 38,
+                width: 48,
+                height: 48,
                 child: IconButton(
                   tooltip: '返回主页',
                   icon: const FaIcon(
                     FontAwesomeIcons.house,
-                    size: 15,
+                    size: 16,
                     color: Colors.white,
                   ),
                   onPressed: () async {
@@ -1741,8 +1741,8 @@ class _HeaderControlState extends State<HeaderControl> {
                 pipButton(),
               ],
               moreButton: SizedBox(
-                width: 42,
-                height: 38,
+                width: 48,
+                height: 48,
                 child: IconButton(
                   tooltip: "更多设置",
                   style: ButtonStyle(
@@ -1751,18 +1751,19 @@ class _HeaderControlState extends State<HeaderControl> {
                   onPressed: () => showSettingSheet(),
                   icon: const Icon(
                     Icons.more_vert_outlined,
-                    size: 19,
+                    size: 20,
                     color: Colors.white,
                   ),
                 ),
               ),
             ),
-            SizedBox(
-              height:
-                  MediaQuery.of(context).orientation == Orientation.landscape
-                  ? 2
-                  : 15,
-            ),
+            if (isEquivalentFullScreen)
+              SizedBox(
+                height:
+                    MediaQuery.of(context).orientation == Orientation.landscape
+                    ? 2
+                    : 8,
+              ),
             // if ((isFullScreen || !horizontalScreen))
             // const Spacer(),
             // show current datetime

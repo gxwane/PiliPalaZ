@@ -569,7 +569,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   ) {
     return SizedBox(
       width: bottomControlItemExtent,
-      height: 38,
+      height: 48,
       child: IconButton(
         tooltip: '更多播放控制',
         onPressed: () => _showBottomControlOverflow(hiddenControls),
@@ -598,13 +598,13 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     Map<BottomControlType, Widget> videoProgressWidgets = {
       /// 上一集
       BottomControlType.pre: Container(
-        width: 42,
-        height: 38,
+        width: 48,
+        height: 48,
         alignment: Alignment.center,
         child: ComBtn(
+          semanticsLabel: '上一集',
           icon: const Icon(
             Icons.skip_previous,
-            semanticLabel: '上一集',
             size: 22,
             color: Colors.white,
           ),
@@ -619,13 +619,13 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
       /// 下一集
       BottomControlType.next: Container(
-        width: 42,
-        height: 38,
+        width: 48,
+        height: 48,
         alignment: Alignment.center,
         child: ComBtn(
+          semanticsLabel: '下一集',
           icon: const Icon(
             Icons.skip_next,
-            semanticLabel: '下一集',
             size: 22,
             color: Colors.white,
           ),
@@ -669,17 +669,17 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
       /// 空白占位
       BottomControlType.space: const SizedBox(width: 0),
-      BottomControlType.spaceButton: const SizedBox(width: 42),
+      BottomControlType.spaceButton: const SizedBox(width: 48),
 
       /// 选集
       BottomControlType.episode: Container(
-        width: 42,
-        height: 38,
+        width: 48,
+        height: 48,
         alignment: Alignment.center,
         child: ComBtn(
+          semanticsLabel: '选集',
           icon: const Icon(
             Icons.list,
-            semanticLabel: '选集',
             size: 22,
             color: Colors.white,
           ),
@@ -689,15 +689,19 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
       /// 画面比例
       BottomControlType.fit: SizedBox(
-        width: 42,
-        height: 38,
-        child: TextButton(
-          onPressed: () => playerController.toggleVideoFit(),
-          style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
-          child: Obx(
-            () => Text(
-              playerController.videoFitDEsc.value,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
+        width: 48,
+        height: 48,
+        child: Semantics(
+          button: true,
+          label: '画面比例，当前${playerController.videoFitDEsc.value}',
+          child: TextButton(
+            onPressed: () => playerController.toggleVideoFit(),
+            style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
+            child: Obx(
+              () => Text(
+                playerController.videoFitDEsc.value,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+              ),
             ),
           ),
         ),
@@ -706,56 +710,59 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       /// 字幕
       BottomControlType.subtitle: Obx(
         () => SizedBox(
-          width: 42,
-          height: 38,
-          child: PopupMenuButton<int>(
-            onSelected: _selectSubtitle,
-            initialValue:
-                playerController.vttSubtitles.length <
-                    playerController.vttSubtitlesIndex.value
-                ? 0
-                : playerController.vttSubtitlesIndex.value,
-            color: Colors.black.withOpacity(0.8),
-            itemBuilder: (BuildContext context) {
-              return [
-                    const PopupMenuItem<int>(
-                      value: -1,
-                      child: Text(
-                        "设置字号",
-                        style: TextStyle(color: Colors.white),
+          width: 48,
+          height: 48,
+          child: Semantics(
+            button: true,
+            label: '字幕设置',
+            child: PopupMenuButton<int>(
+              onSelected: _selectSubtitle,
+              initialValue:
+                  playerController.vttSubtitles.length <
+                      playerController.vttSubtitlesIndex.value
+                  ? 0
+                  : playerController.vttSubtitlesIndex.value,
+              color: Colors.black.withValues(alpha: 0.8),
+              itemBuilder: (BuildContext context) {
+                return [
+                      const PopupMenuItem<int>(
+                        value: -1,
+                        child: Text(
+                          "设置字号",
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
-                    ),
-                    const PopupMenuItem<int>(
-                      value: -2,
-                      child: Text(
-                        "设置底边距",
-                        style: TextStyle(color: Colors.white),
+                      const PopupMenuItem<int>(
+                        value: -2,
+                        child: Text(
+                          "设置底边距",
+                          style: TextStyle(color: Colors.white),
+                        ),
                       ),
-                    ),
-                  ] +
-                  playerController.vttSubtitles.asMap().entries.map((entry) {
-                    return PopupMenuItem<int>(
-                      value: entry.key,
-                      child: Text(
-                        "${entry.value['title']}",
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    );
-                  }).toList();
-            },
-            child: Container(
-              width: 42,
-              height: 38,
-              alignment: Alignment.center,
-              child: Icon(
-                (playerController.vttSubtitlesIndex.value == 0 ||
-                        playerController.vttSubtitles.length <
-                            playerController.vttSubtitlesIndex.value)
-                    ? Icons.closed_caption_off
-                    : Icons.closed_caption,
-                size: 25,
-                color: Colors.white,
-                semanticLabel: '字幕',
+                    ] +
+                    playerController.vttSubtitles.asMap().entries.map((entry) {
+                      return PopupMenuItem<int>(
+                        value: entry.key,
+                        child: Text(
+                          "${entry.value['title']}",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      );
+                    }).toList();
+              },
+              child: Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                child: Icon(
+                  (playerController.vttSubtitlesIndex.value == 0 ||
+                          playerController.vttSubtitles.length <
+                              playerController.vttSubtitlesIndex.value)
+                      ? Icons.closed_caption_off
+                      : Icons.closed_caption,
+                  size: 25,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),
@@ -764,37 +771,40 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
       /// 播放速度
       BottomControlType.speed: SizedBox(
-        width: 42,
-        height: 38,
-        child: PopupMenuButton<double>(
-          onSelected: (double value) {
-            playerController.setPlaybackSpeed(value);
-          },
-          initialValue: playerController.playbackSpeed,
-          color: Colors.black.withOpacity(0.8),
-          itemBuilder: (BuildContext context) {
-            return playerController.speedsList.map((double speed) {
-              return PopupMenuItem<double>(
-                height: 38,
-                padding: const EdgeInsets.only(left: 30),
-                value: speed,
-                child: Text(
-                  "${speed}X",
+        width: 48,
+        height: 48,
+        child: Semantics(
+          button: true,
+          label: '播放速度，当前${playerController.playbackSpeed}倍速',
+          child: PopupMenuButton<double>(
+            onSelected: (double value) {
+              playerController.setPlaybackSpeed(value);
+            },
+            initialValue: playerController.playbackSpeed,
+            color: Colors.black.withValues(alpha: 0.8),
+            itemBuilder: (BuildContext context) {
+              return playerController.speedsList.map((double speed) {
+                return PopupMenuItem<double>(
+                  height: 38,
+                  padding: const EdgeInsets.only(left: 30),
+                  value: speed,
+                  child: Text(
+                    "${speed}X",
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    semanticsLabel: "$speed倍速",
+                  ),
+                );
+              }).toList();
+            },
+            child: Container(
+              width: 48,
+              height: 48,
+              alignment: Alignment.center,
+              child: Obx(
+                () => Text(
+                  "${playerController.playbackSpeed}X",
                   style: const TextStyle(color: Colors.white, fontSize: 13),
-                  semanticsLabel: "$speed倍速",
                 ),
-              );
-            }).toList();
-          },
-          child: Container(
-            width: 42,
-            height: 38,
-            alignment: Alignment.center,
-            child: Obx(
-              () => Text(
-                "${playerController.playbackSpeed}X",
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                semanticsLabel: "${playerController.playbackSpeed}倍速",
               ),
             ),
           ),
@@ -803,17 +813,17 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
       /// 全屏
       BottomControlType.fullscreen: SizedBox(
-        width: 42,
-        height: 38,
+        width: 48,
+        height: 48,
         child: Obx(
           () => ComBtn(
+            semanticsLabel: playerController.isFullScreen.value
+                ? '退出全屏'
+                : '全屏',
             icon: Icon(
               playerController.isFullScreen.value
                   ? Icons.fullscreen_exit
                   : Icons.fullscreen,
-              semanticLabel: playerController.isFullScreen.value
-                  ? '退出全屏'
-                  : '全屏',
               size: 25,
               color: Colors.white,
             ),
@@ -1412,41 +1422,51 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
         // 头部、底部控制条
         Obx(
-          () => Column(
-            children: [
-              if (widget.headerControl != null ||
-                  playerController.headerControl != null)
-                ClipRect(
-                  child: AppBarAni(
-                    controller: animationController,
-                    visible:
-                        !playerController.controlsLock.value &&
-                        playerController.showControls.value,
-                    position: 'top',
-                    child:
-                        widget.headerControl ?? playerController.headerControl!,
+          () {
+            final bool controlsVisible =
+                !playerController.controlsLock.value &&
+                playerController.showControls.value;
+            return ExcludeFocus(
+              excluding: !controlsVisible,
+              child: ExcludeSemantics(
+                excluding: !controlsVisible,
+                child: FocusTraversalGroup(
+                  policy: ReadingOrderTraversalPolicy(),
+                  child: Column(
+                    children: [
+                      if (widget.headerControl != null ||
+                          playerController.headerControl != null)
+                        ClipRect(
+                          child: AppBarAni(
+                            controller: animationController,
+                            visible: controlsVisible,
+                            position: 'top',
+                            child:
+                                widget.headerControl ?? playerController.headerControl!,
+                          ),
+                        ),
+                      const Spacer(),
+                      ClipRect(
+                        child: AppBarAni(
+                          controller: animationController,
+                          visible: controlsVisible,
+                          position: 'bottom',
+                          child:
+                              widget.bottomControl ??
+                              BottomControl(
+                                controller: widget.controller,
+                                controls: buildBottomControl(),
+                                overflowButtonBuilder: (_, hiddenControls) =>
+                                    _buildBottomControlOverflowButton(hiddenControls),
+                              ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              const Spacer(),
-              ClipRect(
-                child: AppBarAni(
-                  controller: animationController,
-                  visible:
-                      !playerController.controlsLock.value &&
-                      playerController.showControls.value,
-                  position: 'bottom',
-                  child:
-                      widget.bottomControl ??
-                      BottomControl(
-                        controller: widget.controller,
-                        controls: buildBottomControl(),
-                        overflowButtonBuilder: (_, hiddenControls) =>
-                            _buildBottomControlOverflowButton(hiddenControls),
-                      ),
-                ),
               ),
-            ],
-          ),
+            );
+          },
         ),
 
         /// 进度条 live模式下禁用

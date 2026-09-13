@@ -265,8 +265,11 @@ class Utils {
     return date;
   }
 
-  static String makeHeroTag(v) {
-    return v.toString() + random.nextInt(9999).toString();
+  static int _heroTagCounter = 0;
+
+  static String makeHeroTag(dynamic v) {
+    _heroTagCounter++;
+    return '${v}_${_heroTagCounter}_${random.nextInt(9999)}';
   }
 
   static int duration(String duration) {

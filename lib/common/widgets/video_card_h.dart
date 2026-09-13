@@ -48,10 +48,33 @@ class VideoCardH extends StatelessWidget {
     List<VideoCustomAction> actions =
         VideoCustomActions(videoItem, context).actions;
     final String heroTag = Utils.makeHeroTag(aid);
+    Future<void> handleTap() async {
+      if (type == 'ketang') {
+        SmartDialog.showToast('课堂视频暂不支持播放');
+        return;
+      }
+      try {
+        final cidResult = videoItem.cid == null
+            ? await SearchHttp.ab2c(aid: aid, bvid: bvid)
+            : ApiSuccess<int>(videoItem.cid as int);
+        if (cidResult case ApiFailure<int>(:final message)) {
+          SmartDialog.showToast(message);
+          return;
+        }
+        final cid = (cidResult as ApiSuccess<int>).data;
+        Get.toNamed('/video?bvid=$bvid&cid=$cid',
+            arguments: {'videoItem': videoItem, 'heroTag': heroTag});
+      } catch (err) {
+        SmartDialog.showToast(err.toString());
+      }
+    }
+
     return Stack(children: [
       Semantics(
           label: Utils.videoItemSemantics(videoItem),
           excludeSemantics: true,
+          button: true,
+          onTap: handleTap,
           customSemanticsActions: <CustomSemanticsAction, void Function()>{
             for (var item in actions)
               CustomSemanticsAction(label: item.title): item.onTap!,
@@ -59,26 +82,7 @@ class VideoCardH extends StatelessWidget {
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onLongPress: longPress,
-            onTap: () async {
-              if (type == 'ketang') {
-                SmartDialog.showToast('课堂视频暂不支持播放');
-                return;
-              }
-              try {
-                final cidResult = videoItem.cid == null
-                    ? await SearchHttp.ab2c(aid: aid, bvid: bvid)
-                    : ApiSuccess<int>(videoItem.cid as int);
-                if (cidResult case ApiFailure<int>(:final message)) {
-                  SmartDialog.showToast(message);
-                  return;
-                }
-                final cid = (cidResult as ApiSuccess<int>).data;
-                Get.toNamed('/video?bvid=$bvid&cid=$cid',
-                    arguments: {'videoItem': videoItem, 'heroTag': heroTag});
-              } catch (err) {
-                SmartDialog.showToast(err.toString());
-              }
-            },
+            onTap: handleTap,
             // onLongPressEnd: (details) {
             //   if (longPressEnd != null) {
             //     longPressEnd!();

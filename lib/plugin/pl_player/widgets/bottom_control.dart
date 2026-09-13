@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -12,7 +13,7 @@ import 'dart:math';
 
 import '../../../common/widgets/audio_video_progress_bar.dart';
 
-const double bottomControlItemExtent = 42;
+const double bottomControlItemExtent = 48;
 
 List<BottomControlType> buildDefaultBottomControlTypes({
   required bool hasEpisodes,
@@ -218,9 +219,11 @@ class BottomControl extends StatelessWidget implements PreferredSizeWidget {
           (!ScreenUtils.isTablet(context) &&
               !playerController.horizontalScreen &&
               MediaQuery.orientationOf(context) == Orientation.landscape);
+      final view =
+          View.maybeOf(context) ?? PlatformDispatcher.instance.implicitView;
       return Container(
         color: Colors.transparent,
-        height: 70 + (isEquivalentFullScreen ? Get.height * 0.08 : 0),
+        height: 80 + (isEquivalentFullScreen ? Get.height * 0.08 : 0),
         padding: const EdgeInsets.symmetric(horizontal: 10),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
@@ -231,62 +234,63 @@ class BottomControl extends StatelessWidget implements PreferredSizeWidget {
                 right: 10,
                 bottom: 3 + (isEquivalentFullScreen ? Get.height * 0.01 : 0),
               ),
-              child: Semantics(
-                // label: '${(value / max * 100).round()}%',
-                value: '${(value / durationSec * 100).round()}%',
-                // enabled: false,
-                child: ProgressBar(
-                  progress: Duration(seconds: value),
-                  buffered: Duration(seconds: buffer),
-                  total: Duration(seconds: durationSec),
-                  progressBarColor: colorTheme,
-                  baseBarColor: Colors.white.withOpacity(0.2),
-                  bufferedBarColor: colorTheme.withOpacity(0.4),
-                  timeLabelLocation: TimeLabelLocation.sides,
-                  timeLabelTextStyle: const TextStyle(color: Colors.white),
-                  // timeLabelLocation: TimeLabelLocation.none,
-                  thumbColor: colorTheme,
-                  barHeight: 3.5,
-                  thumbRadius: 7,
-                  onDragStart: (duration) {
-                    feedBack();
-                    playerController.onChangedSliderStart();
-                  },
-                  onDragUpdate: (duration) {
-                    double newProgress =
-                        duration.timeStamp.inSeconds / durationSec;
-                    if ((newProgress - lastAnnouncedValue).abs() > 0.02) {
-                      accessibilityDebounce?.cancel();
-                      accessibilityDebounce = Timer(
-                        const Duration(milliseconds: 200),
-                        () {
-                          SemanticsService.announce(
+              child: ProgressBar(
+                progress: Duration(seconds: value),
+                buffered: Duration(seconds: buffer),
+                total: Duration(seconds: durationSec),
+                progressBarColor: colorTheme,
+                baseBarColor: Colors.white.withValues(alpha: 0.2),
+                bufferedBarColor: colorTheme.withValues(alpha: 0.4),
+                timeLabelLocation: TimeLabelLocation.sides,
+                timeLabelTextStyle: const TextStyle(color: Colors.white),
+                // timeLabelLocation: TimeLabelLocation.none,
+                thumbColor: colorTheme,
+                barHeight: 3.5,
+                thumbRadius: 7,
+                onDragStart: (duration) {
+                  feedBack();
+                  playerController.onChangedSliderStart();
+                },
+                onDragUpdate: (duration) {
+                  double newProgress =
+                      duration.timeStamp.inSeconds / durationSec;
+                  if ((newProgress - lastAnnouncedValue).abs() > 0.02) {
+                    accessibilityDebounce?.cancel();
+                    accessibilityDebounce = Timer(
+                      const Duration(milliseconds: 200),
+                      () {
+                        if (view != null) {
+                          SemanticsService.sendAnnouncement(
+                            view,
                             "${(newProgress * 100).round()}%",
                             TextDirection.ltr,
                           );
-                          lastAnnouncedValue = newProgress;
-                        },
-                      );
-                    }
-                    playerController.onUpdatedSliderProgress(
-                      duration.timeStamp,
+                        }
+                        lastAnnouncedValue = newProgress;
+                      },
                     );
-                  },
-                  onSeek: (duration) {
-                    playerController.onChangedSliderEnd();
-                    playerController.onChangedSlider(
-                      duration.inSeconds.toDouble(),
-                    );
-                    playerController.seekTo(
-                      Duration(seconds: duration.inSeconds),
-                      type: 'slider',
-                    );
-                    SemanticsService.announce(
+                  }
+                  playerController.onUpdatedSliderProgress(
+                    duration.timeStamp,
+                  );
+                },
+                onSeek: (duration) {
+                  playerController.onChangedSliderEnd();
+                  playerController.onChangedSlider(
+                    duration.inSeconds.toDouble(),
+                  );
+                  playerController.seekTo(
+                    Duration(seconds: duration.inSeconds),
+                    type: 'slider',
+                  );
+                  if (view != null) {
+                    SemanticsService.sendAnnouncement(
+                      view,
                       "${(duration.inSeconds / durationSec * 100).round()}%",
                       TextDirection.ltr,
                     );
-                  },
-                ),
+                  }
+                },
               ),
             ),
             AdaptiveBottomControlRow(

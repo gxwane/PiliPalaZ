@@ -139,12 +139,14 @@ class VideoCardV extends StatelessWidget {
         Semantics(
           label: Utils.videoItemSemantics(videoItem),
           excludeSemantics: true,
+          button: true,
+          onTap: () async => onPushDetail(heroTag),
           customSemanticsActions: <CustomSemanticsAction, void Function()>{
             for (var item in actions)
               CustomSemanticsAction(label: item.title): item.onTap!,
           },
           child: Card(
-            color: Theme.of(context).colorScheme.surface.withOpacity(0.4),
+            color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.4),
             elevation: 0,
             clipBehavior: Clip.hardEdge,
             margin: EdgeInsets.zero,

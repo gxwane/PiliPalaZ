@@ -29,7 +29,7 @@ void main() {
 
     test('moves settings to overflow before playback navigation', () {
       final layout = resolveBottomControlLayout(
-        maxWidth: 330,
+        maxWidth: 7 * bottomControlItemExtent,
         controls: _allControls,
       );
 
@@ -50,7 +50,7 @@ void main() {
 
     test('keeps next playback action when only one optional slot remains', () {
       final layout = resolveBottomControlLayout(
-        maxWidth: 168,
+        maxWidth: 4 * bottomControlItemExtent,
         controls: _allControls,
       );
 
@@ -64,7 +64,7 @@ void main() {
 
     test('keeps only core controls when overflow itself cannot fit', () {
       final layout = resolveBottomControlLayout(
-        maxWidth: 84,
+        maxWidth: 2 * bottomControlItemExtent,
         controls: _allControls,
       );
 
@@ -106,7 +106,7 @@ void main() {
             child: SizedBox(
               key: ValueKey(type),
               width: bottomControlItemExtent,
-              height: 38,
+              height: 48,
             ),
           ),
         )
@@ -118,13 +118,13 @@ void main() {
           body: Align(
             alignment: Alignment.topLeft,
             child: SizedBox(
-              width: 330,
+              width: 7 * bottomControlItemExtent,
               child: AdaptiveBottomControlRow(
                 controls: controls,
                 overflowButtonBuilder: (_, hidden) => SizedBox(
                   key: const ValueKey('more'),
                   width: bottomControlItemExtent,
-                  height: 38,
+                  height: 48,
                   child: Text('${hidden.length}'),
                 ),
               ),
