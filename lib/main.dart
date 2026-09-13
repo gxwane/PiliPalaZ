@@ -29,6 +29,7 @@ import 'package:pilipalaz/utils/data.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:media_kit/media_kit.dart'; // Provides [Player], [Media], [Playlist] etc.
 import 'package:pilipalaz/utils/recommend_filter.dart';
+import 'package:pilipalaz/utils/screen_utils.dart';
 import 'package:pilipalaz/services/diagnostics/local_diagnostics.dart';
 import 'package:flex_seed_scheme/flex_seed_scheme.dart';
 // import 'package:flutter/scheduler.dart' show timeDilation;
@@ -68,10 +69,7 @@ void main() async {
       debugPrintStack(stackTrace: stackTrace);
     }
   }
-  if (GStorage.setting.get(
-    SettingBoxKey.horizontalScreen,
-    defaultValue: false,
-  )) {
+  if (ScreenUtils.shouldEnableMultiOrientation()) {
     await SystemChrome.setPreferredOrientations(
       //支持竖屏与横屏
       [

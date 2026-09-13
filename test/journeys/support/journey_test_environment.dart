@@ -255,8 +255,9 @@ Future<void> journeyTearDown([WidgetTester? tester]) async {
   UserApi.resetForTesting();
 }
 
-Widget createJourneyTestApp({Widget? home, String? initialRoute}) {
+Widget createJourneyTestApp({Widget? home, String? initialRoute, Key? key}) {
   return GetMaterialApp(
+    key: key ?? UniqueKey(),
     title: 'PiliPalaZ Journey Test',
     theme: ThemeData.light(),
     darkTheme: ThemeData.dark(),

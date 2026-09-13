@@ -44,20 +44,29 @@ class _PagesPanelState extends State<PagesPanel> {
     heroTag = widget.heroTag;
     _videoDetailController = Get.find<VideoDetailController>(tag: heroTag);
     currentIndex = episodes.indexWhere((Part e) => e.cid == cid);
+    if (currentIndex == -1 && episodes.isNotEmpty) {
+      currentIndex = 0;
+    }
     _videoDetailController.cid.listen((int p0) {
       cid = p0;
       currentIndex = episodes.indexWhere((Part e) => e.cid == cid);
+      if (currentIndex == -1 && episodes.isNotEmpty) {
+        currentIndex = 0;
+      }
       if (!mounted) return;
-      const double itemWidth = 150; // 每个列表项的宽度
-      final double targetOffset = min(
+      if (currentIndex >= 0 && _scrollController2.hasClients) {
+        const double itemWidth = 150; // 每个列表项的宽度
+        final double targetOffset = min(
           (currentIndex * itemWidth) - (itemWidth / 2),
-          _scrollController2.position.maxScrollExtent);
-      // 滑动至目标位置
-      _scrollController2.animateTo(
-        targetOffset,
-        duration: const Duration(milliseconds: 300), // 滑动动画持续时间
-        curve: Curves.easeInOut, // 滑动动画曲线
-      );
+          _scrollController2.position.maxScrollExtent,
+        );
+        // 滑动至目标位置
+        _scrollController2.animateTo(
+          targetOffset,
+          duration: const Duration(milliseconds: 300), // 滑动动画持续时间
+          curve: Curves.easeInOut, // 滑动动画曲线
+        );
+      }
     });
   }
 
@@ -79,7 +88,7 @@ class _PagesPanelState extends State<PagesPanel> {
               const Text('视频选集 '),
               Expanded(
                 child: Text(
-                  ' 正在播放：${widget.pages[currentIndex].pagePart}',
+                  ' 正在播放：${currentIndex >= 0 && currentIndex < widget.pages.length ? widget.pages[currentIndex].pagePart : (widget.pages.isNotEmpty ? widget.pages.first.pagePart : '')}',
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 12,
@@ -132,12 +141,17 @@ class _PagesPanelState extends State<PagesPanel> {
                   clipBehavior: Clip.hardEdge,
                   child: InkWell(
                     onTap: () => {
-                      widget.changeFuc(widget.bvid, widget.pages[i].cid,
-                          IdUtils.bv2av(widget.bvid))
+                      widget.changeFuc(
+                        widget.bvid,
+                        widget.pages[i].cid,
+                        IdUtils.bv2av(widget.bvid),
+                      ),
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                          vertical: 8, horizontal: 8),
+                        vertical: 8,
+                        horizontal: 8,
+                      ),
                       child: Row(
                         children: <Widget>[
                           if (isCurrentIndex) ...<Widget>[
@@ -147,19 +161,21 @@ class _PagesPanelState extends State<PagesPanel> {
                               height: 12,
                               semanticLabel: "正在播放：",
                             ),
-                            const SizedBox(width: 6)
+                            const SizedBox(width: 6),
                           ],
                           Expanded(
-                              child: Text(
-                            widget.pages[i].pagePart!,
-                            maxLines: 1,
-                            style: TextStyle(
+                            child: Text(
+                              widget.pages[i].pagePart!,
+                              maxLines: 1,
+                              style: TextStyle(
                                 fontSize: 13,
                                 color: isCurrentIndex
                                     ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(context).colorScheme.onSurface),
-                            overflow: TextOverflow.ellipsis,
-                          ))
+                                    : Theme.of(context).colorScheme.onSurface,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -168,7 +184,7 @@ class _PagesPanelState extends State<PagesPanel> {
               );
             },
           ),
-        )
+        ),
       ],
     );
   }

@@ -7,6 +7,7 @@ import 'package:nil/nil.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/models/bottom_control_type.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
+import 'package:pilipalaz/utils/screen_utils.dart';
 import 'dart:math';
 
 import '../../../common/widgets/audio_video_progress_bar.dart';
@@ -214,8 +215,9 @@ class BottomControl extends StatelessWidget implements PreferredSizeWidget {
       }
       bool isEquivalentFullScreen =
           playerController.isFullScreen.value ||
-          !playerController.horizontalScreen &&
-              MediaQuery.of(context).orientation == Orientation.landscape;
+          (!ScreenUtils.isTablet(context) &&
+              !playerController.horizontalScreen &&
+              MediaQuery.orientationOf(context) == Orientation.landscape);
       return Container(
         color: Colors.transparent,
         height: 70 + (isEquivalentFullScreen ? Get.height * 0.08 : 0),

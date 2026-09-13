@@ -39,6 +39,7 @@ import 'package:pilipalaz/services/diagnostics/local_diagnostics.dart';
 import 'package:pilipalaz/services/player_diagnostics.dart';
 import 'package:pilipalaz/services/service_locator.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
+import 'package:pilipalaz/utils/screen_utils.dart';
 import 'package:pilipalaz/utils/storage.dart';
 // import 'package:screen_brightness/screen_brightness.dart';
 import 'package:universal_platform/universal_platform.dart';
@@ -2267,7 +2268,7 @@ class PlPlayerController with WidgetsBindingObserver {
       if (mode == FullScreenMode.none) {
         return;
       }
-      if (!horizontalScreen) {
+      if (!ScreenUtils.isTabletDevice() && !horizontalScreen) {
         await verticalScreenForTwoSeconds();
       } else {
         await autoScreen();

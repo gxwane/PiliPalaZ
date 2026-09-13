@@ -24,6 +24,7 @@ import 'package:pilipalaz/pages/video/introduction/detail/index.dart';
 import 'package:pilipalaz/pages/video/related/index.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
+import 'package:pilipalaz/utils/screen_utils.dart';
 import 'package:pilipalaz/utils/storage.dart';
 
 import '../../../services/shutdown_timer_service.dart';
@@ -362,7 +363,7 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     // floating.dispose();
     // videoDetailController.floating?.dispose();
     videoDetailController.cid.close();
-    if (!horizontalScreen) {
+    if (!ScreenUtils.isTabletDevice() && !horizontalScreen) {
       unawaited(verticalScreen());
     }
     shutdownTimerService.handleWaitingFinished();
@@ -701,7 +702,8 @@ class _VideoDetailPageState extends State<VideoDetailPage>
         if (isFullScreen.value == true) {
           plPlayerController!.triggerFullScreen(status: false);
         }
-        if (MediaQuery.of(context).orientation == Orientation.landscape &&
+        if (MediaQuery.orientationOf(context) == Orientation.landscape &&
+            !ScreenUtils.isTablet(context) &&
             !horizontalScreen) {
           verticalScreenForTwoSeconds();
         }
@@ -938,13 +940,7 @@ class _VideoDetailPageState extends State<VideoDetailPage>
       children: [
         SizedBox(
           width: videoWidth,
-          height: isFullScreen.value == true
-              ? context.height -
-                    (removeSafeArea
-                        ? 0
-                        : (MediaQuery.of(context).padding.top +
-                              MediaQuery.of(context).padding.bottom))
-              : videoHeight,
+          height: videoHeight,
           child: playerPopScope(videoWidth, videoHeight),
         ),
         Expanded(
@@ -1010,32 +1006,23 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     return Row(
       children: [
         SizedBox(
-          width: isFullScreen.value == true ? context.width : videoWidth,
+          width: videoWidth,
           height: context.height,
           child: Column(
             children: [
               SizedBox(
-                width: isFullScreen.value == true ? context.width : videoWidth,
-                height: isFullScreen.value == true
-                    ? context.height
-                    : videoHeight,
+                width: videoWidth,
+                height: videoHeight,
                 child: playerPopScope(videoWidth, videoHeight),
               ),
               Expanded(
-                child: SizedBox(
-                  width: videoWidth,
-                  height:
-                      context.height -
-                      videoHeight -
-                      (removeSafeArea ? 0 : MediaQuery.of(context).padding.top),
-                  child: pullToFullScreen(
-                    CustomScrollView(
-                      cacheExtent: 3500,
-                      key: PageStorageKey<String>(
-                        '简介${videoDetailController.bvid}',
-                      ),
-                      slivers: <Widget>[videoIntro],
+                child: pullToFullScreen(
+                  CustomScrollView(
+                    cacheExtent: 3500,
+                    key: PageStorageKey<String>(
+                      '简介${videoDetailController.bvid}',
                     ),
+                    slivers: <Widget>[videoIntro],
                   ),
                 ),
               ),
@@ -1043,13 +1030,33 @@ class _VideoDetailPageState extends State<VideoDetailPage>
           ),
         ),
         Expanded(
-          child: TabBarView(
-            physics: const CustomTabBarViewScrollPhysics(),
-            controller: videoDetailController.tabCtr,
-            children: <Widget>[
-              if (!videoDetailController.sourceType.isPgc)
-                CustomScrollView(cacheExtent: 3500, slivers: [relatedVideo]),
-              videoReply,
+          child: Column(
+            children: [
+              Material(
+                color: Theme.of(context).colorScheme.surface,
+                child: TabBar(
+                  controller: videoDetailController.tabCtr,
+                  dividerColor: Colors.transparent,
+                  indicatorColor: Theme.of(context).colorScheme.primary,
+                  tabs: const <Widget>[
+                    Tab(text: '相关推荐'),
+                    Tab(text: '评论交流'),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: TabBarView(
+                  physics: const CustomTabBarViewScrollPhysics(),
+                  controller: videoDetailController.tabCtr,
+                  children: <Widget>[
+                    CustomScrollView(
+                      cacheExtent: 3500,
+                      slivers: [relatedVideo],
+                    ),
+                    videoReply,
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -1166,39 +1173,45 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     );
   }
 
+  Widget get fullScreenPlayer => Scaffold(
+    resizeToAvoidBottomInset: false,
+    backgroundColor: Colors.black,
+    body: SizedBox.expand(
+      child: playerPopScope(
+        MediaQuery.sizeOf(context).width,
+        MediaQuery.sizeOf(context).height,
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
-    if (!horizontalScreen) {
-      return autoChoose(childWhenDisabled);
-    }
+    return Obx(() {
+      if (isFullScreen.value == true) {
+        return autoChoose(fullScreenPlayer);
+      }
 
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        isShowing = Get.currentRoute == myRouteName;
-        if (!isShowing && Get.previousRoute != myRouteName) {
-          return ColoredBox(color: Theme.of(context).colorScheme.surface);
-        }
-        if (constraints.maxWidth > constraints.maxHeight * 1.25) {
-          //             hideStatusBar();
-          //             videoDetailController.hiddenReplyReplyPanel();
-          return autoChoose(childWhenDisabledLandscape);
-        } else if (constraints.maxWidth * (9 / 16) <
-            (2 / 5) * constraints.maxHeight) {
-          if (!isFullScreen.value) {
+      return LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          isShowing = Get.currentRoute == myRouteName;
+          if (!isShowing && Get.previousRoute != myRouteName) {
+            return ColoredBox(color: Theme.of(context).colorScheme.surface);
+          }
+          if (ScreenUtils.shouldUseLandscapeDualColumn(context, constraints)) {
+            return autoChoose(childWhenDisabledLandscape);
+          } else if (ScreenUtils.isSquarish(constraints)) {
             if (!removeSafeArea && isShowing) {
               showStatusBar();
             }
-          }
-          return autoChoose(childWhenDisabled);
-        } else {
-          if (!isFullScreen.value) {
+            return autoChoose(childWhenDisabledAlmostSquare);
+          } else {
             if (!removeSafeArea && isShowing) {
               showStatusBar();
             }
+            return autoChoose(childWhenDisabled);
           }
-          return autoChoose(childWhenDisabledAlmostSquare);
-        }
-      },
-    );
+        },
+      );
+    });
   }
 }

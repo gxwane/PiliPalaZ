@@ -18,6 +18,7 @@ import 'package:pilipalaz/plugin/pl_player/controller.dart';
 import 'package:pilipalaz/plugin/pl_player/models/duration.dart';
 import 'package:pilipalaz/plugin/pl_player/models/fullscreen_mode.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
+import 'package:pilipalaz/utils/screen_utils.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:saver_gallery/saver_gallery.dart';
 import 'package:screen_brightness/screen_brightness.dart';
@@ -577,14 +578,23 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     );
   }
 
+  bool get _isEquivalentFullScreen {
+    final PlPlayerController playerController = widget.controller;
+    if (playerController.isFullScreen.value) {
+      return true;
+    }
+    if (ScreenUtils.isTablet(context)) {
+      return false;
+    }
+    return !playerController.horizontalScreen &&
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+  }
+
   // 动态构建底部控制条
   List<BottomControlItem> buildBottomControl() {
     final PlPlayerController playerController = widget.controller;
     final anySeason = _hasEpisodes;
-    bool isEquivalentFullScreen =
-        playerController.isFullScreen.value ||
-        !playerController.horizontalScreen &&
-            MediaQuery.of(context).orientation == Orientation.landscape;
+    bool isEquivalentFullScreen = _isEquivalentFullScreen;
     Map<BottomControlType, Widget> videoProgressWidgets = {
       /// 上一集
       BottomControlType.pre: Container(
@@ -1445,10 +1455,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
           final int max = playerController.durationSeconds.value;
           final int buffer = playerController.bufferedSeconds.value;
 
-          bool isEquivalentFullScreen =
-              playerController.isFullScreen.value ||
-              !playerController.horizontalScreen &&
-                  MediaQuery.of(context).orientation == Orientation.landscape;
+          bool isEquivalentFullScreen = _isEquivalentFullScreen;
           if (playerController.showControls.value) {
             return Container();
           }
@@ -1540,10 +1547,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         // 锁
         SafeArea(
           child: Obx(() {
-            bool isEquivalentFullScreen =
-                playerController.isFullScreen.value ||
-                !playerController.horizontalScreen &&
-                    MediaQuery.of(context).orientation == Orientation.landscape;
+            bool isEquivalentFullScreen = _isEquivalentFullScreen;
             return Align(
               alignment: Alignment.centerLeft,
               child: FractionalTranslation(
@@ -1579,10 +1583,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         // 截图
         SafeArea(
           child: Obx(() {
-            bool isEquivalentFullScreen =
-                playerController.isFullScreen.value ||
-                !playerController.horizontalScreen &&
-                    MediaQuery.of(context).orientation == Orientation.landscape;
+            bool isEquivalentFullScreen = _isEquivalentFullScreen;
             return Align(
               alignment: Alignment.centerRight,
               child: FractionalTranslation(

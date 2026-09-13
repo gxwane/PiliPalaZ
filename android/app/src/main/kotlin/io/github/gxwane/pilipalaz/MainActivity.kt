@@ -7,7 +7,7 @@ import com.ryanheise.audioservice.AudioServiceActivity
 import com.ryanheise.audioservice.AudioServicePlugin
 import android.os.Build
 import android.os.Bundle
-//import android.view.WindowManager.LayoutParams
+import android.view.WindowManager
 import fl.pip.FlPiPActivity
 import android.content.Context
 import androidx.annotation.NonNull
@@ -25,18 +25,17 @@ class MainActivity: FlPiPActivity() {
         AppUpdateChannel(this, flutterEngine)
         OrientationChannel(this, flutterEngine)
     }
-//    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-//        super.configureFlutterEngine(flutterEngine)
-//        methodChannel = MethodChannel(flutterEngine!!.getDartExecutor()!!.getBinaryMessenger(), CHANNEL)
-//    }
 
-//    override fun onCreate(savedInstanceState: Bundle?) {
-//        super.onCreate(savedInstanceState)
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-//            window.attributes.layoutInDisplayCutoutMode =
-//                LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-//        }
-//    }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.attributes.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            window.attributes.layoutInDisplayCutoutMode =
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
+    }
 
 //    override fun onUserLeaveHint() {
 //        super.onUserLeaveHint()
