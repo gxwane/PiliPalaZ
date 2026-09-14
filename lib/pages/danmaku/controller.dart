@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:pilipalaz/http/danmaku.dart';
 import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/danmaku/dm.pb.dart';
+import 'package:pilipalaz/services/download/offline_danmaku_service.dart';
 
 import '../../utils/storage.dart';
 
@@ -24,23 +27,29 @@ class PlDanmakuController {
   static int segmentLength = 60 * 6 * 1000;
 
   static void refresh() {
-    danmakuWeight = GStorage.setting.get(
-      SettingBoxKey.danmakuWeight,
-      defaultValue: 0,
-    );
-    danmakuFilter = GStorage.onlineCache
-        .get(OnlineCacheKey.danmakuFilterRule, defaultValue: [])
-        .map<Map<String, dynamic>>((e) {
-          return Map<String, dynamic>.from(e);
-        })
-        .toList();
-    convertToScrollDanmaku = GStorage.setting.get(
-      SettingBoxKey.convertToScrollDanmaku,
-      defaultValue: true,
-    );
+    try {
+      danmakuWeight = GStorage.setting.get(
+        SettingBoxKey.danmakuWeight,
+        defaultValue: 0,
+      );
+      danmakuFilter = GStorage.onlineCache
+          .get(OnlineCacheKey.danmakuFilterRule, defaultValue: [])
+          .map<Map<String, dynamic>>((e) {
+            return Map<String, dynamic>.from(e);
+          })
+          .toList();
+      convertToScrollDanmaku = GStorage.setting.get(
+        SettingBoxKey.convertToScrollDanmaku,
+        defaultValue: true,
+      );
+    } catch (_) {}
   }
 
-  void initiate(int videoDuration, int progress) {
+  void initiate(
+    int videoDuration,
+    int progress, {
+    File? offlineDanmakuFile,
+  }) async {
     if (videoDuration <= 0) {
       return;
     }
@@ -48,7 +57,34 @@ class PlDanmakuController {
       int segCount = (videoDuration / segmentLength).ceil();
       requestedSeg = List<bool>.generate(segCount, (index) => false);
     }
+    if (offlineDanmakuFile != null && await offlineDanmakuFile.exists()) {
+      final bool loaded = await loadOfflineDanmaku(offlineDanmakuFile);
+      if (loaded) return;
+    }
     queryDanmaku(calcSegment(progress));
+  }
+
+  /// 装载本地离线弹幕文件
+  Future<bool> loadOfflineDanmaku(File danmakuFile) async {
+    final DmSegMobileReply? reply =
+        await OfflineDanmakuService.loadDanmakuFromFile(danmakuFile);
+    if (reply == null || reply.elems.isEmpty) {
+      return false;
+    }
+    for (final element in reply.elems) {
+      final int pos = element.progress ~/ 100;
+      dmSegMap[pos] ??= [];
+      final int i = dmSegMap[pos]!.indexWhere((e) => element.weight > e.weight);
+      if (i > 0) {
+        dmSegMap[pos]!.insert(i, element);
+      } else {
+        dmSegMap[pos]!.add(element);
+      }
+    }
+    for (int i = 0; i < requestedSeg.length; i++) {
+      requestedSeg[i] = true;
+    }
+    return true;
   }
 
   void dispose() {

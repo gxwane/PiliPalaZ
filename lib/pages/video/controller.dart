@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
@@ -9,6 +10,7 @@ import 'package:pilipalaz/http/video_api.dart';
 import 'package:pilipalaz/http/pgc.dart';
 import 'package:pilipalaz/models/common/search_type.dart';
 import 'package:pilipalaz/models/common/video_source_type.dart';
+import 'package:pilipalaz/models/download/download_task.dart';
 import 'package:pilipalaz/models/video/play/quality.dart';
 import 'package:pilipalaz/models/video/play/url.dart';
 import 'package:pilipalaz/pages/video/playback_input.dart';
@@ -17,6 +19,7 @@ import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/hardware_decode_fallback_guard.dart';
 import 'package:pilipalaz/services/diagnostics/diagnostic_record.dart';
 import 'package:pilipalaz/services/diagnostics/local_diagnostics.dart';
+import 'package:pilipalaz/services/download/download_storage_manager.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:pilipalaz/utils/utils.dart';
 import 'package:pilipalaz/utils/video_utils.dart';
@@ -32,17 +35,26 @@ class VideoDetailController extends GetxController
   // 用于小窗返回
   bool resumePlay = Get.parameters['resume']?.toLowerCase() == 'true';
   RxInt danmakuCid = 0.obs;
-  String heroTag = Get.arguments['heroTag'];
+  late final String heroTag =
+      (Get.arguments is Map ? Get.arguments['heroTag'] : null) ??
+      Utils.makeHeroTag(int.tryParse(Get.parameters['cid'] ?? '') ?? 0);
   // 视频详情
   Map videoItem = {};
   // 视频类型 默认投稿视频
-  SearchType videoType = Get.arguments['videoType'] ?? SearchType.video;
+  late final SearchType videoType =
+      (Get.arguments is Map ? Get.arguments['videoType'] : null) ??
+      SearchType.video;
   late final VideoSourceType sourceType =
-      Get.arguments['sourceType'] ??
+      (Get.arguments is Map ? Get.arguments['sourceType'] : null) ??
       (videoType == SearchType.video
           ? VideoSourceType.archive
           : VideoSourceType.pgc);
   int? epId = int.tryParse(Get.parameters['epId'] ?? '');
+  late final bool isOffline =
+      (Get.arguments is Map ? Get.arguments['isOffline'] : null) == true;
+  late final DownloadTask? offlineTask = Get.arguments is Map
+      ? Get.arguments['offlineTask'] as DownloadTask?
+      : null;
 
   /// tabs相关配置
   int tabInitialIndex = 0;
@@ -317,12 +329,15 @@ class VideoDetailController extends GetxController
         DataSource(
           videoSource: video ?? videoUrl,
           audioSource: audio ?? audioUrl,
-          type: DataSourceType.network,
-          httpHeaders: {
-            'user-agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
-            'referer': HttpString.baseUrl,
-          },
+          type: isOffline ? DataSourceType.file : DataSourceType.network,
+          file: isOffline ? File(video ?? videoUrl) : null,
+          httpHeaders: isOffline
+              ? null
+              : {
+                  'user-agent':
+                      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36',
+                  'referer': HttpString.baseUrl,
+                },
         ),
         owner: playerResourceOwner,
         // 硬解
@@ -488,6 +503,54 @@ class VideoDetailController extends GetxController
     );
 
     try {
+      if (isOffline && offlineTask != null) {
+        final storage = DownloadStorageManager();
+        final videoRel = offlineTask!.videoRelativePath;
+        final audioRel = offlineTask!.audioRelativePath;
+        if (videoRel == null) {
+          return fail('离线视频路径不存在');
+        }
+        final videoPath = await storage.absolutePath(videoRel);
+        final videoFile = File(videoPath);
+        if (!await videoFile.exists()) {
+          return fail('离线视频文件不存在');
+        }
+
+        videoUrl = videoPath;
+        if (audioRel != null) {
+          final audioPath = await storage.absolutePath(audioRel);
+          final audioFile = File(audioPath);
+          audioUrl = (await audioFile.exists()) ? audioPath : '';
+        } else {
+          audioUrl = '';
+        }
+
+        firstVideo = VideoItem(
+          id: offlineTask!.videoQuality,
+          codecs: offlineTask!.videoCodec,
+        );
+        firstAudio = AudioItem(id: offlineTask!.audioQuality);
+        data = PlayUrlModel(
+          timeLength: offlineTask!.duration * 1000,
+          quality: offlineTask!.videoQuality,
+          videoCodecid: 7,
+        );
+        currentVideoQa =
+            VideoQualityCode.fromCode(offlineTask!.videoQuality) ??
+            VideoQuality.high1080;
+        currentDecodeFormats =
+            VideoDecodeFormatsCode.fromString(offlineTask!.videoCodec) ??
+            VideoDecodeFormats.AVC;
+        defaultST = Duration.zero;
+
+        await playerInit(
+          duration: Duration(seconds: offlineTask!.duration),
+          autoplay: autoPlay.value,
+        );
+        playbackSuccess(showPreviewNotice: false);
+        return {'status': true};
+      }
+
       if (sourceType.isPgc && epId == null) {
         return fail('缺少影视剧集 ep_id，无法加载播放地址');
       }

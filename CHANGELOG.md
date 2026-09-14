@@ -6,6 +6,13 @@
 
 ### 变更
 
+- 新增离线缓存与播放功能（Offline Cache and Playback）：
+  - 纯领域模型与持久化 DAO：定义无 UI 依赖的 `DownloadTask` 领域模型与状态机（`pending`、`downloading`、`paused`、`completed`、`failed`），基于 Hive 轻量持久化存储，支持多维任务元数据与进度持久化。
+  - DASH 零混流本地双流直出：独立拉取视频流与音频流（`video.m4s` 与 `audio.m4s`），播放时通过播放器外部音频指令（`buildExternalAudioCommand`）直接组合挂载，免除移动设备本地 FFmpeg 混流重封装的高额 CPU/耗电损耗。
+  - 离线多段弹幕聚合归档：根据视频总时长自动分段批量获取 Protobuf 弹幕消息体，聚合归档为单个本地 `danmaku.bin` 文件；播放器初始化自动探测并挂载离线弹幕文件，全量短路网络请求。
+  - 存储水位红线与断点自愈引擎：管理应用私有下载目录与相对路径持久化，内置 200MB 磁盘可用空间安全红线与任务熔断保护；支持 HTTP 206 续写与 HTTP 200 容错截断，遇 403/410 CDN 凭据过期自动同编码规格保真换新续传，应用冷启动自动自愈未竟任务。
+  - 视频详情页下载弹窗（`DownloadSheet`）：支持不同清晰度与分 P 选集批量勾选，集成 DRM 版权保护与试看片段（`tryLook` / `trial` / `-10403`）前置拦截。
+  - 媒体库离线中心与存储仪表盘：媒体库正式激活“离线缓存”中心（`/download`），支持“已完成”与“下载中”双 Tab 切换、实时网速与进度、单项/批量操作及磁盘存储占用可视化指示条。
 - 统一播放队列体系（Unified Playback Queue）：
   - 领域模型与跨源统一：抽象通用 `PlayQueueItem` 与 `PlayQueueSourceType`，全面统一分 P（`part`）、UGC 合集（`ugcSeason`）、PGC 影视剧集（`pgcEpisode`）、稍后再看（`watchLater`）以及相关视频（`related`）的播放与流转控制。
   - 队列生命周期与堆栈式激活：实现 `PlaybackQueueController`，引入堆栈式活跃实例管理（`_activeStack`）与回退自动重新激活机制（`markActive`），避免页面多次进出时控制指针失效或悬空。

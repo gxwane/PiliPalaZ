@@ -12,6 +12,7 @@ import 'package:pilipalaz/pages/setting/pages/logs.dart';
 import '../pages/about/index.dart';
 import '../pages/blacklist/index.dart';
 import '../pages/danmaku_block/index.dart';
+import '../pages/download/index.dart';
 import '../pages/dynamics/detail/index.dart';
 import '../pages/dynamics/index.dart';
 import '../pages/fan/index.dart';
@@ -100,7 +101,9 @@ class Routes {
     CustomGetPage(name: '/dynamics', page: () => const DynamicsPage()),
     // 动态详情
     CustomGetPage(
-        name: '/dynamicDetail', page: () => const DynamicDetailPage()),
+      name: '/dynamicDetail',
+      page: () => const DynamicDetailPage(),
+    ),
     // 关注
     CustomGetPage(name: '/follow', page: () => const FollowPage()),
     // 粉丝
@@ -112,10 +115,14 @@ class Routes {
     CustomGetPage(name: '/memberSearch', page: () => const MemberSearchPage()),
     // 二级回复
     CustomGetPage(
-        name: '/replyReply', page: () => const VideoReplyReplyPanel()),
+      name: '/replyReply',
+      page: () => const VideoReplyReplyPanel(),
+    ),
     // 推荐流设置
     CustomGetPage(
-        name: '/recommendSetting', page: () => const RecommendSetting()),
+      name: '/recommendSetting',
+      page: () => const RecommendSetting(),
+    ),
     // 音视频设置
     CustomGetPage(name: '/videoSetting', page: () => const VideoSetting()),
     // 播放器设置
@@ -129,23 +136,32 @@ class Routes {
     //
     CustomGetPage(name: '/blackListPage', page: () => const BlackListPage()),
     CustomGetPage(name: '/colorSetting', page: () => const ColorSelectPage()),
-    CustomGetPage(name: '/gestureSetting', page: () => const GestureSelectPage()),
+    CustomGetPage(
+      name: '/gestureSetting',
+      page: () => const GestureSelectPage(),
+    ),
     // 开发人员选项
     CustomGetPage(name: '/hiddenSetting', page: () => const HiddenSetting()),
     // 首页tabbar
     CustomGetPage(name: '/tabbarSetting', page: () => const TabbarSetPage()),
     CustomGetPage(
-        name: '/fontSizeSetting', page: () => const FontSizeSelectPage()),
+      name: '/fontSizeSetting',
+      page: () => const FontSizeSelectPage(),
+    ),
     // 屏幕帧率
     CustomGetPage(
-        name: '/displayModeSetting', page: () => const SetDisplayMode()),
+      name: '/displayModeSetting',
+      page: () => const SetDisplayMode(),
+    ),
     // 关于
     CustomGetPage(name: '/about', page: () => const AboutPage()),
     //
     CustomGetPage(name: '/htmlRender', page: () => const HtmlRenderPage()),
     // 历史记录搜索
     CustomGetPage(
-        name: '/historySearch', page: () => const HistorySearchPage()),
+      name: '/historySearch',
+      page: () => const HistorySearchPage(),
+    ),
 
     CustomGetPage(name: '/playSpeedSet', page: () => const PlaySpeedPage()),
     // 收藏搜索
@@ -154,7 +170,9 @@ class Routes {
     CustomGetPage(name: '/whisper', page: () => const WhisperPage()),
     // 私信详情
     CustomGetPage(
-        name: '/whisperDetail', page: () => const WhisperDetailPage()),
+      name: '/whisperDetail',
+      page: () => const WhisperDetailPage(),
+    ),
     // 回复我的
     CustomGetPage(name: '/replyMe', page: () => const ReplyMePage()),
     // @我的
@@ -191,6 +209,8 @@ class Routes {
     CustomGetPage(name: '/subDetail', page: () => const SubDetailPage()),
     // 弹幕屏蔽管理
     CustomGetPage(name: '/danmakuBlock', page: () => const DanmakuBlockPage()),
+    // 离线缓存
+    CustomGetPage(name: '/download', page: () => const DownloadPage()),
   ];
 }
 
@@ -201,11 +221,11 @@ class CustomGetPage extends GetPage<dynamic> {
     this.fullscreen,
     super.transitionDuration,
   }) : super(
-          curve: Curves.linear,
-          transition: Transition.native,
-          showCupertinoParallax: false,
-          popGesture: false,
-          fullscreenDialog: fullscreen != null && fullscreen,
-        );
+         curve: Curves.linear,
+         transition: Transition.native,
+         showCupertinoParallax: false,
+         popGesture: false,
+         fullscreenDialog: fullscreen != null && fullscreen,
+       );
   bool? fullscreen = false;
 }

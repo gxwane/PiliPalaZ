@@ -25,6 +25,7 @@ import 'package:pilipalaz/pages/video/introduction/widgets/fav_panel.dart';
 import 'package:pilipalaz/pages/video/introduction/widgets/intro_detail.dart';
 import 'package:pilipalaz/pages/video/introduction/widgets/page.dart';
 import 'package:pilipalaz/pages/video/introduction/widgets/season.dart';
+import 'package:pilipalaz/pages/video/widgets/download_sheet.dart';
 
 class VideoIntroPanel extends StatefulWidget {
   const VideoIntroPanel({required this.heroTag, super.key});
@@ -639,6 +640,20 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
                 text: !loadingStatus
                     ? Utils.numFormat(widget.videoDetail!.stat!.share!)
                     : '分享',
+              ),
+              ActionItem(
+                icon: const Icon(Icons.file_download_outlined),
+                onTap: () {
+                  DownloadSheet.show(
+                    context,
+                    videoDetail: widget.videoDetail!,
+                    playUrlData: videoDetailCtr.data,
+                  );
+                },
+                selectStatus: false,
+                loadingStatus: loadingStatus,
+                semanticsLabel: '离线缓存',
+                text: '缓存',
               ),
             ],
           ),

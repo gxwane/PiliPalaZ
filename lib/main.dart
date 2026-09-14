@@ -23,6 +23,9 @@ import 'package:pilipalaz/pages/video/index.dart';
 import 'package:pilipalaz/router/app_pages.dart';
 import 'package:pilipalaz/pages/main/view.dart';
 import 'package:pilipalaz/services/auth/auth_session_manager.dart';
+import 'package:pilipalaz/services/download/download_dao.dart';
+import 'package:pilipalaz/services/download/download_service.dart';
+import 'package:pilipalaz/services/download/download_storage_manager.dart';
 import 'package:pilipalaz/services/service_locator.dart';
 import 'package:pilipalaz/utils/app_scheme.dart';
 import 'package:pilipalaz/utils/data.dart';
@@ -60,6 +63,17 @@ void main() async {
   await LocalDiagnostics.instance.initialize();
   MediaKit.ensureInitialized();
   await GStorage.init();
+  try {
+    final downloadDao = await DownloadDao.init();
+    final downloadStorage = DownloadStorageManager();
+    await DownloadService.init(
+      dao: downloadDao,
+      storageManager: downloadStorage,
+    );
+  } catch (error, stackTrace) {
+    debugPrint('Failed to initialize DownloadService: $error');
+    debugPrintStack(stackTrace: stackTrace);
+  }
   // timeDilation = 10.0;
   if (GStorage.setting.get(SettingBoxKey.autoClearCache, defaultValue: false)) {
     try {
