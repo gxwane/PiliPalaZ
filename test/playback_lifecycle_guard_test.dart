@@ -73,6 +73,43 @@ void main() {
       );
     });
 
+    test('BAC-19: PlPlayerController enforces readiness before _initializePlayer and dispatches rate safely', () {
+      final rawCode = File(
+        'lib/plugin/pl_player/controller.dart',
+      ).readAsStringSync();
+      final code = rawCode.replaceAll('\r\n', '\n');
+
+      // markReady must happen before _initializePlayer
+      final markReadyIndex = code.indexOf('_playbackLifecycle.markReady(session)');
+      final initPlayerIndex = code.indexOf('await _initializePlayer();');
+      expect(markReadyIndex, isNonNegative);
+      expect(initPlayerIndex, isNonNegative);
+      expect(
+        markReadyIndex < initPlayerIndex,
+        isTrue,
+        reason: 'markReady must be called before _initializePlayer so canControlPlayback is true',
+      );
+
+      // Session abort guards
+      expect(
+        code,
+        contains('if (!_playbackLifecycle.markReady(session))'),
+        reason: 'If session is superseded, abort before _initializePlayer',
+      );
+      expect(
+        code,
+        contains('await _initializePlayer();\n      if (session != _playbackSession) return;'),
+        reason: 'Session must be verified after async _initializePlayer',
+      );
+
+      // setDefaultSpeed must route through setPlaybackSpeed
+      expect(
+        code,
+        contains('await setPlaybackSpeed(speed);'),
+        reason: 'setDefaultSpeed must delegate to setPlaybackSpeed',
+      );
+    });
+
     test('Session increment supersedes prior async callbacks and timers', () {
       final lifecycle = PlaybackLifecycle();
 

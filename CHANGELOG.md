@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+### 修复
+
+- 播放器倍速初始化时序与生命周期守卫修复（BAC-19）：
+  - 修复 `PlPlayerController.setDataSource` 在初始化视频播放器时生命周期尚未就绪（`canControlPlayback == false`），导致 `_initializePlayer` 内的默认倍速设置指令被完全拦截短路、底层原生播放速率未设置而 UI 仍显示设定倍速的严重失步 Bug。
+  - 将 `_playbackLifecycle.markReady(session)` 前移至 `_initializePlayer()` 之前，并增加 session 失效中断守卫与异步后置校验；
+  - 规范化 `setDefaultSpeed()` 调度，统一收拢委托至 `setPlaybackSpeed(speed)`，纳入生命周期守卫与长按倍速状态机保护。
+- 平板横屏离线视频纯黑影院视口与安全区隔离治理（BAC-20）：
+  - 修复平板横屏双栏模式下离线视频左侧播放器列上下露出大面积浅色主题白边（Letterbox 缺失）以及左侧安全区避让条白边的视觉缺陷。
+  - 将离线视频左侧播放器列强制设为纯黑（`Colors.black`）影院视口；
+  - 在横屏双栏脚手架中实现条件化隔离（`videoDetailController.isOffline`）：离线模式下外层设为纯黑且将播放视口延伸至屏幕物理边缘，右侧面板显式保持浅色/深色主题表面色（`colorScheme.surface`）并独立处理右侧安全区；在线视频保持既有主题背景与避让行为，彻底杜绝浅色模式“黑底黑字”退化。
+
 ## [1.4.0-beta.1] - 2026-09-15
 
 ### 变更

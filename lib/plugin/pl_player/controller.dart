@@ -830,10 +830,12 @@ class PlPlayerController with WidgetsBindingObserver {
 
       // listen the video player events
       startListeners(session);
-      await _initializePlayer();
-      if (_playbackLifecycle.markReady(session)) {
-        playbackLifecycleState.value = _playbackLifecycle.state;
+      if (!_playbackLifecycle.markReady(session)) {
+        return;
       }
+      playbackLifecycleState.value = _playbackLifecycle.state;
+      await _initializePlayer();
+      if (session != _playbackSession) return;
       await _diagnosticSession?.checkpoint('playback_initialized');
       if (dataSource.type == DataSourceType.file) {
         _vttSubtitles.clear();
@@ -1706,8 +1708,7 @@ class PlPlayerController with WidgetsBindingObserver {
       VideoBoxKey.playSpeedDefault,
       defaultValue: 1.0,
     );
-    await _videoPlayerController?.setRate(speed);
-    _playbackSpeed.value = speed;
+    await setPlaybackSpeed(speed);
   }
 
   /// 设置倍速

@@ -1041,25 +1041,38 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     if (videoDetailController.isOffline) {
       return Row(
         children: [
-          SizedBox(
+          Container(
             width: videoWidth,
             height: context.height,
+            color: Colors.black,
             child: Center(
               child: SizedBox(
                 width: videoWidth,
-                height: videoHeight,
-                child: playerPopScope(videoWidth, videoHeight),
+                height: min(videoHeight, context.height),
+                child: playerPopScope(
+                  videoWidth,
+                  min(videoHeight, context.height),
+                ),
               ),
             ),
           ),
           Expanded(
-            child: pullToFullScreen(
-              CustomScrollView(
-                cacheExtent: 3500,
-                key: PageStorageKey<String>(
-                  '离线简介${videoDetailController.bvid}',
+            child: Container(
+              color: Theme.of(context).colorScheme.surface,
+              child: SafeArea(
+                top: false,
+                bottom: false,
+                left: false,
+                right: !removeSafeArea && isFullScreen.value != true,
+                child: pullToFullScreen(
+                  CustomScrollView(
+                    cacheExtent: 3500,
+                    key: PageStorageKey<String>(
+                      '离线简介${videoDetailController.bvid}',
+                    ),
+                    slivers: <Widget>[OfflineVideoIntroPanel(heroTag: heroTag)],
+                  ),
                 ),
-                slivers: <Widget>[OfflineVideoIntroPanel(heroTag: heroTag)],
               ),
             ),
           ),
@@ -1147,10 +1160,16 @@ class _VideoDetailPageState extends State<VideoDetailPage>
             ),
           ),
     body: Container(
-      color: Theme.of(context).colorScheme.surface,
+      color: videoDetailController.isOffline
+          ? Colors.black
+          : Theme.of(context).colorScheme.surface,
       child: SafeArea(
-        left: !removeSafeArea && isFullScreen.value != true,
-        right: !removeSafeArea && isFullScreen.value != true,
+        left: !videoDetailController.isOffline &&
+            !removeSafeArea &&
+            isFullScreen.value != true,
+        right: !videoDetailController.isOffline &&
+            !removeSafeArea &&
+            isFullScreen.value != true,
         top: !removeSafeArea,
         bottom: false, //!removeSafeArea,
         child: childWhenDisabledLandscapeInner,
