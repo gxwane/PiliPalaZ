@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.4.0-beta.1] - 2026-09-15
+
 ### 变更
 
 - 新增离线缓存与播放功能（Offline Cache and Playback）：
