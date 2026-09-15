@@ -9,11 +9,12 @@ import '../../utils/storage.dart';
 
 class PlDanmakuController {
   final int cid;
+  final bool isOffline;
   static int danmakuWeight = 0;
   static List<Map<String, dynamic>> danmakuFilter = [];
   // 按类型屏蔽弹幕转为滚动弹幕
   static bool convertToScrollDanmaku = true;
-  PlDanmakuController(this.cid) {
+  PlDanmakuController(this.cid, {this.isOffline = false}) {
     refresh();
   }
 
@@ -57,6 +58,15 @@ class PlDanmakuController {
       int segCount = (videoDuration / segmentLength).ceil();
       requestedSeg = List<bool>.generate(segCount, (index) => false);
     }
+    if (isOffline) {
+      if (offlineDanmakuFile != null && await offlineDanmakuFile.exists()) {
+        await loadOfflineDanmaku(offlineDanmakuFile);
+      }
+      for (int i = 0; i < requestedSeg.length; i++) {
+        requestedSeg[i] = true;
+      }
+      return;
+    }
     if (offlineDanmakuFile != null && await offlineDanmakuFile.exists()) {
       final bool loaded = await loadOfflineDanmaku(offlineDanmakuFile);
       if (loaded) return;
@@ -99,7 +109,10 @@ class PlDanmakuController {
   }
 
   void queryDanmaku(int segmentIndex) async {
-    if (_disposed || segmentIndex < 0 || requestedSeg.length <= segmentIndex) {
+    if (_disposed ||
+        isOffline ||
+        segmentIndex < 0 ||
+        requestedSeg.length <= segmentIndex) {
       return;
     }
     assert(requestedSeg[segmentIndex] == false);

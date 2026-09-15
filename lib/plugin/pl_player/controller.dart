@@ -835,7 +835,11 @@ class PlPlayerController with WidgetsBindingObserver {
         playbackLifecycleState.value = _playbackLifecycle.state;
       }
       await _diagnosticSession?.checkpoint('playback_initialized');
-      if (videoType.value != 'live' && _cid != 0) {
+      if (dataSource.type == DataSourceType.file) {
+        _vttSubtitles.clear();
+        _vttSubtitlesIndex.value = 0;
+        _videoPlayerController?.setSubtitleTrack(SubtitleTrack.no());
+      } else if (videoType.value != 'live' && _cid != 0) {
         refreshVideoMetaInfo().then((_) {
           if (session == _playbackSession) {
             chooseSubtitle();
@@ -2306,6 +2310,9 @@ class PlPlayerController with WidgetsBindingObserver {
 
   // 记录播放记录
   Future makeHeartBeat(int progress, {type = 'playing'}) async {
+    if (dataSource.type == DataSourceType.file) {
+      return false;
+    }
     if (!_enableHeart || MineController.anonymity) {
       return false;
     }

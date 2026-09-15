@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/models/bangumi/info.dart' as pgc;
 import 'package:pilipalaz/models/common/play_queue_item.dart';
+import 'package:pilipalaz/models/download/download_task.dart';
 import 'package:pilipalaz/models/model_hot_video_item.dart';
 import 'package:pilipalaz/models/video_detail_res.dart' as ugc;
 import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
@@ -114,6 +115,37 @@ class PlaybackQueueController extends GetxController {
             aid: aid,
             cover: cover,
             author: author,
+          ),
+        )
+        .toList();
+
+    sourceType.value = PlayQueueSourceType.part;
+    queue.assignAll(items);
+
+    final idx = items.indexWhere((item) => item.cid == currentCid);
+    currentIndex.value = idx >= 0 ? idx : 0;
+    syncState();
+  }
+
+  /// 从离线已完成任务列表初始化队列 (BAC-12)
+  void initFromOfflineTasks({
+    required List<DownloadTask> tasks,
+    required int currentCid,
+  }) {
+    if (isExternalQueue.value) return;
+
+    final items = tasks
+        .map(
+          (t) => PlayQueueItem(
+            id: '${t.bvid}_${t.cid}',
+            bvid: t.bvid,
+            cid: t.cid,
+            aid: t.aid,
+            title: t.partTitle.isNotEmpty ? t.partTitle : t.title,
+            cover: t.cover,
+            duration: t.duration,
+            author: t.ownerName,
+            sourceType: PlayQueueSourceType.part,
           ),
         )
         .toList();

@@ -13,11 +13,7 @@ import 'package:pilipalaz/utils/feed_back.dart';
 import 'package:pilipalaz/utils/storage.dart';
 
 class VideoReplyController extends GetxController {
-  VideoReplyController(
-    this.aid,
-    this.rpid,
-    this.replyLevel,
-  );
+  VideoReplyController(this.aid, this.rpid, this.replyLevel);
   final ScrollController scrollController = ScrollController();
   // 视频aid 请求时使用的oid
   int? aid;
@@ -29,6 +25,7 @@ class VideoReplyController extends GetxController {
   String nextOffset = "";
   bool isLoadingMore = false;
   RxString noMore = ''.obs;
+  RxBool isError = false.obs;
   RxInt count = 0.obs;
   // 当前回复的回复
   ReplyItemModel? currentReplyItem;
@@ -60,6 +57,7 @@ class VideoReplyController extends GetxController {
     if (type == 'init') {
       nextOffset = '';
       noMore.value = '';
+      isError.value = false;
     }
     if (noMore.value == '没有更多了') return;
     isLoadingMore = true;
@@ -71,6 +69,7 @@ class VideoReplyController extends GetxController {
     );
     isLoadingMore = false;
     if (res case ApiSuccess<ReplyData>(:final data)) {
+      isError.value = false;
       final List<ReplyItemModel> replies = data.replies ?? <ReplyItemModel>[];
       nextOffset = data.cursor?.paginationReply?.nextOffset ?? "";
       if (replies.isNotEmpty) {
@@ -80,7 +79,6 @@ class VideoReplyController extends GetxController {
         if (data.cursor?.isEnd == true) {
           noMore.value = '没有更多了';
         }
-
       } else {
         // 未登录状态replies可能返回null
         noMore.value = nextOffset == "" && type == 'init' ? '还没有评论' : '没有更多了';
@@ -102,13 +100,35 @@ class VideoReplyController extends GetxController {
         replyList.addAll(replies);
       }
     } else {
+      isError.value = true;
+      if (replyList.isEmpty) {
+        noMore.value = '加载失败，点击重试';
+      } else {
+        noMore.value = '加载失败，请重试';
+      }
       SmartDialog.showToast((res as ApiFailure<ReplyData>).message);
     }
   }
 
   // 上拉加载
   Future onLoad() async {
+    if (isLoadingMore ||
+        isError.value ||
+        replyList.isEmpty ||
+        noMore.value == '没有更多了') {
+      return;
+    }
     queryReplyList(type: 'onLoad');
+  }
+
+  // 显式重试
+  Future retry() async {
+    if (replyList.isEmpty) {
+      queryReplyList(type: 'init');
+    } else {
+      isError.value = false;
+      queryReplyList(type: 'onLoad');
+    }
   }
 
   // 排序搜索评论

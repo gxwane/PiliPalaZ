@@ -9,11 +9,13 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/http/video_api.dart';
 import 'package:pilipalaz/models/download/download_task.dart';
 import 'package:pilipalaz/models/video/play/url.dart';
 import 'package:pilipalaz/services/download/download_storage_manager.dart';
+import 'package:pilipalaz/services/download/offline_danmaku_service.dart';
 import 'package:pilipalaz/utils/video_utils.dart';
 
 /// URL 续期结果。
@@ -41,15 +43,18 @@ class DownloadTaskExecutor {
     required String videoUrl,
     required String audioUrl,
     Dio? dio,
+    OfflineDanmakuService? danmakuService,
     this.onProgress,
     this.onUrlRenewed,
   }) : _videoUrl = videoUrl,
        _audioUrl = audioUrl,
-       _dio = dio ?? Dio();
+       _dio = dio ?? Dio(),
+       _danmakuService = danmakuService ?? OfflineDanmakuService();
 
   final DownloadTask task;
   final DownloadStorageManager storageManager;
   final DownloadProgressCallback? onProgress;
+  final OfflineDanmakuService _danmakuService;
 
   /// URL 续期成功后回调，让上层缓存新 URL。
   final void Function(RenewedUrls urls)? onUrlRenewed;
@@ -102,12 +107,61 @@ class DownloadTaskExecutor {
       await _atomicRename(videoPartFile);
       await _atomicRename(audioPartFile);
 
+      // 非致命辅助资产拉取（弹幕 + 封面）(BAC-3)
+      await _downloadAuxiliaryAssets();
+
       return DownloadTaskStatus.completed;
     } on DioException catch (e) {
       if (e.type == DioExceptionType.cancel) {
         return DownloadTaskStatus.paused;
       }
       rethrow;
+    }
+  }
+
+  /// 拉取非致命辅助资产（离线弹幕与封面），失败仅记录并降级。
+  Future<void> _downloadAuxiliaryAssets() async {
+    // 1. 离线弹幕
+    try {
+      if (!isCancelled && task.cid > 0) {
+        final String danmakuPath = await storageManager.absolutePath(
+          storageManager.pathsForTask(task).danmakuRelativePath,
+        );
+        final File danmakuFile = File(danmakuPath);
+        if (!await danmakuFile.exists()) {
+          await _danmakuService.downloadDanmaku(
+            cid: task.cid,
+            duration: task.duration,
+            targetFile: danmakuFile,
+            cancelToken: _cancelToken,
+          );
+        }
+      }
+    } catch (_) {
+      // 辅助资产非致命降级
+    }
+
+    // 2. 离线封面
+    try {
+      if (!isCancelled && task.cover.isNotEmpty) {
+        final String coverPath = await storageManager.absolutePath(
+          storageManager.pathsForTask(task).coverRelativePath,
+        );
+        final File coverFile = File(coverPath);
+        if (!await coverFile.exists()) {
+          final String normalizedCover = NetworkImgLayer.normalizeUrl(
+            task.cover,
+          );
+          await _dio.download(
+            normalizedCover,
+            coverPath,
+            cancelToken: _cancelToken,
+            options: Options(receiveTimeout: const Duration(seconds: 8)),
+          );
+        }
+      }
+    } catch (_) {
+      // 辅助资产非致命降级
     }
   }
 

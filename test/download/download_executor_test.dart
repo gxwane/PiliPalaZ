@@ -54,6 +54,14 @@ void main() {
       expect(root2, equals(root));
     });
 
+    test('defaultDiskSpace 在无头单测环境下安全降级且不崩溃', () async {
+      final defaultManager = DownloadStorageManager(
+        directoryProvider: () async => tmpDir,
+      );
+      final space = await defaultManager.availableDiskSpace();
+      expect(space, greaterThanOrEqualTo(0));
+    });
+
     test('pathsForTask 生成标准相对路径', () {
       final task = _task(bvid: 'BV1abc', cid: 42);
       final paths = manager.pathsForTask(task);

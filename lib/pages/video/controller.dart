@@ -24,6 +24,9 @@ import 'package:pilipalaz/utils/storage.dart';
 import 'package:pilipalaz/utils/utils.dart';
 import 'package:pilipalaz/utils/video_utils.dart';
 
+import 'package:pilipalaz/controllers/playback_queue_controller.dart';
+import 'package:pilipalaz/models/common/play_queue_item.dart';
+import 'package:pilipalaz/services/download/download_service.dart';
 import '../../../utils/id_utils.dart';
 import 'widgets/header_control.dart';
 
@@ -52,9 +55,9 @@ class VideoDetailController extends GetxController
   int? epId = int.tryParse(Get.parameters['epId'] ?? '');
   late final bool isOffline =
       (Get.arguments is Map ? Get.arguments['isOffline'] : null) == true;
-  late final DownloadTask? offlineTask = Get.arguments is Map
-      ? Get.arguments['offlineTask'] as DownloadTask?
-      : null;
+  DownloadTask? offlineTask;
+  File? offlineDanmakuFile;
+  PlaybackQueueController? playbackQueueController;
 
   /// tabs相关配置
   int tabInitialIndex = 0;
@@ -139,6 +142,47 @@ class VideoDetailController extends GetxController
         }
       }
     }
+    offlineTask = Get.arguments is Map
+        ? Get.arguments['offlineTask'] as DownloadTask?
+        : null;
+    if (isOffline) {
+      try {
+        playbackQueueController = Get.find<PlaybackQueueController>(
+          tag: heroTag,
+        );
+      } catch (_) {
+        playbackQueueController = Get.put(
+          PlaybackQueueController(heroTag: heroTag),
+          tag: heroTag,
+        );
+      }
+      if (DownloadService.isInitialized) {
+        final allTasks = DownloadService.instance.getAllTasks();
+        final siblings =
+            allTasks
+                .where(
+                  (t) =>
+                      t.bvid == bvid && t.status == DownloadTaskStatus.completed,
+                )
+                .toList()
+              ..sort((a, b) => a.cid.compareTo(b.cid));
+        if (siblings.isNotEmpty) {
+          playbackQueueController!.onPlayItem = (PlayQueueItem item) async {
+            final targetTask = siblings.firstWhereOrNull(
+              (t) => t.cid == item.cid,
+            );
+            if (targetTask != null) {
+              return await switchOfflineTask(targetTask);
+            }
+            return false;
+          };
+          playbackQueueController!.initFromOfflineTasks(
+            tasks: siblings,
+            currentCid: cid.value,
+          );
+        }
+      }
+    }
     bool defaultShowComment = setting.get(
       SettingBoxKey.defaultShowComment,
       defaultValue: false,
@@ -160,7 +204,7 @@ class VideoDetailController extends GetxController
         heroTag: heroTag,
       );
     }
-    if (videoItem['pic']?.isEmpty != false) {
+    if (!isOffline && videoItem['pic']?.isEmpty != false) {
       VideoApi.instance.detail(bvid: bvid).then((result) {
         if (result case ApiSuccess(:final data)) {
           videoItem['pic'] = data.pic;
@@ -476,7 +520,40 @@ class VideoDetailController extends GetxController
     }
   }
 
-  // 视频链接
+  /// 离线多 P 切集（BAC-13: 异步 I/O 先行校验，后原子性提交状态变更）
+  Future<bool> switchOfflineTask(DownloadTask newTask) async {
+    if (!isOffline) return false;
+    try {
+      final storage = DownloadStorageManager();
+      final videoRel = newTask.videoRelativePath;
+      if (videoRel == null) {
+        SmartDialog.showToast('离线视频路径不存在');
+        return false;
+      }
+      final videoPath = await storage.absolutePath(videoRel);
+      if (!await File(videoPath).exists()) {
+        SmartDialog.showToast('离线视频文件不存在');
+        return false;
+      }
+
+      offlineTask = newTask;
+      cid.value = newTask.cid;
+      danmakuCid.value = newTask.cid;
+      autoPlay.value = true;
+      playbackQueueController?.syncCurrent(
+        bvid: newTask.bvid,
+        cid: newTask.cid,
+      );
+
+      final res = await queryVideoUrl();
+      return res['status'] == true;
+    } catch (e) {
+      SmartDialog.showToast('切换分P失败: $e');
+      return false;
+    }
+  }
+
+  // 请求视频资源
   Future<Map<String, dynamic>> queryVideoUrl({
     bool preserveCurrentOnFailure = false,
     bool showPreviewNotice = true,
@@ -523,6 +600,16 @@ class VideoDetailController extends GetxController
           audioUrl = (await audioFile.exists()) ? audioPath : '';
         } else {
           audioUrl = '';
+        }
+
+        offlineDanmakuFile = null;
+        final danmakuRel = offlineTask!.danmakuRelativePath;
+        if (danmakuRel != null) {
+          final danmakuPath = await storage.absolutePath(danmakuRel);
+          final dFile = File(danmakuPath);
+          if (await dFile.exists()) {
+            offlineDanmakuFile = dFile;
+          }
         }
 
         firstVideo = VideoItem(

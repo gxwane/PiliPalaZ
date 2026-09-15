@@ -11,6 +11,7 @@ import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/http/user_api.dart';
 import 'package:pilipalaz/http/video.dart';
 import 'package:pilipalaz/http/video_api.dart';
+import 'package:pilipalaz/models/download/download_task.dart';
 import 'package:pilipalaz/models/user/fav_folder.dart';
 import 'package:pilipalaz/models/video/ai.dart';
 import 'package:pilipalaz/models/user/stat.dart';
@@ -27,7 +28,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:pilipalaz/services/service_locator.dart';
 
 import '../../../../../http/search.dart';
-import '../../../../../models/model_hot_video_item.dart';
+import '../../../../../models/model_hot_video_item.dart' hide Stat;
 import 'package:pilipalaz/controllers/playback_queue_controller.dart';
 import 'package:pilipalaz/models/common/play_queue_item.dart';
 import '../../related/index.dart';
@@ -82,6 +83,15 @@ class VideoIntroController extends GetxController {
   Rxn<ApiFailure<VideoDetailData>> videoIntroFailure =
       Rxn<ApiFailure<VideoDetailData>>();
 
+  bool get isOffline {
+    try {
+      final ctr = Get.find<VideoDetailController>(tag: heroTag);
+      return ctr.isOffline;
+    } catch (_) {
+      return Get.arguments is Map && Get.arguments['isOffline'] == true;
+    }
+  }
+
   @override
   void onInit() {
     super.onInit();
@@ -111,7 +121,7 @@ class VideoIntroController extends GetxController {
       }
     }
     userLogin = userInfo != null;
-    lastPlayCid.value = int.parse(Get.parameters['cid']!);
+    lastPlayCid.value = int.tryParse(Get.parameters['cid'] ?? '') ?? 0;
     isShowOnlineTotal = setting.get(
       SettingBoxKey.enableOnlineTotal,
       defaultValue: false,
@@ -170,7 +180,7 @@ class VideoIntroController extends GetxController {
       }
     };
 
-    if (isShowOnlineTotal) {
+    if (!isOffline && isShowOnlineTotal) {
       queryOnlineTotal();
       startTimer(); // 在页面加载时启动定时器
     }
@@ -247,9 +257,68 @@ class VideoIntroController extends GetxController {
     popRouteStackContinuously = "";
   }
 
+  bool _handleOfflineIntro() {
+    VideoDetailController? videoDetailCtr;
+    try {
+      videoDetailCtr = Get.find<VideoDetailController>(tag: heroTag);
+    } catch (_) {}
+
+    final bool isOffline =
+        videoDetailCtr?.isOffline ??
+        (Get.arguments is Map ? Get.arguments['isOffline'] == true : false);
+    if (!isOffline) return false;
+
+    final DownloadTask? offlineTask =
+        videoDetailCtr?.offlineTask ??
+        (Get.arguments is Map
+            ? Get.arguments['offlineTask'] as DownloadTask?
+            : null);
+    if (offlineTask == null) return false;
+
+    final taskPart = Part(
+      cid: offlineTask.cid,
+      page: 1,
+      pagePart: offlineTask.partTitle.isNotEmpty
+          ? offlineTask.partTitle
+          : offlineTask.title,
+      duration: offlineTask.duration,
+    );
+    videoDetail.value = VideoDetailData(
+      bvid: offlineTask.bvid,
+      aid: offlineTask.aid,
+      title: offlineTask.title,
+      pic: offlineTask.cover,
+      duration: offlineTask.duration,
+      owner: Owner(name: offlineTask.ownerName),
+      pages: [taskPart],
+      desc: '',
+      descV2: <DescV2>[],
+      stat: Stat(
+        view: 0,
+        danmu: 0,
+        reply: 0,
+        favorite: 0,
+        coin: 0,
+        share: 0,
+        like: 0,
+      ),
+    );
+    lastPlayCid.value = offlineTask.cid;
+    playbackQueueController.initFromPages(
+      pages: [taskPart],
+      bvid: offlineTask.bvid,
+      aid: offlineTask.aid ?? IdUtils.bv2av(offlineTask.bvid),
+      currentCid: offlineTask.cid,
+      cover: offlineTask.cover,
+      author: offlineTask.ownerName,
+    );
+    return true;
+  }
+
   // 获取视频简介&分p
   Future<void> queryVideoIntro() async {
     videoIntroFailure.value = null;
+    if (_handleOfflineIntro()) return;
     final result = await VideoApi.instance.detail(bvid: bvid);
     if (result case ApiSuccess<VideoDetailData>(:final data)) {
       videoDetail.value = data;
@@ -678,6 +747,7 @@ class VideoIntroController extends GetxController {
   }
 
   void startTimer() {
+    if (isOffline) return;
     const duration = Duration(seconds: 10); // 设置定时器间隔为10秒
     timer = Timer.periodic(duration, (Timer timer) {
       if (!isPaused) {
@@ -688,6 +758,7 @@ class VideoIntroController extends GetxController {
 
   // 查看同时在看人数
   Future queryOnlineTotal() async {
+    if (isOffline) return;
     var result = await VideoHttp.onlineTotal(
       aid: IdUtils.bv2av(bvid),
       bvid: bvid,

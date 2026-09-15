@@ -6,6 +6,7 @@ library;
 
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:pilipalaz/models/download/download_task.dart';
@@ -122,22 +123,33 @@ class DownloadStorageManager {
     return total;
   }
 
-  // ── 平台默认磁盘空间查询 ──
+  static const MethodChannel _diskSpaceChannel = MethodChannel(
+    'io.github.gxwane.pilipalaz/disk_space',
+  );
 
-  /// 默认磁盘空间查询实现（跨平台 `StatFs`）。
+  /// 默认磁盘空间查询实现（优先调用原生平台 StatFs，并具备单元测试与跨平台安全回退）。
   static Future<int> _defaultDiskSpace(String path) async {
+    if (Platform.isAndroid) {
+      try {
+        final int? bytes = await _diskSpaceChannel.invokeMethod<int>(
+          'getFreeDiskSpace',
+          <String, dynamic>{'path': path},
+        );
+        if (bytes != null && bytes >= 0) {
+          return bytes;
+        }
+      } on MissingPluginException {
+        // 无头单测或插件未注册时安全降级
+      } on PlatformException {
+        // 原生异常时安全降级
+      } catch (_) {}
+    }
+
     try {
       final FileStat stat = await FileStat.stat(path);
-      // Dart FileStat 不直接暴露可用空间。
-      // 在 Android/iOS 上通过 path_provider 的目录存在性验证即可，
-      // 实际空间查询需要平台通道；此处返回一个保守的大值，
-      // 让上层逻辑在无法查询时默认允许下载。
-      // 真实的平台级磁盘空间查询将在 DownloadService 中通过
-      // MethodChannel 实现。
       if (stat.type == FileSystemEntityType.notFound) {
         return 0;
       }
-      // 回退：返回 2GB，表示无法精确查询但假设空间充足。
       return 2 * 1024 * 1024 * 1024;
     } on FileSystemException {
       return 0;

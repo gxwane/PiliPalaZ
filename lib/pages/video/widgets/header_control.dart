@@ -1508,33 +1508,29 @@ class _HeaderControlState extends State<HeaderControl> {
     return SizedBox(
       width: 48,
       height: 48,
-      child: Obx(
-        () {
-          final bool isOpen = widget.controller!.isOpenDanmu.value;
-          return IconButton(
-            tooltip: "${isOpen ? '关闭' : '开启'}弹幕",
-            style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
-            onPressed: () {
-              widget.controller!.isOpenDanmu.value = !isOpen;
-              setting.put(
-                SettingBoxKey.enableShowDanmaku,
-                widget.controller!.isOpenDanmu.value,
-              );
-              SmartDialog.showToast(
-                "已${widget.controller!.isOpenDanmu.value ? '开启' : '关闭'}弹幕",
-                displayTime: const Duration(seconds: 1),
-              );
-            },
-            icon: Icon(
-              isOpen
-                  ? Icons.subtitles_outlined
-                  : Icons.subtitles_off_outlined,
-              size: 24,
-              color: Colors.white,
-            ),
-          );
-        },
-      ),
+      child: Obx(() {
+        final bool isOpen = widget.controller!.isOpenDanmu.value;
+        return IconButton(
+          tooltip: "${isOpen ? '关闭' : '开启'}弹幕",
+          style: ButtonStyle(padding: WidgetStateProperty.all(EdgeInsets.zero)),
+          onPressed: () {
+            widget.controller!.isOpenDanmu.value = !isOpen;
+            setting.put(
+              SettingBoxKey.enableShowDanmaku,
+              widget.controller!.isOpenDanmu.value,
+            );
+            SmartDialog.showToast(
+              "已${widget.controller!.isOpenDanmu.value ? '开启' : '关闭'}弹幕",
+              displayTime: const Duration(seconds: 1),
+            );
+          },
+          icon: Icon(
+            isOpen ? Icons.subtitles_outlined : Icons.subtitles_off_outlined,
+            size: 24,
+            color: Colors.white,
+          ),
+        );
+      }),
     );
   }
 
@@ -1702,31 +1698,33 @@ class _HeaderControlState extends State<HeaderControl> {
                 ),
               ),
               isEquivalentFullScreen: isEquivalentFullScreen,
-              expandedTitle:
-                  videoIntroController.videoDetail.value.title == null
-                  ? null
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          videoIntroController.videoDetail.value.title!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                        if (videoIntroController.isShowOnlineTotal)
-                          Text(
-                            '${videoIntroController.total.value}人正在看',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                            ),
-                          ),
-                      ],
+              expandedTitle: () {
+                final bool isOffline =
+                    widget.videoDetailCtr?.isOffline ?? false;
+                final String? title = isOffline
+                    ? widget.videoDetailCtr?.offlineTask?.title
+                    : videoIntroController.videoDetail.value.title;
+                if (title == null) return null;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
+                    if (!isOffline && videoIntroController.isShowOnlineTotal)
+                      Text(
+                        '${videoIntroController.total.value}人正在看',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
+                      ),
+                  ],
+                );
+              }(),
               // ComBtn(
               //   icon: const Icon(
               //     FontAwesomeIcons.cropSimple,
@@ -1785,12 +1783,14 @@ class _HeaderControlState extends State<HeaderControl> {
                   const SizedBox(width: 1.5),
                   if (isEquivalentFullScreen) const SizedBox(width: 42),
                   for (var i = 0; i < 11; i++) const SizedBox(width: 0),
-                  likeVideoButton(),
-                  coinVideoButton(),
+                  if (widget.videoDetailCtr?.isOffline != true) ...[
+                    likeVideoButton(),
+                    coinVideoButton(),
+                  ],
                   shootDanmakuButton(),
                   danmakuSwitcher(),
                   pipButton(),
-                  shareButton(),
+                  if (widget.videoDetailCtr?.isOffline != true) shareButton(),
                 ],
               ),
           ],

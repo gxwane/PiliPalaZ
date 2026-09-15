@@ -19,6 +19,7 @@ class VideoReplyPanel extends StatefulWidget {
   final int rpid;
   final String? replyLevel;
   final String heroTag;
+  final bool isOffline;
 
   const VideoReplyPanel({
     this.bvid,
@@ -26,6 +27,7 @@ class VideoReplyPanel extends StatefulWidget {
     this.rpid = 0,
     this.replyLevel,
     required this.heroTag,
+    this.isOffline = false,
     super.key,
   });
 
@@ -57,18 +59,24 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
     replyLevel = widget.replyLevel ?? '1';
     if (replyLevel == '2') {
       _videoReplyController = Get.put(
-          VideoReplyController(widget.oid, widget.rpid, replyLevel),
-          tag: widget.rpid.toString());
+        VideoReplyController(widget.oid, widget.rpid, replyLevel),
+        tag: widget.rpid.toString(),
+      );
     } else {
       _videoReplyController = Get.put(
-          VideoReplyController(widget.oid, 0, replyLevel),
-          tag: heroTag);
+        VideoReplyController(widget.oid, 0, replyLevel),
+        tag: heroTag,
+      );
     }
 
     fabAnimationCtr = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 100));
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
 
-    _videoReplyController.queryReplyList(type: 'init');
+    if (!widget.isOffline) {
+      _videoReplyController.queryReplyList(type: 'init');
+    }
 
     fabAnimationCtr.forward();
     scrollListener();
@@ -83,25 +91,30 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
 
   void scrollListener() {
     scrollController = _videoReplyController.scrollController;
-    scrollController.addListener(
-      () {
-        if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 300) {
-          EasyThrottle.throttle('replylist', const Duration(milliseconds: 200),
-              () {
+    scrollController.addListener(() {
+      if (!widget.isOffline &&
+          _videoReplyController.replyList.isNotEmpty &&
+          !_videoReplyController.isError.value &&
+          !_videoReplyController.isLoadingMore &&
+          scrollController.position.pixels >=
+              scrollController.position.maxScrollExtent - 300) {
+        EasyThrottle.throttle(
+          'replylist',
+          const Duration(milliseconds: 200),
+          () {
             _videoReplyController.onLoad();
-          });
-        }
+          },
+        );
+      }
 
-        final ScrollDirection direction =
-            scrollController.position.userScrollDirection;
-        if (direction == ScrollDirection.forward) {
-          _showFab();
-        } else if (direction == ScrollDirection.reverse) {
-          _hideFab();
-        }
-      },
-    );
+      final ScrollDirection direction =
+          scrollController.position.userScrollDirection;
+      if (direction == ScrollDirection.forward) {
+        _showFab();
+      } else if (direction == ScrollDirection.reverse) {
+        _hideFab();
+      }
+    });
   }
 
   void _showFab() {
@@ -134,6 +147,40 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    if (widget.isOffline) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.cloud_off_rounded,
+              size: 48,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '离线播放模式，评论暂不可用',
+              style: TextStyle(
+                fontSize: 14,
+                color: Theme.of(context).colorScheme.outline,
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () {
+                try {
+                  final VideoDetailController videoDetailCtr =
+                      Get.find<VideoDetailController>(tag: heroTag);
+                  videoDetailCtr.tabCtr.animateTo(0);
+                } catch (_) {}
+              },
+              icon: const Icon(Icons.arrow_back, size: 16),
+              label: const Text('返回简介'),
+            ),
+          ],
+        ),
+      );
+    }
     return Stack(
       children: [
         RefreshIndicator(
@@ -159,37 +206,41 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                       color: Theme.of(context).colorScheme.background,
                       border: Border(
                         bottom: BorderSide(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .outline
-                                .withOpacity(0.1)),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.outline.withOpacity(0.1),
+                        ),
                       ),
                     ),
                     child: Row(
                       children: [
                         SizedBox(
                           width: 45,
-                          child:
-                        IconButton(
-                          iconSize: 20,
+                          child: IconButton(
+                            iconSize: 20,
                             onPressed: () {
                               final VideoDetailController videoDetailCtr =
                                   Get.find<VideoDetailController>(tag: heroTag);
                               videoDetailCtr.tabCtr.animateTo(0);
                             },
-                            icon: const Icon(Icons.arrow_back))),
+                            icon: const Icon(Icons.arrow_back),
+                          ),
+                        ),
                         Obx(
                           () => AnimatedSwitcher(
                             duration: const Duration(milliseconds: 300),
                             transitionBuilder:
                                 (Widget child, Animation<double> animation) {
-                              return ScaleTransition(
-                                  scale: animation, child: child);
-                            },
+                                  return ScaleTransition(
+                                    scale: animation,
+                                    child: child,
+                                  );
+                                },
                             child: Text(
                               '共${_videoReplyController.count.value}条回复',
                               key: ValueKey<int>(
-                                  _videoReplyController.count.value),
+                                _videoReplyController.count.value,
+                              ),
                             ),
                           ),
                         ),
@@ -200,70 +251,106 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                             onPressed: () =>
                                 _videoReplyController.queryBySort(),
                             icon: const Icon(Icons.sort, size: 16),
-                            label: Obx(() => Text(
-                                  _videoReplyController.sortTypeLabel.value,
-                                  style: const TextStyle(fontSize: 13),
-                                )),
+                            label: Obx(
+                              () => Text(
+                                _videoReplyController.sortTypeLabel.value,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ),
                 ),
               ),
-              Obx(
-                () => _videoReplyController.isLoadingMore &&
-                        _videoReplyController.replyList.isEmpty &&
-                        (_videoReplyController.noMore.value == '' ||
-                            _videoReplyController.noMore.value == '加载中...')
-                    ? SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                            (BuildContext context, index) {
-                          return const VideoReplySkeleton();
-                        }, childCount: 5),
-                      )
-                    : SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (BuildContext context, index) {
-                            double bottom =
-                                MediaQuery.of(context).padding.bottom;
-                            if (index ==
-                                _videoReplyController.replyList.length) {
-                              return Container(
-                                padding: EdgeInsets.only(bottom: bottom),
-                                height: bottom + 100,
-                                child: Center(
-                                  child: Obx(
-                                    () => Text(
-                                      _videoReplyController.noMore.value,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .outline,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            } else {
-                              return ReplyItem(
-                                replyItem:
-                                    _videoReplyController.replyList[index],
-                                showReplyRow: true,
-                                replyLevel: replyLevel,
-                                replyReply: (replyItem) {
-                                  firstFloor.value = replyItem;
-                                },
-                                replyType: ReplyType.video,
-                              );
-                            }
-                          },
-                          childCount:
-                              _videoReplyController.replyList.length + 1,
-                        ),
+              Obx(() {
+                if (_videoReplyController.isLoadingMore &&
+                    _videoReplyController.replyList.isEmpty &&
+                    (_videoReplyController.noMore.value == '' ||
+                        _videoReplyController.noMore.value == '加载中...')) {
+                  return SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (BuildContext context, index) =>
+                          const VideoReplySkeleton(),
+                      childCount: 5,
+                    ),
+                  );
+                }
+                if (_videoReplyController.replyList.isEmpty &&
+                    _videoReplyController.isError.value) {
+                  return SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 44,
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _videoReplyController.noMore.value.isNotEmpty
+                                ? _videoReplyController.noMore.value
+                                : '加载失败',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          FilledButton.tonal(
+                            onPressed: () => _videoReplyController.retry(),
+                            child: const Text('点击重试'),
+                          ),
+                        ],
                       ),
-              ),
+                    ),
+                  );
+                }
+                return SliverList(
+                  delegate: SliverChildBuilderDelegate((
+                    BuildContext context,
+                    index,
+                  ) {
+                    double bottom = MediaQuery.of(context).padding.bottom;
+                    if (index == _videoReplyController.replyList.length) {
+                      return InkWell(
+                        onTap: _videoReplyController.isError.value
+                            ? () => _videoReplyController.retry()
+                            : null,
+                        child: Container(
+                          padding: EdgeInsets.only(bottom: bottom),
+                          height: bottom + 100,
+                          child: Center(
+                            child: Obx(
+                              () => Text(
+                                _videoReplyController.noMore.value,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    } else {
+                      return ReplyItem(
+                        replyItem: _videoReplyController.replyList[index],
+                        showReplyRow: true,
+                        replyLevel: replyLevel,
+                        replyReply: (replyItem) {
+                          firstFloor.value = replyItem;
+                        },
+                        replyType: ReplyType.video,
+                      );
+                    }
+                  }, childCount: _videoReplyController.replyList.length + 1),
+                );
+              }),
             ],
           ),
         ),
@@ -271,13 +358,16 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
           bottom: MediaQuery.of(context).padding.bottom + 14,
           right: 14,
           child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 2),
-              end: const Offset(0, 0),
-            ).animate(CurvedAnimation(
-              parent: fabAnimationCtr,
-              curve: Curves.easeInOut,
-            )),
+            position:
+                Tween<Offset>(
+                  begin: const Offset(0, 2),
+                  end: const Offset(0, 0),
+                ).animate(
+                  CurvedAnimation(
+                    parent: fabAnimationCtr,
+                    curve: Curves.easeInOut,
+                  ),
+                ),
             child: FloatingActionButton(
               heroTag: null,
               onPressed: () {
@@ -288,7 +378,8 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                   isScrollControlled: true,
                   builder: (BuildContext context) {
                     return VideoReplyNewDialog(
-                      oid: _videoReplyController.aid ??
+                      oid:
+                          _videoReplyController.aid ??
                           IdUtils.bv2av(Get.parameters['bvid']!),
                       root: 0,
                       parent: 0,
@@ -299,7 +390,12 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                   (value) => {
                     // 完成评论，数据添加
                     if (value != null && value['data'] != null)
-                      {_videoReplyController.replyList.insert(0, value['data'])}
+                      {
+                        _videoReplyController.replyList.insert(
+                          0,
+                          value['data'],
+                        ),
+                      },
                   },
                 );
               },
@@ -326,9 +422,7 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                 child: VideoReplyReplyPanel(
                   oid: widget.oid,
                   rpid: firstFloor.value!.rpid!,
-                  closePanel: () => {
-                    firstFloor.value = null,
-                  },
+                  closePanel: () => {firstFloor.value = null},
                   firstFloor: firstFloor.value,
                   replyType: ReplyType.video,
                   source: 'videoDetail',
@@ -350,7 +444,10 @@ class _MySliverPersistentHeaderDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     //创建child子组件
     //shrinkOffset：child偏移值minExtent~maxExtent
     //overlapsContent：SliverPersistentHeader覆盖其他子组件返回true，否则返回false

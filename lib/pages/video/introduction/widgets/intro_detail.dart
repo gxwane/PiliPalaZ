@@ -24,14 +24,14 @@ class IntroDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    InlineSpan? span = buildContent(context, videoDetail!);
+    InlineSpan? span = buildContent(context, videoDetail);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         const SizedBox(height: 4),
         Row(
           children: [
-            if (videoDetail!.tname != null && videoDetail.tid != null)
+            if (videoDetail?.tname != null && videoDetail?.tid != null)
               TextButton(
                 onPressed: () {
                   Navigator.push(
@@ -67,7 +67,7 @@ class IntroDetail extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  videoDetail!.tname ?? '',
+                  videoDetail?.tname ?? '',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.primary,
                     fontSize: 13,
@@ -102,7 +102,7 @@ class IntroDetail extends StatelessWidget {
         if (span != null) ...[
           const SizedBox(height: 4),
           SelectableText.rich(
-            key: PageStorageKey<String>('${videoDetail!.bvid!}intro'),
+            key: PageStorageKey<String>('${videoDetail?.bvid ?? ''}intro'),
             style: const TextStyle(
               height: 1.4,
               // fontSize: 13,
@@ -115,93 +115,102 @@ class IntroDetail extends StatelessWidget {
   }
 
   InlineSpan? buildContent(BuildContext context, content) {
-    final List descV2 = content.descV2;
-    if (descV2.isEmpty) {
-      return null;
-    }
-    if (descV2.length == 1 && descV2[0].type == 1 && descV2[0].rawText == '-') {
-      return null;
-    }
-    // 1 普通文本
-    // 2 @用户
-    final List<TextSpan> spanChildren = List.generate(descV2.length, (index) {
-      final currentDesc = descV2[index];
-      switch (currentDesc.type) {
-        case 1:
-          final List<InlineSpan> spanChildren = <InlineSpan>[];
-          final RegExp urlRegExp = RegExp(r'https?://\S+\b');
-          final Iterable<Match> matches = urlRegExp.allMatches(
-            currentDesc.rawText,
-          );
-
-          int previousEndIndex = 0;
-          for (final Match match in matches) {
-            if (match.start > previousEndIndex) {
-              spanChildren.add(
-                TextSpan(
-                  text: currentDesc.rawText.substring(
-                    previousEndIndex,
-                    match.start,
-                  ),
-                ),
+    final List? descV2 = content?.descV2;
+    if (descV2 != null && descV2.isNotEmpty) {
+      if (!(descV2.length == 1 &&
+          descV2[0].type == 1 &&
+          descV2[0].rawText == '-')) {
+        // 1 普通文本
+        // 2 @用户
+        final List<TextSpan> spanChildren = List.generate(descV2.length, (
+          index,
+        ) {
+          final currentDesc = descV2[index];
+          switch (currentDesc.type) {
+            case 1:
+              final List<InlineSpan> spanChildren = <InlineSpan>[];
+              final RegExp urlRegExp = RegExp(r'https?://\S+\b');
+              final Iterable<Match> matches = urlRegExp.allMatches(
+                currentDesc.rawText,
               );
-            }
-            spanChildren.add(
-              TextSpan(
-                text: match.group(0),
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.primary,
-                ), // 设置颜色为蓝色
+
+              int previousEndIndex = 0;
+              for (final Match match in matches) {
+                if (match.start > previousEndIndex) {
+                  spanChildren.add(
+                    TextSpan(
+                      text: currentDesc.rawText.substring(
+                        previousEndIndex,
+                        match.start,
+                      ),
+                    ),
+                  );
+                }
+                spanChildren.add(
+                  TextSpan(
+                    text: match.group(0),
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.primary,
+                    ), // 设置颜色为蓝色
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () {
+                        // 处理点击事件
+                        try {
+                          Get.toNamed(
+                            '/webview',
+                            parameters: {
+                              'url': match.group(0)!,
+                              'type': 'url',
+                              'pageTitle': match.group(0)!,
+                            },
+                          );
+                        } catch (err) {
+                          SmartDialog.showToast(err.toString());
+                        }
+                      },
+                  ),
+                );
+                previousEndIndex = match.end;
+              }
+
+              if (previousEndIndex < currentDesc.rawText.length) {
+                spanChildren.add(
+                  TextSpan(
+                    text: currentDesc.rawText.substring(previousEndIndex),
+                  ),
+                );
+              }
+
+              final TextSpan result = TextSpan(children: spanChildren);
+              return result;
+            case 2:
+              final Color colorSchemePrimary = Theme.of(
+                context,
+              ).colorScheme.primary;
+              final String heroTag = Utils.makeHeroTag(currentDesc.bizId);
+              return TextSpan(
+                text: '@${currentDesc.rawText}',
+                style: TextStyle(color: colorSchemePrimary),
                 recognizer: TapGestureRecognizer()
                   ..onTap = () {
-                    // 处理点击事件
-                    try {
-                      Get.toNamed(
-                        '/webview',
-                        parameters: {
-                          'url': match.group(0)!,
-                          'type': 'url',
-                          'pageTitle': match.group(0)!,
-                        },
-                      );
-                    } catch (err) {
-                      SmartDialog.showToast(err.toString());
-                    }
+                    Get.toNamed(
+                      '/member?mid=${currentDesc.bizId}',
+                      arguments: {'face': '', 'heroTag': heroTag},
+                    );
                   },
-              ),
-            );
-            previousEndIndex = match.end;
+              );
+            default:
+              return const TextSpan();
           }
-
-          if (previousEndIndex < currentDesc.rawText.length) {
-            spanChildren.add(
-              TextSpan(text: currentDesc.rawText.substring(previousEndIndex)),
-            );
-          }
-
-          final TextSpan result = TextSpan(children: spanChildren);
-          return result;
-        case 2:
-          final Color colorSchemePrimary = Theme.of(
-            context,
-          ).colorScheme.primary;
-          final String heroTag = Utils.makeHeroTag(currentDesc.bizId);
-          return TextSpan(
-            text: '@${currentDesc.rawText}',
-            style: TextStyle(color: colorSchemePrimary),
-            recognizer: TapGestureRecognizer()
-              ..onTap = () {
-                Get.toNamed(
-                  '/member?mid=${currentDesc.bizId}',
-                  arguments: {'face': '', 'heroTag': heroTag},
-                );
-              },
-          );
-        default:
-          return const TextSpan();
+        });
+        return TextSpan(children: spanChildren);
       }
-    });
-    return TextSpan(children: spanChildren);
+    }
+    final String? desc = content?.desc;
+    if (desc != null && desc.isNotEmpty && desc != '-') {
+      return TextSpan(text: desc);
+    }
+    return null;
   }
 
   // ai总结

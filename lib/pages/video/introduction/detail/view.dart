@@ -570,8 +570,9 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
                   selectStatus: videoIntroController.hasLike.value,
                   loadingStatus: loadingStatus,
                   semanticsLabel: '点赞',
-                  text: !loadingStatus
-                      ? Utils.numFormat(widget.videoDetail!.stat!.like!)
+                  text:
+                      (!loadingStatus && widget.videoDetail?.stat?.like != null)
+                      ? Utils.numFormat(widget.videoDetail!.stat!.like)
                       : '-',
                 ),
               ),
@@ -600,8 +601,9 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
                   selectStatus: videoIntroController.hasCoin.value,
                   loadingStatus: loadingStatus,
                   semanticsLabel: '投币',
-                  text: !loadingStatus
-                      ? Utils.numFormat(widget.videoDetail!.stat!.coin!)
+                  text:
+                      (!loadingStatus && widget.videoDetail?.stat?.coin != null)
+                      ? Utils.numFormat(widget.videoDetail!.stat!.coin)
                       : '-',
                 ),
               ),
@@ -614,8 +616,10 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
                   selectStatus: videoIntroController.hasFav.value,
                   loadingStatus: loadingStatus,
                   semanticsLabel: '收藏',
-                  text: !loadingStatus
-                      ? Utils.numFormat(widget.videoDetail!.stat!.favorite!)
+                  text:
+                      (!loadingStatus &&
+                          widget.videoDetail?.stat?.favorite != null)
+                      ? Utils.numFormat(widget.videoDetail!.stat!.favorite)
                       : '-',
                 ),
               ),
@@ -627,8 +631,9 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
                 selectStatus: false,
                 loadingStatus: loadingStatus,
                 semanticsLabel: '评论',
-                text: !loadingStatus
-                    ? Utils.numFormat(widget.videoDetail!.stat!.reply!)
+                text:
+                    (!loadingStatus && widget.videoDetail?.stat?.reply != null)
+                    ? Utils.numFormat(widget.videoDetail!.stat!.reply)
                     : '评论',
               ),
               ActionItem(
@@ -637,18 +642,21 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
                 selectStatus: false,
                 loadingStatus: loadingStatus,
                 semanticsLabel: '分享',
-                text: !loadingStatus
-                    ? Utils.numFormat(widget.videoDetail!.stat!.share!)
+                text:
+                    (!loadingStatus && widget.videoDetail?.stat?.share != null)
+                    ? Utils.numFormat(widget.videoDetail!.stat!.share)
                     : '分享',
               ),
               ActionItem(
                 icon: const Icon(Icons.file_download_outlined),
                 onTap: () {
-                  DownloadSheet.show(
-                    context,
-                    videoDetail: widget.videoDetail!,
-                    playUrlData: videoDetailCtr.data,
-                  );
+                  if (widget.videoDetail != null) {
+                    DownloadSheet.show(
+                      context,
+                      videoDetail: widget.videoDetail!,
+                      playUrlData: videoDetailCtr.data,
+                    );
+                  }
                 },
                 selectStatus: false,
                 loadingStatus: loadingStatus,
@@ -671,7 +679,7 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
             onTap: handleState(videoIntroController.actionLikeVideo),
             selectStatus: videoIntroController.hasLike.value,
             loadingStatus: loadingStatus,
-            text: !loadingStatus
+            text: (!loadingStatus && widget.videoDetail?.stat?.like != null)
                 ? widget.videoDetail!.stat!.like!.toString()
                 : '-',
           ),
@@ -684,7 +692,7 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
             onTap: handleState(videoIntroController.actionCoinVideo),
             selectStatus: videoIntroController.hasCoin.value,
             loadingStatus: loadingStatus,
-            text: !loadingStatus
+            text: (!loadingStatus && widget.videoDetail?.stat?.coin != null)
                 ? widget.videoDetail!.stat!.coin!.toString()
                 : '-',
           ),
@@ -697,7 +705,7 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
             onLongPress: () => showFavBottomSheet(type: 'longPress'),
             selectStatus: videoIntroController.hasFav.value,
             loadingStatus: loadingStatus,
-            text: !loadingStatus
+            text: (!loadingStatus && widget.videoDetail?.stat?.favorite != null)
                 ? widget.videoDetail!.stat!.favorite!.toString()
                 : '-',
           ),
@@ -710,7 +718,7 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
           },
           selectStatus: false,
           loadingStatus: loadingStatus,
-          text: !loadingStatus
+          text: (!loadingStatus && widget.videoDetail?.stat?.reply != null)
               ? widget.videoDetail!.stat!.reply!.toString()
               : '-',
         ),

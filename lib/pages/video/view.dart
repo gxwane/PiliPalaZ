@@ -21,6 +21,7 @@ import 'package:pilipalaz/pages/video/reply/index.dart';
 import 'package:pilipalaz/pages/video/controller.dart';
 import 'package:pilipalaz/pages/video/playback_input.dart';
 import 'package:pilipalaz/pages/video/introduction/detail/index.dart';
+import 'package:pilipalaz/pages/video/introduction/offline/index.dart';
 import 'package:pilipalaz/pages/video/related/index.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
@@ -600,6 +601,8 @@ class _VideoDetailPageState extends State<VideoDetailPage>
           key: Key(videoDetailController.danmakuCid.value.toString()),
           cid: videoDetailController.danmakuCid.value,
           playerController: activePlayerController,
+          isOffline: videoDetailController.isOffline,
+          offlineDanmakuFile: videoDetailController.offlineDanmakuFile,
         ),
       ),
     );
@@ -720,8 +723,9 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     ),
   );
 
-  Widget get relatedVideo =>
-      RelatedVideoPanel(key: relatedVideoPanelKey, heroTag: heroTag);
+  Widget get relatedVideo => videoDetailController.isOffline
+      ? const SliverToBoxAdapter(child: SizedBox.shrink())
+      : RelatedVideoPanel(key: relatedVideoPanelKey, heroTag: heroTag);
 
   Widget get videoReply => Obx(
     () => VideoReplyPanel(
@@ -729,6 +733,7 @@ class _VideoDetailPageState extends State<VideoDetailPage>
       bvid: videoDetailController.bvid,
       oid: videoDetailController.oid.value,
       heroTag: heroTag,
+      isOffline: videoDetailController.isOffline,
     ),
   );
   Widget get videoIntro => (!videoDetailController.sourceType.isPgc)
@@ -739,13 +744,15 @@ class _VideoDetailPageState extends State<VideoDetailPage>
             cid: videoDetailController.cid.value,
           ),
         );
-  Widget get divider => SliverToBoxAdapter(
-    child: Divider(
-      indent: 12,
-      endIndent: 12,
-      color: Theme.of(context).dividerColor.withOpacity(0.06),
-    ),
-  );
+  Widget get divider => videoDetailController.isOffline
+      ? const SliverToBoxAdapter(child: SizedBox.shrink())
+      : SliverToBoxAdapter(
+          child: Divider(
+            indent: 12,
+            endIndent: 12,
+            color: Theme.of(context).dividerColor.withOpacity(0.06),
+          ),
+        );
 
   Widget pullToFullScreen(Widget child) => CustomMaterialIndicator(
     onRefresh: () => plPlayerController!.triggerFullScreen(status: true),
@@ -847,50 +854,44 @@ class _VideoDetailPageState extends State<VideoDetailPage>
             child: ColoredBox(
               key: Key(heroTag),
               color: Theme.of(context).colorScheme.surface,
-              child: Column(
-                children: [
-                  // Opacity(
-                  //   opacity: 0,
-                  //   child: SizedBox(
-                  //     width: context.width,
-                  //     height: 0,
-                  //     child: Obx(
-                  //       () => TabBar(
-                  //         controller: videoDetailController.tabCtr,
-                  //         dividerColor: Colors.transparent,
-                  //         indicatorColor:
-                  //             Theme.of(context).colorScheme.surface,
-                  //         tabs: videoDetailController.tabs
-                  //             .map((String name) => Tab(text: name))
-                  //             .toList(),
-                  //       ),
-                  //     ),
-                  //   ),
-                  // ),
-                  Expanded(
-                    child: TabBarView(
-                      physics: const CustomTabBarViewScrollPhysics(),
-                      controller: videoDetailController.tabCtr,
-                      children: <Widget>[
-                        pullToFullScreen(
-                          CustomScrollView(
-                            cacheExtent: 3500,
-                            key: const PageStorageKey<String>('简介'),
-                            slivers: <Widget>[
-                              videoIntro,
-                              if (!videoDetailController.sourceType.isPgc) ...[
-                                divider,
-                                relatedVideo,
-                              ],
+              child: videoDetailController.isOffline
+                  ? pullToFullScreen(
+                      CustomScrollView(
+                        cacheExtent: 3500,
+                        key: const PageStorageKey<String>('离线简介'),
+                        slivers: <Widget>[
+                          OfflineVideoIntroPanel(heroTag: heroTag),
+                        ],
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: TabBarView(
+                            physics: const CustomTabBarViewScrollPhysics(),
+                            controller: videoDetailController.tabCtr,
+                            children: <Widget>[
+                              pullToFullScreen(
+                                CustomScrollView(
+                                  cacheExtent: 3500,
+                                  key: const PageStorageKey<String>('简介'),
+                                  slivers: <Widget>[
+                                    videoIntro,
+                                    if (!videoDetailController
+                                        .sourceType
+                                        .isPgc) ...[
+                                      divider,
+                                      relatedVideo,
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              videoReply,
                             ],
                           ),
                         ),
-                        videoReply,
                       ],
                     ),
-                  ),
-                ],
-              ),
             ),
           ),
         ],
@@ -915,26 +916,36 @@ class _VideoDetailPageState extends State<VideoDetailPage>
             child: playerPopScope(videoWidth, videoHeight),
           ),
           Expanded(
-            child: TabBarView(
-              physics: const CustomTabBarViewScrollPhysics(),
-              controller: videoDetailController.tabCtr,
-              children: <Widget>[
-                pullToFullScreen(
-                  CustomScrollView(
-                    cacheExtent: 3500,
-                    key: const PageStorageKey<String>('简介'),
-                    slivers: <Widget>[
-                      videoIntro,
-                      if (!videoDetailController.sourceType.isPgc) ...[
-                        divider,
-                        relatedVideo,
+            child: videoDetailController.isOffline
+                ? pullToFullScreen(
+                    CustomScrollView(
+                      cacheExtent: 3500,
+                      key: const PageStorageKey<String>('离线简介'),
+                      slivers: <Widget>[
+                        OfflineVideoIntroPanel(heroTag: heroTag),
                       ],
+                    ),
+                  )
+                : TabBarView(
+                    physics: const CustomTabBarViewScrollPhysics(),
+                    controller: videoDetailController.tabCtr,
+                    children: <Widget>[
+                      pullToFullScreen(
+                        CustomScrollView(
+                          cacheExtent: 3500,
+                          key: const PageStorageKey<String>('简介'),
+                          slivers: <Widget>[
+                            videoIntro,
+                            if (!videoDetailController.sourceType.isPgc) ...[
+                              divider,
+                              relatedVideo,
+                            ],
+                          ],
+                        ),
+                      ),
+                      videoReply,
                     ],
                   ),
-                ),
-                videoReply,
-              ],
-            ),
           ),
         ],
       );
@@ -949,28 +960,38 @@ class _VideoDetailPageState extends State<VideoDetailPage>
           child: playerPopScope(videoWidth, videoHeight),
         ),
         Expanded(
-          child: Row(
-            children: [
-              Expanded(
-                child: pullToFullScreen(
+          child: videoDetailController.isOffline
+              ? pullToFullScreen(
                   CustomScrollView(
                     cacheExtent: 3500,
                     key: PageStorageKey<String>(
-                      '简介${videoDetailController.bvid}',
+                      '离线简介${videoDetailController.bvid}',
                     ),
-                    slivers: <Widget>[
-                      videoIntro,
-                      if (!videoDetailController.sourceType.isPgc) ...[
-                        divider,
-                        relatedVideo,
-                      ],
-                    ],
+                    slivers: <Widget>[OfflineVideoIntroPanel(heroTag: heroTag)],
                   ),
+                )
+              : Row(
+                  children: [
+                    Expanded(
+                      child: pullToFullScreen(
+                        CustomScrollView(
+                          cacheExtent: 3500,
+                          key: PageStorageKey<String>(
+                            '简介${videoDetailController.bvid}',
+                          ),
+                          slivers: <Widget>[
+                            videoIntro,
+                            if (!videoDetailController.sourceType.isPgc) ...[
+                              divider,
+                              relatedVideo,
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                    Expanded(child: videoReply),
+                  ],
                 ),
-              ),
-              Expanded(child: videoReply),
-            ],
-          ),
         ),
       ],
     );
@@ -988,10 +1009,18 @@ class _VideoDetailPageState extends State<VideoDetailPage>
             child: pullToFullScreen(
               CustomScrollView(
                 cacheExtent: 3500,
-                key: PageStorageKey<String>('简介${videoDetailController.bvid}'),
+                key: PageStorageKey<String>(
+                  videoDetailController.isOffline
+                      ? '离线简介${videoDetailController.bvid}'
+                      : '简介${videoDetailController.bvid}',
+                ),
                 slivers: <Widget>[
-                  videoIntro,
-                  if (!videoDetailController.sourceType.isPgc) relatedVideo,
+                  if (videoDetailController.isOffline)
+                    OfflineVideoIntroPanel(heroTag: heroTag)
+                  else ...[
+                    videoIntro,
+                    if (!videoDetailController.sourceType.isPgc) relatedVideo,
+                  ],
                 ],
               ),
             ),
@@ -1001,13 +1030,43 @@ class _VideoDetailPageState extends State<VideoDetailPage>
             width: isFullScreen.value == true ? context.width : videoWidth,
             child: playerPopScope(videoWidth, videoHeight),
           ),
-          Expanded(child: videoReply),
+          if (!videoDetailController.isOffline) Expanded(child: videoReply),
         ],
       );
     }
     final double videoWidth =
         max(context.height / context.width * 1.04, 1 / 2) * context.width;
     final double videoHeight = videoWidth * 9 / 16;
+
+    if (videoDetailController.isOffline) {
+      return Row(
+        children: [
+          SizedBox(
+            width: videoWidth,
+            height: context.height,
+            child: Center(
+              child: SizedBox(
+                width: videoWidth,
+                height: videoHeight,
+                child: playerPopScope(videoWidth, videoHeight),
+              ),
+            ),
+          ),
+          Expanded(
+            child: pullToFullScreen(
+              CustomScrollView(
+                cacheExtent: 3500,
+                key: PageStorageKey<String>(
+                  '离线简介${videoDetailController.bvid}',
+                ),
+                slivers: <Widget>[OfflineVideoIntroPanel(heroTag: heroTag)],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Row(
       children: [
         SizedBox(
@@ -1154,6 +1213,9 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                       ),
                       cid: videoDetailController.danmakuCid.value,
                       playerController: plPlayerController!,
+                      isOffline: videoDetailController.isOffline,
+                      offlineDanmakuFile:
+                          videoDetailController.offlineDanmakuFile,
                     ),
                   ),
           ),

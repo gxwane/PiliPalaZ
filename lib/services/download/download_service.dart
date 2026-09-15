@@ -29,6 +29,9 @@ class DownloadService {
 
   static DownloadService? _instance;
 
+  /// 检查是否已初始化。
+  static bool get isInitialized => _instance != null;
+
   /// 获取已初始化的单例。
   static DownloadService get instance {
     assert(_instance != null, 'DownloadService.init() must be called first');

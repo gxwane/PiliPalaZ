@@ -24,6 +24,7 @@ class MainActivity: FlPiPActivity() {
         super.configureFlutterEngine(flutterEngine)
         AppUpdateChannel(this, flutterEngine)
         OrientationChannel(this, flutterEngine)
+        DiskSpaceChannel(this, flutterEngine)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
