@@ -13,12 +13,7 @@ class Content extends StatefulWidget {
   dynamic item;
   String? source;
   String? heroTag;
-  Content({
-    super.key,
-    this.item,
-    this.source,
-    this.heroTag,
-  });
+  Content({super.key, this.item, this.source, this.heroTag});
 
   @override
   State<Content> createState() => _ContentState();
@@ -31,7 +26,8 @@ class _ContentState extends State<Content> {
   @override
   void initState() {
     super.initState();
-    hasPics = widget.item.modules.moduleDynamic.major != null &&
+    hasPics =
+        widget.item.modules.moduleDynamic.major != null &&
         widget.item.modules.moduleDynamic.major.opus != null &&
         widget.item.modules.moduleDynamic.major.opus.pics.isNotEmpty;
     if (hasPics) {
@@ -56,47 +52,46 @@ class _ContentState extends State<Content> {
             builder: (context, BoxConstraints box) {
               double maxWidth = box.maxWidth.truncateToDouble();
               double maxHeight = box.maxWidth * 0.6; // 设置最大高度
-              double height = maxWidth *
+              double height =
+                  maxWidth *
                   0.5 *
                   (pictureItem.height != null && pictureItem.width != null
                       ? pictureItem.height! / pictureItem.width!
                       : 1);
               return Semantics(
-                  label: '图片1,共1张',
-                  child: GestureDetector(
-                    onTap: () {
-                      showDialog(
-                        useSafeArea: false,
-                        context: context,
-                        builder: (context) {
-                          return ImagePreview(initialPage: 0, imgList: picList);
-                        },
-                      );
-                    },
-                    child: Container(
-                        padding: const EdgeInsets.only(top: 4),
-                        constraints: BoxConstraints(maxHeight: maxHeight),
-                        width: box.maxWidth / 2,
-                        height: height,
-                        child: Stack(
-                          children: [
-                            Positioned.fill(
-                              child: NetworkImgLayer(
-                                src: pictureItem.url,
-                                width: maxWidth / 2,
-                                height: height,
-                              ),
-                            ),
-                            height > Get.size.height * 0.9
-                                ? const PBadge(
-                                    text: '长图',
-                                    right: 8,
-                                    bottom: 8,
-                                  )
-                                : const SizedBox(),
-                          ],
-                        )),
-                  ));
+                label: '图片1,共1张',
+                child: GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      useSafeArea: false,
+                      context: context,
+                      builder: (context) {
+                        return ImagePreview(initialPage: 0, imgList: picList);
+                      },
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.only(top: 4),
+                    constraints: BoxConstraints(maxHeight: maxHeight),
+                    width: box.maxWidth / 2,
+                    height: height,
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: NetworkImgLayer(
+                            src: pictureItem.url,
+                            width: maxWidth / 2,
+                            height: height,
+                          ),
+                        ),
+                        height > Get.size.height * 0.9
+                            ? const PBadge(text: '长图', right: 8, bottom: 8)
+                            : const SizedBox(),
+                      ],
+                    ),
+                  ),
+                ),
+              );
             },
           ),
         ),
@@ -111,25 +106,26 @@ class _ContentState extends State<Content> {
             builder: (context, BoxConstraints box) {
               double maxWidth = box.maxWidth.truncateToDouble();
               return Semantics(
-                  label: '图片${i + 1},共$len张',
-                  child: GestureDetector(
-                    onTap: () {
-                      showDialog(
-                        useSafeArea: false,
-                        context: context,
-                        builder: (context) {
-                          return ImagePreview(initialPage: i, imgList: picList);
-                        },
-                      );
-                    },
-                    child: NetworkImgLayer(
-                      src: pics[i].url,
-                      width: maxWidth,
-                      height: maxWidth,
-                      origAspectRatio:
-                          pics[i].width!.toInt() / pics[i].height!.toInt(),
-                    ),
-                  ));
+                label: '图片${i + 1},共$len张',
+                child: GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      useSafeArea: false,
+                      context: context,
+                      builder: (context) {
+                        return ImagePreview(initialPage: i, imgList: picList);
+                      },
+                    );
+                  },
+                  child: NetworkImgLayer(
+                    src: pics[i].url,
+                    width: maxWidth,
+                    height: maxWidth,
+                    origAspectRatio:
+                        pics[i].width!.toInt() / pics[i].height!.toInt(),
+                  ),
+                ),
+              );
             },
           ),
         );
@@ -140,7 +136,8 @@ class _ContentState extends State<Content> {
             builder: (context, BoxConstraints box) {
               double maxWidth = box.maxWidth.truncateToDouble();
               double crossCount = len < 3 ? 2 : 3;
-              double height = maxWidth /
+              double height =
+                  maxWidth /
                       crossCount *
                       (len % crossCount == 0
                           ? len ~/ crossCount
@@ -164,15 +161,14 @@ class _ContentState extends State<Content> {
         ),
       );
     }
-    return TextSpan(
-      children: spanChildren,
-    );
+    return TextSpan(children: spanChildren);
   }
 
   @override
   Widget build(BuildContext context) {
-    TextStyle authorStyle =
-        TextStyle(color: Theme.of(context).colorScheme.primary);
+    TextStyle authorStyle = TextStyle(
+      color: Theme.of(context).colorScheme.primary,
+    );
     InlineSpan? richNodes = richNode(widget.item, context);
     return Container(
       width: double.infinity,
@@ -182,6 +178,12 @@ class _ContentState extends State<Content> {
         children: [
           if (widget.item.modules.moduleDynamic.topic != null) ...[
             GestureDetector(
+              onTap: () {
+                final topic = widget.item.modules.moduleDynamic.topic.name;
+                if (topic != null && topic.isNotEmpty) {
+                  Get.toNamed('/searchResult', parameters: {'keyword': topic});
+                }
+              },
               child: Text(
                 '#${widget.item.modules.moduleDynamic.topic.name}',
                 style: authorStyle,
@@ -189,28 +191,28 @@ class _ContentState extends State<Content> {
             ),
           ],
           if (richNodes != null)
-            IgnorePointer(
-              // 禁用SelectableRegion的触摸交互功能
-              ignoring: widget.source == 'detail' ? false : true,
-              child: SelectableRegion(
-                magnifierConfiguration: const TextMagnifierConfiguration(),
-                focusNode: FocusNode(),
-                selectionControls: MaterialTextSelectionControls(),
-                child: Text.rich(
-                  /// fix 默认20px高度
-                  //style: const TextStyle(height: 0),
-                  richNodes,
-                  maxLines: widget.source == 'detail' ? 999 : 6,
-                  overflow: TextOverflow.fade,
-                ),
-              ),
-            ),
+            widget.source == 'detail'
+                ? SelectableRegion(
+                    magnifierConfiguration: const TextMagnifierConfiguration(),
+                    focusNode: FocusNode(),
+                    selectionControls: MaterialTextSelectionControls(),
+                    child: Text.rich(
+                      richNodes,
+                      maxLines: 999,
+                      overflow: TextOverflow.fade,
+                    ),
+                  )
+                : Text.rich(
+                    richNodes,
+                    maxLines: 6,
+                    overflow: TextOverflow.fade,
+                  ),
           if (hasPics) ...[
             Text.rich(
               picsNodes(),
               // semanticsLabel: '动态图片',
             ),
-          ]
+          ],
         ],
       ),
     );

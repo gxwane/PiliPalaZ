@@ -9,11 +9,20 @@ import 'package:pilipalaz/utils/utils.dart';
 
 import '../../../common/widgets/my_dialog.dart';
 import '../../../common/widgets/overlay_pop.dart';
+import 'additional_panel.dart';
 import 'rich_node_panel.dart';
 
-Widget videoSeasonWidget(item, context, type, source, {floor = 1, String? heroTag}) {
-  TextStyle authorStyle =
-      TextStyle(color: Theme.of(context).colorScheme.primary);
+Widget videoSeasonWidget(
+  item,
+  context,
+  type,
+  source, {
+  floor = 1,
+  String? heroTag,
+}) {
+  TextStyle authorStyle = TextStyle(
+    color: Theme.of(context).colorScheme.primary,
+  );
   // type archive  ugcSeason
   // archive 视频/显示发布人
   // ugcSeason 合集/不显示发布人
@@ -24,7 +33,7 @@ Widget videoSeasonWidget(item, context, type, source, {floor = 1, String? heroTa
   Map<dynamic, dynamic> dynamicProperty = {
     'ugcSeason': item.modules.moduleDynamic.major.ugcSeason,
     'archive': item.modules.moduleDynamic.major.archive,
-    'pgc': item.modules.moduleDynamic.major.pgc
+    'pgc': item.modules.moduleDynamic.major.pgc,
   };
   dynamic content = dynamicProperty[type];
 
@@ -43,8 +52,9 @@ Widget videoSeasonWidget(item, context, type, source, {floor = 1, String? heroTa
                 style: authorStyle,
                 recognizer: TapGestureRecognizer()
                   ..onTap = () => Get.toNamed(
-                      '/member?mid=${item.modules.moduleAuthor.mid}',
-                      arguments: {'face': item.modules.moduleAuthor.face}),
+                    '/member?mid=${item.modules.moduleAuthor.mid}',
+                    arguments: {'face': item.modules.moduleAuthor.face},
+                  ),
               ),
               const WidgetSpan(child: SizedBox(width: 6)),
               TextSpan(
@@ -52,8 +62,9 @@ Widget videoSeasonWidget(item, context, type, source, {floor = 1, String? heroTa
                     ? Utils.dateFormat(item.modules.moduleAuthor.pubTs)
                     : item.modules.moduleAuthor.pubTime,
                 style: TextStyle(
-                    color: Theme.of(context).colorScheme.outline,
-                    fontSize: Theme.of(context).textTheme.labelSmall!.fontSize),
+                  color: Theme.of(context).colorScheme.outline,
+                  fontSize: Theme.of(context).textTheme.labelSmall!.fontSize,
+                ),
               ),
             ],
           ),
@@ -79,15 +90,17 @@ Widget videoSeasonWidget(item, context, type, source, {floor = 1, String? heroTa
       //   const SizedBox(height: 6),
       // ],
       if (floor == 2 && item.modules.moduleDynamic.desc != null) ...[
-        Text.rich(richNode(item, context)!,
-            maxLines: source == 'detail' ? 999 : 6,
-            overflow: TextOverflow.fade),
+        Text.rich(
+          richNode(item, context)!,
+          maxLines: source == 'detail' ? 999 : 6,
+          overflow: TextOverflow.fade,
+        ),
         const SizedBox(height: 6),
       ],
       Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: StyleString.safeSpace),
-          child: LayoutBuilder(builder: (context, box) {
+        padding: const EdgeInsets.symmetric(horizontal: StyleString.safeSpace),
+        child: LayoutBuilder(
+          builder: (context, box) {
             double width = box.maxWidth;
             return Stack(
               children: [
@@ -95,8 +108,7 @@ Widget videoSeasonWidget(item, context, type, source, {floor = 1, String? heroTa
                   behavior: HitTestBehavior.translucent,
                   onLongPress: () {
                     // 弹窗显示封面
-                    MyDialog.show(
-                        context, OverlayPop(videoItem: content));
+                    MyDialog.show(context, OverlayPop(videoItem: content));
                   },
                   child: Hero(
                     tag: heroTag ?? _getHeroTag(item, content.bvid),
@@ -126,34 +138,34 @@ Widget videoSeasonWidget(item, context, type, source, {floor = 1, String? heroTa
                     padding: const EdgeInsets.fromLTRB(10, 0, 8, 8),
                     clipBehavior: Clip.hardEdge,
                     decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: <Color>[
-                            Colors.transparent,
-                            Colors.black54,
-                          ],
-                        ),
-                        borderRadius:
-                            BorderRadius.circular(StyleString.imgRadius.x)),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: <Color>[Colors.transparent, Colors.black54],
+                      ),
+                      borderRadius: BorderRadius.circular(
+                        StyleString.imgRadius.x,
+                      ),
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         DefaultTextStyle.merge(
                           style: TextStyle(
-                              fontSize: Theme.of(context)
-                                  .textTheme
-                                  .labelMedium!
-                                  .fontSize,
-                              color: Colors.white),
+                            fontSize: Theme.of(
+                              context,
+                            ).textTheme.labelMedium!.fontSize,
+                            color: Colors.white,
+                          ),
                           child: Text.rich(
                             TextSpan(
                               children: [
                                 if (content.durationText != null) ...[
                                   TextSpan(
                                     text: content.durationText,
-                                    semanticsLabel: '时长${Utils.durationReadFormat(content.durationText)}',
+                                    semanticsLabel:
+                                        '时长${Utils.durationReadFormat(content.durationText)}',
                                   ),
                                   const WidgetSpan(child: SizedBox(width: 6)),
                                 ],
@@ -177,7 +189,9 @@ Widget videoSeasonWidget(item, context, type, source, {floor = 1, String? heroTa
                 ),
               ],
             );
-          })),
+          },
+        ),
+      ),
       const SizedBox(height: 6),
       Padding(
         padding: floor == 1
@@ -190,6 +204,13 @@ Widget videoSeasonWidget(item, context, type, source, {floor = 1, String? heroTa
           overflow: TextOverflow.ellipsis,
         ),
       ),
+      if (item?.modules?.moduleDynamic?.additional != null)
+        addWidget(
+          item,
+          context,
+          item.modules.moduleDynamic.additional.type,
+          floor: floor,
+        ),
     ],
   );
 }

@@ -206,19 +206,23 @@ class ModuleDynamicModel {
 //   }
 // }
 class DynamicAddModel {
-  DynamicAddModel({this.type, this.vote, this.ugc, this.reserve, this.goods});
+  DynamicAddModel({
+    this.type,
+    this.vote,
+    this.ugc,
+    this.reserve,
+    this.goods,
+    this.match,
+    this.common,
+  });
 
   String? type;
   Vote? vote;
   Ugc? ugc;
   Reserve? reserve;
   Good? goods;
-
-  /// TODO 比赛vs
-  String? match;
-
-  /// TODO 游戏信息
-  String? common;
+  DynamicAddMatchModel? match;
+  DynamicAddCommonModel? common;
 
   DynamicAddModel.fromJson(Map<String, dynamic> json) {
     type = _parseString(json['type']);
@@ -230,6 +234,111 @@ class DynamicAddModel {
     reserve = reserveMap != null ? Reserve.fromJson(reserveMap) : null;
     final goodsMap = _parseMap(json['goods']);
     goods = goodsMap != null ? Good.fromJson(goodsMap) : null;
+    final matchMap = _parseMap(json['match']);
+    match = matchMap != null ? DynamicAddMatchModel.fromJson(matchMap) : null;
+    final commonMap = _parseMap(json['common']);
+    common = commonMap != null
+        ? DynamicAddCommonModel.fromJson(commonMap)
+        : null;
+  }
+}
+
+class DynamicAddCommonModel {
+  DynamicAddCommonModel({
+    this.buttonText,
+    this.cover,
+    this.desc1,
+    this.desc2,
+    this.headText,
+    this.id,
+    this.jumpUrl,
+    this.subType,
+    this.title,
+  });
+
+  String? buttonText;
+  String? cover;
+  String? desc1;
+  String? desc2;
+  String? headText;
+  String? id;
+  String? jumpUrl;
+  String? subType;
+  String? title;
+
+  DynamicAddCommonModel.fromJson(Map<String, dynamic> json) {
+    cover = _parseString(json['cover']);
+    desc1 = _parseString(json['desc1']);
+    desc2 = _parseString(json['desc2']);
+    headText = _parseString(json['head_text']);
+    id = _parseString(json['id']) ?? _parseString(json['biz_id']);
+    jumpUrl = _parseString(json['jump_url']);
+    subType = _parseString(json['sub_type']);
+    title = _parseString(json['title']);
+
+    final buttonMap = _parseMap(json['button']);
+    if (buttonMap != null) {
+      buttonText =
+          _parseString(buttonMap['text']) ?? _parseString(buttonMap['title']);
+    } else {
+      buttonText = _parseString(json['button_text']);
+    }
+  }
+}
+
+class DynamicAddMatchModel {
+  DynamicAddMatchModel({
+    this.id,
+    this.jumpUrl,
+    this.leftTeam,
+    this.rightTeam,
+    this.status,
+    this.statusName,
+    this.subTitle,
+    this.title,
+  });
+
+  String? id;
+  String? jumpUrl;
+  MatchTeamModel? leftTeam;
+  MatchTeamModel? rightTeam;
+  int? status;
+  String? statusName;
+  String? subTitle;
+  String? title;
+
+  DynamicAddMatchModel.fromJson(Map<String, dynamic> json) {
+    id = _parseString(json['id']);
+    jumpUrl = _parseString(json['jump_url']);
+    title = _parseString(json['title']);
+
+    final info = _parseMap(json['match_info']) ?? json;
+    status = _parseInt(info['status']);
+    statusName =
+        _parseString(info['status_name']) ?? _parseString(info['center_desc']);
+    subTitle = _parseString(info['sub_title']);
+
+    final leftMap = _parseMap(info['left_team']);
+    leftTeam = leftMap != null ? MatchTeamModel.fromJson(leftMap) : null;
+    final rightMap = _parseMap(info['right_team']);
+    rightTeam = rightMap != null ? MatchTeamModel.fromJson(rightMap) : null;
+  }
+}
+
+class MatchTeamModel {
+  MatchTeamModel({this.cover, this.name, this.score});
+
+  String? cover;
+  String? name;
+  String? score;
+
+  MatchTeamModel.fromJson(Map<String, dynamic> json) {
+    cover =
+        _parseString(json['cover']) ??
+        _parseString(json['pic']) ??
+        _parseString(json['icon']);
+    name = _parseString(json['name']) ?? _parseString(json['team_name']);
+    score = _parseString(json['score']);
   }
 }
 
@@ -244,6 +353,7 @@ class Vote {
     this.type,
     this.uid,
     this.voteId,
+    this.title,
   });
 
   int? choiceCnt;
@@ -255,6 +365,7 @@ class Vote {
   int? type;
   int? uid;
   int? voteId;
+  String? title;
 
   Vote.fromJson(Map<String, dynamic> json) {
     choiceCnt = _parseInt(json['choice_cnt']);
@@ -266,6 +377,7 @@ class Vote {
     type = _parseInt(json['type']);
     uid = _parseInt(json['uid']);
     voteId = _parseInt(json['vote_id']);
+    title = _parseString(json['title']) ?? _parseString(json['desc']);
   }
 }
 
@@ -692,12 +804,20 @@ class SummaryModel {
 }
 
 class RichTextNodeItem {
-  RichTextNodeItem({this.emoji, this.origText, this.text, this.type, this.rid});
+  RichTextNodeItem({
+    this.emoji,
+    this.origText,
+    this.text,
+    this.type,
+    this.rid,
+    this.jumpUrl,
+  });
   Emoji? emoji;
   String? origText;
   String? text;
   String? type;
   String? rid;
+  String? jumpUrl;
 
   RichTextNodeItem.fromJson(Map<String, dynamic> json) {
     final emojiMap = _parseMap(json['emoji']);
@@ -706,6 +826,7 @@ class RichTextNodeItem {
     text = _parseString(json['text']);
     type = _parseString(json['type']);
     rid = _parseString(json['rid']);
+    jumpUrl = _parseString(json['jump_url']);
   }
 }
 

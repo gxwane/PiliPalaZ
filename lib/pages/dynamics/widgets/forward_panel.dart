@@ -35,47 +35,46 @@ InlineSpan picsNodes(List<OpusPicsModel> pics) {
           builder: (context, BoxConstraints box) {
             double maxWidth = box.maxWidth.truncateToDouble();
             double maxHeight = box.maxWidth * 0.6; // 设置最大高度
-            double height = maxWidth *
+            double height =
+                maxWidth *
                 0.5 *
                 (pictureItem.height != null && pictureItem.width != null
                     ? pictureItem.height! / pictureItem.width!
                     : 1);
             return Semantics(
-                label: '图片1,共1张',
-                child: GestureDetector(
-                  onTap: () {
-                    showDialog(
-                      useSafeArea: false,
-                      context: context,
-                      builder: (context) {
-                        return ImagePreview(initialPage: 0, imgList: picList);
-                      },
-                    );
-                  },
-                  child: Container(
-                      padding: const EdgeInsets.only(top: 4),
-                      constraints: BoxConstraints(maxHeight: maxHeight),
-                      width: box.maxWidth / 2,
-                      height: height,
-                      child: Stack(
-                        children: [
-                          Positioned.fill(
-                            child: NetworkImgLayer(
-                              src: pictureItem.url,
-                              width: maxWidth / 2,
-                              height: height,
-                            ),
-                          ),
-                          height > Get.size.height * 0.9
-                              ? const PBadge(
-                                  text: '长图',
-                                  right: 8,
-                                  bottom: 8,
-                                )
-                              : const SizedBox(),
-                        ],
-                      )),
-                ));
+              label: '图片1,共1张',
+              child: GestureDetector(
+                onTap: () {
+                  showDialog(
+                    useSafeArea: false,
+                    context: context,
+                    builder: (context) {
+                      return ImagePreview(initialPage: 0, imgList: picList);
+                    },
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.only(top: 4),
+                  constraints: BoxConstraints(maxHeight: maxHeight),
+                  width: box.maxWidth / 2,
+                  height: height,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: NetworkImgLayer(
+                          src: pictureItem.url,
+                          width: maxWidth / 2,
+                          height: height,
+                        ),
+                      ),
+                      height > Get.size.height * 0.9
+                          ? const PBadge(text: '长图', right: 8, bottom: 8)
+                          : const SizedBox(),
+                    ],
+                  ),
+                ),
+              ),
+            );
           },
         ),
       ),
@@ -90,25 +89,26 @@ InlineSpan picsNodes(List<OpusPicsModel> pics) {
           builder: (context, BoxConstraints box) {
             double maxWidth = box.maxWidth.truncateToDouble();
             return Semantics(
-                label: '图片${i + 1},共$len张',
-                child: GestureDetector(
-                  onTap: () {
-                    showDialog(
-                      useSafeArea: false,
-                      context: context,
-                      builder: (context) {
-                        return ImagePreview(initialPage: i, imgList: picList);
-                      },
-                    );
-                  },
-                  child: NetworkImgLayer(
-                    src: pics[i].url,
-                    width: maxWidth,
-                    height: maxWidth,
-                    origAspectRatio:
-                        pics[i].width!.toInt() / pics[i].height!.toInt(),
-                  ),
-                ));
+              label: '图片${i + 1},共$len张',
+              child: GestureDetector(
+                onTap: () {
+                  showDialog(
+                    useSafeArea: false,
+                    context: context,
+                    builder: (context) {
+                      return ImagePreview(initialPage: i, imgList: picList);
+                    },
+                  );
+                },
+                child: NetworkImgLayer(
+                  src: pics[i].url,
+                  width: maxWidth,
+                  height: maxWidth,
+                  origAspectRatio:
+                      pics[i].width!.toInt() / pics[i].height!.toInt(),
+                ),
+              ),
+            );
           },
         ),
       );
@@ -119,7 +119,8 @@ InlineSpan picsNodes(List<OpusPicsModel> pics) {
           builder: (context, BoxConstraints box) {
             double maxWidth = box.maxWidth.truncateToDouble();
             double crossCount = len < 3 ? 2 : 3;
-            double height = maxWidth /
+            double height =
+                maxWidth /
                     crossCount *
                     (len % crossCount == 0
                         ? len ~/ crossCount
@@ -143,18 +144,18 @@ InlineSpan picsNodes(List<OpusPicsModel> pics) {
       ),
     );
   }
-  return TextSpan(
-    children: spanChildren,
-  );
+  return TextSpan(children: spanChildren);
 }
 
 Widget forWard(item, context, ctr, source, {floor = 1, String? heroTag}) {
-  TextStyle authorStyle =
-      TextStyle(color: Theme.of(context).colorScheme.primary);
+  TextStyle authorStyle = TextStyle(
+    color: Theme.of(context).colorScheme.primary,
+  );
 
   List<OpusPicsModel> pics = [];
 
-  bool hasPics = item.modules.moduleDynamic.major != null &&
+  bool hasPics =
+      item.modules.moduleDynamic.major != null &&
       item.modules.moduleDynamic.major.opus != null &&
       item.modules.moduleDynamic.major.opus.pics.isNotEmpty;
   if (hasPics) {
@@ -177,16 +178,19 @@ Widget forWard(item, context, ctr, source, {floor = 1, String? heroTag}) {
                     style: authorStyle,
                     recognizer: TapGestureRecognizer()
                       ..onTap = () => Get.toNamed(
-                          '/member?mid=${item.modules.moduleAuthor.mid}',
-                          arguments: {'face': item.modules.moduleAuthor.face}),
+                        '/member?mid=${item.modules.moduleAuthor.mid}',
+                        arguments: {'face': item.modules.moduleAuthor.face},
+                      ),
                   ),
                   const WidgetSpan(child: SizedBox(width: 6)),
                   TextSpan(
                     text: Utils.dateFormat(item.modules.moduleAuthor.pubTs),
                     style: TextStyle(
-                        color: Theme.of(context).colorScheme.outline,
-                        fontSize:
-                            Theme.of(context).textTheme.labelSmall!.fontSize),
+                      color: Theme.of(context).colorScheme.outline,
+                      fontSize: Theme.of(
+                        context,
+                      ).textTheme.labelSmall!.fontSize,
+                    ),
                   ),
                 ],
               ),
@@ -238,30 +242,54 @@ Widget forWard(item, context, ctr, source, {floor = 1, String? heroTag}) {
               context,
               item.modules.moduleDynamic.additional.type,
               floor: floor,
-            )
+            ),
         ],
       );
     // 视频
     case 'DYNAMIC_TYPE_AV':
-      return videoSeasonWidget(item, context, 'archive', source, floor: floor, heroTag: heroTag);
+      return videoSeasonWidget(
+        item,
+        context,
+        'archive',
+        source,
+        floor: floor,
+        heroTag: heroTag,
+      );
     // 文章
     case 'DYNAMIC_TYPE_ARTICLE':
       return Container(
-          padding:
-              const EdgeInsets.only(left: 10, top: 12, right: 10, bottom: 10),
-          color: Theme.of(context).dividerColor.withOpacity(0.08),
-          child: articlePanel(item, context, floor: floor));
+        padding: const EdgeInsets.only(
+          left: 10,
+          top: 12,
+          right: 10,
+          bottom: 10,
+        ),
+        color: Theme.of(context).dividerColor.withOpacity(0.08),
+        child: articlePanel(item, context, floor: floor),
+      );
     // 转发
     case 'DYNAMIC_TYPE_FORWARD':
       return HeroTagGenerator(
         builder: (context, innerHeroTag) {
           return InkWell(
-            onTap: () => ctr.pushDetail(item.orig, floor + 1, heroTag: innerHeroTag),
+            onTap: () =>
+                ctr.pushDetail(item.orig, floor + 1, heroTag: innerHeroTag),
             child: Container(
-              padding:
-                  const EdgeInsets.only(left: 15, top: 10, right: 15, bottom: 8),
+              padding: const EdgeInsets.only(
+                left: 15,
+                top: 10,
+                right: 15,
+                bottom: 8,
+              ),
               color: Theme.of(context).dividerColor.withOpacity(0.08),
-              child: forWard(item.orig, context, ctr, source, floor: floor + 1, heroTag: innerHeroTag),
+              child: forWard(
+                item.orig,
+                context,
+                ctr,
+                source,
+                floor: floor + 1,
+                heroTag: innerHeroTag,
+              ),
             ),
           );
         },
@@ -274,7 +302,13 @@ Widget forWard(item, context, ctr, source, {floor = 1, String? heroTag}) {
       return livePanel(item, context, floor: floor);
     // 合集
     case 'DYNAMIC_TYPE_UGC_SEASON':
-      return videoSeasonWidget(item, context, 'ugcSeason', source, heroTag: heroTag);
+      return videoSeasonWidget(
+        item,
+        context,
+        'ugcSeason',
+        source,
+        heroTag: heroTag,
+      );
     case 'DYNAMIC_TYPE_WORD':
       InlineSpan? richNodes = richNode(item, context);
       return floor == 2
@@ -289,16 +323,19 @@ Widget forWard(item, context, ctr, source, {floor = 1, String? heroTag}) {
                         style: authorStyle,
                         recognizer: TapGestureRecognizer()
                           ..onTap = () => Get.toNamed(
-                              '/member?mid=${item.modules.moduleAuthor.mid}',
-                              arguments: {'face': item.modules.moduleAuthor.face}),
+                            '/member?mid=${item.modules.moduleAuthor.mid}',
+                            arguments: {'face': item.modules.moduleAuthor.face},
+                          ),
                       ),
                       const WidgetSpan(child: SizedBox(width: 6)),
                       TextSpan(
                         text: Utils.dateFormat(item.modules.moduleAuthor.pubTs),
                         style: TextStyle(
-                            color: Theme.of(context).colorScheme.outline,
-                            fontSize:
-                                Theme.of(context).textTheme.labelSmall!.fontSize),
+                          color: Theme.of(context).colorScheme.outline,
+                          fontSize: Theme.of(
+                            context,
+                          ).textTheme.labelSmall!.fontSize,
+                        ),
                       ),
                     ],
                   ),
@@ -313,30 +350,48 @@ Widget forWard(item, context, ctr, source, {floor = 1, String? heroTag}) {
                     maxLines: source == 'detail' && floor != 2 ? 999 : 6,
                     overflow: TextOverflow.ellipsis,
                   ),
+                if (item.modules?.moduleDynamic?.additional != null)
+                  addWidget(
+                    item,
+                    context,
+                    item.modules.moduleDynamic.additional.type,
+                    floor: floor,
+                  ),
               ],
             )
           : item.modules.moduleDynamic.additional != null
-              ? addWidget(
-                  item,
-                  context,
-                  item.modules.moduleDynamic.additional.type,
-                  floor: floor,
-                )
-              : const SizedBox(height: 0);
+          ? addWidget(
+              item,
+              context,
+              item.modules.moduleDynamic.additional.type,
+              floor: floor,
+            )
+          : const SizedBox(height: 0);
     case 'DYNAMIC_TYPE_PGC':
-      return videoSeasonWidget(item, context, 'pgc', source, floor: floor, heroTag: heroTag);
+      return videoSeasonWidget(
+        item,
+        context,
+        'pgc',
+        source,
+        floor: floor,
+        heroTag: heroTag,
+      );
     case 'DYNAMIC_TYPE_PGC_UNION':
-      return videoSeasonWidget(item, context, 'pgc', source, floor: floor, heroTag: heroTag);
+      return videoSeasonWidget(
+        item,
+        context,
+        'pgc',
+        source,
+        floor: floor,
+        heroTag: heroTag,
+      );
     // 直播结束
     case 'DYNAMIC_TYPE_NONE':
       return Row(
         children: [
-          const FaIcon(
-            FontAwesomeIcons.ghost,
-            size: 14,
-          ),
+          const FaIcon(FontAwesomeIcons.ghost, size: 14),
           const SizedBox(width: 4),
-          Text(item.modules.moduleDynamic.major.none.tips)
+          Text(item.modules.moduleDynamic.major.none.tips),
         ],
       );
     // 课堂
@@ -349,29 +404,31 @@ Widget forWard(item, context, ctr, source, {floor = 1, String? heroTag}) {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-          )
+          ),
         ],
       );
     case 'DYNAMIC_TYPE_COMMON_SQUARE':
       debugPrint('commonSquare: ${item.modules.moduleDynamic.major}');
       return GestureDetector(
-          onTap: () => Get.toNamed('/webview', parameters: {
-                'url': item.modules.moduleDynamic.major.common.jumpUrl,
-                'type': 'url',
-                'pageTitle':
-                    item.modules.moduleDynamic.major.common.title ?? "",
-              }),
-          child: Row(
-            children: [
-              const SizedBox(width: 20),
-              NetworkImgLayer(
-                src: item.modules.moduleDynamic.major.common.cover ?? "",
-                width: 50,
-                height: 50,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                  child: Column(
+        onTap: () => Get.toNamed(
+          '/webview',
+          parameters: {
+            'url': item.modules.moduleDynamic.major.common.jumpUrl,
+            'type': 'url',
+            'pageTitle': item.modules.moduleDynamic.major.common.title ?? "",
+          },
+        ),
+        child: Row(
+          children: [
+            const SizedBox(width: 20),
+            NetworkImgLayer(
+              src: item.modules.moduleDynamic.major.common.cover ?? "",
+              width: 50,
+              height: 50,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -386,9 +443,11 @@ Widget forWard(item, context, ctr, source, {floor = 1, String? heroTag}) {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-              ))
-            ],
-          ));
+              ),
+            ),
+          ],
+        ),
+      );
     default:
       return const SizedBox(
         width: double.infinity,

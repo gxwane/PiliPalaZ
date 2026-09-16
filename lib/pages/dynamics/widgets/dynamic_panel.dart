@@ -31,13 +31,17 @@ class DynamicPanel extends StatelessWidget {
         elevation: 0,
         clipBehavior: Clip.hardEdge,
         color: Theme.of(context).cardColor.withOpacity(0.5),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(5),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         child: HeroTagGenerator(
           builder: (context, heroTag) {
             return InkWell(
-              onTap: () => _dynamicsController.pushDetail(item, 1, heroTag: heroTag),
+              onTap: source == 'detail'
+                  ? null
+                  : () => _dynamicsController.pushDetail(
+                      item,
+                      1,
+                      heroTag: heroTag,
+                    ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
@@ -48,7 +52,13 @@ class DynamicPanel extends StatelessWidget {
                   if (item!.modules!.moduleDynamic!.desc != null ||
                       item!.modules!.moduleDynamic!.major != null)
                     Content(item: item, source: source, heroTag: heroTag),
-                  forWard(item, context, _dynamicsController, source, heroTag: heroTag),
+                  forWard(
+                    item,
+                    context,
+                    _dynamicsController,
+                    source,
+                    heroTag: heroTag,
+                  ),
                   const SizedBox(height: 2),
                   if (source == null) ActionPanel(item: item),
                 ],

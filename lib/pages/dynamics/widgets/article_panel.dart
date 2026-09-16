@@ -1,29 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:get/get.dart';
 import 'package:pilipalaz/utils/utils.dart';
 
 import '../../../common/constants.dart';
+import 'additional_panel.dart';
 import 'pic_panel.dart';
 
 Widget articlePanel(item, context, {floor = 1}) {
-  TextStyle authorStyle =
-      TextStyle(color: Theme.of(context).colorScheme.primary);
-      
+  TextStyle authorStyle = TextStyle(
+    color: Theme.of(context).colorScheme.primary,
+  );
+
   var major = item.modules?.moduleDynamic?.major;
   if (major == null) return const SizedBox();
-  
+
   String title = '';
   String summary = '';
   if (major.opus != null) {
     title = major.opus!.title ?? '';
-    if (major.opus!.summary?.text != 'undefined' && major.opus!.summary?.richTextNodes?.isNotEmpty == true) {
+    if (major.opus!.summary?.text != 'undefined' &&
+        major.opus!.summary?.richTextNodes?.isNotEmpty == true) {
       summary = major.opus!.summary!.richTextNodes!.first.text ?? '';
     }
   } else if (major.article != null) {
     title = major.article!.title ?? '';
     summary = major.article!.desc ?? '';
   }
-      
+
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: StyleString.safeSpace),
     child: Column(
@@ -36,14 +40,19 @@ Widget articlePanel(item, context, {floor = 1}) {
                 TextSpan(
                   text: '@${item.modules.moduleAuthor.name}',
                   style: authorStyle,
-                  recognizer: TapGestureRecognizer()..onTap = () {},
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () => Get.toNamed(
+                      '/member?mid=${item.modules.moduleAuthor.mid}',
+                      arguments: {'face': item.modules.moduleAuthor.face},
+                    ),
                 ),
                 const WidgetSpan(child: SizedBox(width: 6)),
                 TextSpan(
                   text: Utils.dateFormat(item.modules.moduleAuthor.pubTs),
                   style: TextStyle(
-                      color: Theme.of(context).colorScheme.outline,
-                      fontSize: Theme.of(context).textTheme.labelSmall!.fontSize),
+                    color: Theme.of(context).colorScheme.outline,
+                    fontSize: Theme.of(context).textTheme.labelSmall!.fontSize,
+                  ),
                 ),
               ],
             ),
@@ -52,16 +61,18 @@ Widget articlePanel(item, context, {floor = 1}) {
           ),
           const SizedBox(height: 8),
         ],
-        Row(children: [
-          Expanded(
+        Row(
+          children: [
+            Expanded(
               child: Text(
-            title,
-            style: Theme.of(context)
-                .textTheme
-                .titleMedium!
-                .copyWith(fontWeight: FontWeight.bold),
-          ))
-        ]),
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 2),
         if (summary.isNotEmpty) ...[
           Text(
@@ -72,7 +83,14 @@ Widget articlePanel(item, context, {floor = 1}) {
           ),
           const SizedBox(height: 2),
         ],
-        picWidget(item, context)
+        picWidget(item, context),
+        if (item?.modules?.moduleDynamic?.additional != null)
+          addWidget(
+            item,
+            context,
+            item.modules.moduleDynamic.additional.type,
+            floor: floor,
+          ),
       ],
     ),
   );
