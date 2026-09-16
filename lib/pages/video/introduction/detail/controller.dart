@@ -22,6 +22,7 @@ import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
 import 'package:pilipalaz/utils/id_utils.dart';
 import 'package:pilipalaz/utils/storage.dart';
+import 'package:pilipalaz/utils/utils.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:pilipalaz/pages/member/controller.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -96,12 +97,20 @@ class VideoIntroController extends GetxController {
   void onInit() {
     super.onInit();
     userInfo = userInfoCache.get('userInfoCache');
-    try {
-      heroTag = Get.arguments['heroTag'];
-      bvid = Get.parameters['bvid']!;
-    } catch (_) {}
-    if (Get.arguments.isNotEmpty) {
-      if (Get.arguments.containsKey('videoItem')) {
+    final args = Get.arguments;
+    if (args is Map &&
+        args['heroTag'] != null &&
+        args['heroTag'].toString().isNotEmpty) {
+      heroTag = args['heroTag'].toString();
+    } else {
+      final bvidParam = Get.parameters['bvid'];
+      if (bvidParam != null && bvidParam.isNotEmpty) {
+        heroTag = Utils.makeHeroTag(bvidParam);
+      }
+    }
+    bvid = Get.parameters['bvid'] ?? '';
+    if (args is Map && args.isNotEmpty) {
+      if (args.containsKey('videoItem')) {
         preRender = true;
         var args = Get.arguments['videoItem'];
         var keys = Get.arguments.keys.toList();

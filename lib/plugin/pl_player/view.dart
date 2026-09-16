@@ -40,6 +40,7 @@ import 'widgets/app_bar_ani.dart';
 import 'widgets/backward_seek.dart';
 import 'widgets/bottom_control.dart';
 import 'widgets/common_btn.dart';
+import 'widgets/episode_nav_btn.dart';
 import 'widgets/forward_seek.dart';
 import 'widgets/play_pause_btn.dart';
 
@@ -337,6 +338,15 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   }
 
   PlaybackQueueController? get _queueController {
+    try {
+      final direct =
+          videoIntroController?.playbackQueueController ??
+          bangumiIntroController?.playbackQueueController;
+      if (direct != null) {
+        return direct;
+      }
+    } catch (_) {}
+
     try {
       final heroTag =
           videoIntroController?.heroTag ?? bangumiIntroController?.heroTag;
@@ -641,24 +651,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     bool isEquivalentFullScreen = _isEquivalentFullScreen;
     Map<BottomControlType, Widget> videoProgressWidgets = {
       /// 上一集
-      BottomControlType.pre: Obx(() {
-        final qc = _queueController;
-        final hasPrev = qc != null ? qc.hasPrevious.value : true;
-        return Container(
-          width: 48,
-          height: 48,
-          alignment: Alignment.center,
-          child: ComBtn(
-            semanticsLabel: '上一集',
-            icon: Icon(
-              Icons.skip_previous,
-              size: 22,
-              color: hasPrev ? Colors.white : Colors.white38,
-            ),
-            fuc: hasPrev ? _playPrevious : null,
-          ),
-        );
-      }),
+      BottomControlType.pre: PreEpisodeButton(
+        queueController: _queueController,
+        onPlay: _playPrevious,
+      ),
 
       /// 播放暂停
       BottomControlType.playOrPause: PlayOrPauseButton(
@@ -666,24 +662,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       ),
 
       /// 下一集
-      BottomControlType.next: Obx(() {
-        final qc = _queueController;
-        final hasNxt = qc != null ? qc.hasNext.value : true;
-        return Container(
-          width: 48,
-          height: 48,
-          alignment: Alignment.center,
-          child: ComBtn(
-            semanticsLabel: '下一集',
-            icon: Icon(
-              Icons.skip_next,
-              size: 22,
-              color: hasNxt ? Colors.white : Colors.white38,
-            ),
-            fuc: hasNxt ? _playNext : null,
-          ),
-        );
-      }),
+      BottomControlType.next: NextEpisodeButton(
+        queueController: _queueController,
+        onPlay: _playNext,
+      ),
 
       /// 时间进度
       // BottomControlType.time: Column(

@@ -29,19 +29,25 @@ import 'package:pilipalaz/models/common/play_queue_item.dart';
 import 'package:pilipalaz/services/service_locator.dart';
 import 'package:pilipalaz/services/pgc_playback_coordinator.dart';
 
+import 'package:pilipalaz/utils/utils.dart';
+
 class BangumiIntroController extends GetxController {
   // 统一播放队列控制器
   late final PlaybackQueueController playbackQueueController;
 
   // 视频bvid
-  String bvid = Get.parameters['bvid']!;
+  String bvid = Get.parameters['bvid'] ?? '';
   var seasonId = Get.parameters['seasonId'] != null
-      ? int.parse(Get.parameters['seasonId']!)
+      ? int.tryParse(Get.parameters['seasonId']!)
       : null;
   var epId = Get.parameters['epId'] != null
       ? int.tryParse(Get.parameters['epId']!)
       : null;
-  String heroTag = Get.arguments['heroTag'];
+  String heroTag = (Get.arguments is Map && Get.arguments['heroTag'] != null)
+      ? Get.arguments['heroTag'].toString()
+      : (Get.parameters['bvid'] != null && Get.parameters['bvid']!.isNotEmpty
+            ? Utils.makeHeroTag(Get.parameters['bvid']!)
+            : 'bangumi_${DateTime.now().millisecondsSinceEpoch}');
 
   // 是否预渲染 骨架屏
   bool preRender = false;

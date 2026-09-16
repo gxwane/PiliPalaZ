@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### 修复
+
+- 播放器底栏控制按钮 GetX 0-Rx 异常与防空架构重构：
+  - 修复多 P 视频或平板横屏冷启动下，底部控制栏上一集与下一集按钮在 `_queueController == null` 时因短路跳过 Rx 变量读取，触发 GetX 致命断言（`[Get] the improper use of a GetX has been detected`）导致界面异常崩溃的问题；
+  - 抽离独立安全组件 `PreEpisodeButton` 与 `NextEpisodeButton`，严格实施二态分支：未绑定队列控制器时渲染降级可用静态按钮（绝不包 `Obx`），绑定后由局部 `Obx` 精确监听 `hasPrevious.value` 与 `hasNext.value`，彻底消除 0-Rx 异常风险；
+  - 加固 `_queueController` 获取链路为三级容灾模式（实例直引 -> tag 检索 -> 全局活跃栈兜底），并在视频详情页与简介控制器初始化中补齐 `heroTag` 的非空与默认值安全兜底。
+
 ## [1.4.0-beta.2] - 2026-09-16
 
 ### 修复

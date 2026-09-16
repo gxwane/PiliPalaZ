@@ -27,6 +27,7 @@ import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
 import 'package:pilipalaz/utils/screen_utils.dart';
 import 'package:pilipalaz/utils/storage.dart';
+import 'package:pilipalaz/utils/utils.dart';
 
 import '../../../services/shutdown_timer_service.dart';
 import 'widgets/header_control.dart';
@@ -83,8 +84,16 @@ class _VideoDetailPageState extends State<VideoDetailPage>
   @override
   void initState() {
     super.initState();
-    if (Get.arguments != null && Get.arguments['heroTag'] != null) {
-      heroTag = Get.arguments['heroTag'];
+    final args = Get.arguments;
+    if (args is Map &&
+        args['heroTag'] != null &&
+        args['heroTag'].toString().isNotEmpty) {
+      heroTag = args['heroTag'].toString();
+    } else {
+      final bvid = Get.parameters['bvid'];
+      heroTag = bvid != null && bvid.isNotEmpty
+          ? Utils.makeHeroTag(bvid)
+          : 'video_${DateTime.now().millisecondsSinceEpoch}';
     }
     // print('heroTagView:$heroTag');
     myRouteName = Get.rawRoute!.settings.name!;
@@ -1164,10 +1173,12 @@ class _VideoDetailPageState extends State<VideoDetailPage>
           ? Colors.black
           : Theme.of(context).colorScheme.surface,
       child: SafeArea(
-        left: !videoDetailController.isOffline &&
+        left:
+            !videoDetailController.isOffline &&
             !removeSafeArea &&
             isFullScreen.value != true,
-        right: !videoDetailController.isOffline &&
+        right:
+            !videoDetailController.isOffline &&
             !removeSafeArea &&
             isFullScreen.value != true,
         top: !removeSafeArea,
