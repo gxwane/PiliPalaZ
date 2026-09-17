@@ -908,6 +908,8 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     ),
   );
   Widget get childWhenDisabledAlmostSquareInner => Obx(() {
+    plPlayerController?.direction.value;
+    isFullScreen.value;
     if (enableVerticalExpand &&
         plPlayerController?.direction.value == 'vertical') {
       final double videoHeight =
@@ -1006,6 +1008,8 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     );
   });
   Widget get childWhenDisabledLandscapeInner => Obx(() {
+    plPlayerController?.direction.value;
+    isFullScreen.value;
     if (enableVerticalExpand &&
         plPlayerController?.direction.value == 'vertical') {
       final double videoHeight =

@@ -244,11 +244,13 @@ class PlPlayerController with WidgetsBindingObserver {
   int get _playbackSession => _playbackLifecycle.session;
 
   bool get canControlPlayback =>
+      playbackLifecycleState.value == PlaybackLifecycleState.ready &&
       _playbackLifecycle.canControlPlayback &&
       _playbackCommands != null &&
       (_videoPlayerController != null || isHeadlessTestMode);
 
-  bool get isPlaying => canControlPlayback && playerStatus.playing;
+  bool get isPlaying =>
+      playerStatus.status.value == PlayerStatus.playing && canControlPlayback;
 
   /// [videoController] instance of Player
   VideoController? get videoController => _videoController;

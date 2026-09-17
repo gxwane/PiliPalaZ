@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
+import 'package:pilipalaz/plugin/pl_player/playback_lifecycle.dart';
 
 class PlayOrPauseButton extends StatelessWidget {
   final double? iconSize;
@@ -16,7 +17,8 @@ class PlayOrPauseButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (this.controller == null) {
+    final PlPlayerController? controller = this.controller;
+    if (controller == null) {
       return Semantics(
         button: true,
         enabled: false,
@@ -36,10 +38,14 @@ class PlayOrPauseButton extends StatelessWidget {
         ),
       );
     }
-    final PlPlayerController? controller = this.controller;
     return Obx(() {
-      final bool canControl = controller?.canControlPlayback ?? false;
-      final bool playing = controller?.isPlaying ?? false;
+      final PlayerStatus status = controller.playerStatus.status.value;
+      final PlaybackLifecycleState lifecycle =
+          controller.playbackLifecycleState.value;
+      final bool canControl =
+          lifecycle == PlaybackLifecycleState.ready &&
+          controller.canControlPlayback;
+      final bool playing = canControl && status == PlayerStatus.playing;
       return Semantics(
         button: true,
         enabled: canControl,
@@ -47,12 +53,13 @@ class PlayOrPauseButton extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           child: InkWell(
-            onTap: canControl ? controller!.togglePlay : null,
+            onTap: canControl ? controller.togglePlay : null,
             child: Center(
               child: Icon(
                 playing ? Icons.pause : Icons.play_arrow,
-                color:
-                    canControl ? (iconColor ?? Colors.white) : Colors.white54,
+                color: canControl
+                    ? (iconColor ?? Colors.white)
+                    : Colors.white54,
                 size: iconSize ?? 24,
               ),
             ),

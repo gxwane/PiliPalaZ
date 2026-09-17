@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+### 修复
+
+- 播放器播放暂停控制按钮 GetX 0-Rx 致命短路根治与响应式契约加固：
+  - 修复平板横屏双栏冷启动或播放器未就绪时，底部控制栏播放/暂停按钮（`PlayOrPauseButton`）在 `Obx` 中因 `canControlPlayback`（非响应式普通布尔属性）为 `false` 触发 `false && playerStatus.playing` 短路，导致未读取任何 Rx 变量触发 GetX 致命断言（`0-Rx` 导致界面红屏崩溃）的问题；
+  - 重构 `PlayOrPauseButton`，控制器为空时直接返回无状态占位组件，在 `Obx` 入口处无条件显式解构 `playerStatus.status.value` 与 `playbackLifecycleState.value`，确保响应式变量读取数永远 $\ge 2$，彻底消除短路风险；
+  - 重构 `PlPlayerController.canControlPlayback` 与 `isPlaying`，底层绑定响应式生命周期状态 `playbackLifecycleState.value == PlaybackLifecycleState.ready`，从根源上实现播放器就绪后控制按钮自动响应式点亮；
+  - 加固 `view.dart` 中平板横屏双栏与方屏布局内部容器，在 `Obx` 入口处无条件解构 `direction` 与 `isFullScreen`，消除大粒度布局偶合式依赖；
+  - 补充 `PlayOrPauseButton` 与包含完整控制条的 `AdaptiveBottomControlRow` 在未就绪状态下的专用 Widget 自动化测试。
+
 ## [1.4.0-beta.3] - 2026-09-16
 
 ### 变更

@@ -4,6 +4,7 @@ import 'package:pilipalaz/controllers/playback_queue_controller.dart';
 import 'package:pilipalaz/plugin/pl_player/models/bottom_control_type.dart';
 import 'package:pilipalaz/plugin/pl_player/widgets/bottom_control.dart';
 import 'package:pilipalaz/plugin/pl_player/widgets/episode_nav_btn.dart';
+import 'package:pilipalaz/plugin/pl_player/widgets/play_pause_btn.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -156,6 +157,10 @@ void main() {
                         const SizedBox(),
                     controls: [
                       BottomControlItem(
+                        type: BottomControlType.playOrPause,
+                        child: const PlayOrPauseButton(controller: null),
+                      ),
+                      BottomControlItem(
                         type: BottomControlType.pre,
                         child: PreEpisodeButton(
                           queueController: null,
@@ -178,6 +183,7 @@ void main() {
         );
 
         expect(tester.takeException(), isNull);
+        expect(find.byType(PlayOrPauseButton), findsOneWidget);
         expect(find.byType(PreEpisodeButton), findsOneWidget);
         expect(find.byType(NextEpisodeButton), findsOneWidget);
       },
