@@ -113,6 +113,7 @@ class DownloadService {
       ..audioRelativePath = paths.audioRelativePath
       ..danmakuRelativePath = paths.danmakuRelativePath
       ..coverRelativePath = paths.coverRelativePath
+      ..subtitlesRelativePath = paths.subtitlesRelativePath
       ..status = DownloadTaskStatus.pending;
 
     await _dao.saveTask(task);

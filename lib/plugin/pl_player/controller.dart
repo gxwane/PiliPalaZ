@@ -36,6 +36,7 @@ import 'package:pilipalaz/plugin/pl_player/playback_lifecycle.dart';
 import 'package:pilipalaz/plugin/pl_player/playback_position_guard.dart';
 import 'package:pilipalaz/services/diagnostics/diagnostic_record.dart';
 import 'package:pilipalaz/services/diagnostics/local_diagnostics.dart';
+import 'package:pilipalaz/services/download/offline_subtitle_service.dart';
 import 'package:pilipalaz/services/player_diagnostics.dart';
 import 'package:pilipalaz/services/service_locator.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
@@ -806,6 +807,7 @@ class PlPlayerController with WidgetsBindingObserver {
         if (_playbackLifecycle.markReady(session)) {
           playbackLifecycleState.value = _playbackLifecycle.state;
         }
+        _initializeSubtitles(dataSource, session);
         return;
       }
 
@@ -839,17 +841,7 @@ class PlPlayerController with WidgetsBindingObserver {
       await _initializePlayer();
       if (session != _playbackSession) return;
       await _diagnosticSession?.checkpoint('playback_initialized');
-      if (dataSource.type == DataSourceType.file) {
-        _vttSubtitles.clear();
-        _vttSubtitlesIndex.value = 0;
-        _videoPlayerController?.setSubtitleTrack(SubtitleTrack.no());
-      } else if (videoType.value != 'live' && _cid != 0) {
-        refreshVideoMetaInfo().then((_) {
-          if (session == _playbackSession) {
-            chooseSubtitle();
-          }
-        });
-      }
+      _initializeSubtitles(dataSource, session);
     } catch (err, stackTrace) {
       dataStatus.status.value = DataStatus.error;
       if (_playbackLifecycle.isCurrent(session)) {
@@ -2527,6 +2519,34 @@ class PlPlayerController with WidgetsBindingObserver {
       _instance = null;
     } catch (err) {
       print(err);
+    }
+  }
+
+  void _initializeSubtitles(DataSource dataSource, int session) {
+    if (dataSource.type == DataSourceType.file) {
+      _vttSubtitles.clear();
+      _vttSubtitlesIndex.value = 0;
+      final File? subFile = dataSource.offlineSubtitleFile;
+      if (subFile != null) {
+        OfflineSubtitleService.loadSubtitlesFromFile(subFile).then((tracks) {
+          if (session == _playbackSession) {
+            if (tracks != null && tracks.isNotEmpty) {
+              _vttSubtitles.value = tracks;
+              chooseSubtitle();
+            } else {
+              _videoPlayerController?.setSubtitleTrack(SubtitleTrack.no());
+            }
+          }
+        });
+      } else {
+        _videoPlayerController?.setSubtitleTrack(SubtitleTrack.no());
+      }
+    } else if (videoType.value != 'live' && _cid != 0) {
+      refreshVideoMetaInfo().then((_) {
+        if (session == _playbackSession) {
+          chooseSubtitle();
+        }
+      });
     }
   }
 

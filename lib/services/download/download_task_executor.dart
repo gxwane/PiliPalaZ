@@ -16,6 +16,7 @@ import 'package:pilipalaz/models/download/download_task.dart';
 import 'package:pilipalaz/models/video/play/url.dart';
 import 'package:pilipalaz/services/download/download_storage_manager.dart';
 import 'package:pilipalaz/services/download/offline_danmaku_service.dart';
+import 'package:pilipalaz/services/download/offline_subtitle_service.dart';
 import 'package:pilipalaz/utils/video_utils.dart';
 
 /// URL 续期结果。
@@ -44,17 +45,20 @@ class DownloadTaskExecutor {
     required String audioUrl,
     Dio? dio,
     OfflineDanmakuService? danmakuService,
+    OfflineSubtitleService? subtitleService,
     this.onProgress,
     this.onUrlRenewed,
   }) : _videoUrl = videoUrl,
        _audioUrl = audioUrl,
        _dio = dio ?? Dio(),
-       _danmakuService = danmakuService ?? OfflineDanmakuService();
+       _danmakuService = danmakuService ?? OfflineDanmakuService(),
+       _subtitleService = subtitleService ?? OfflineSubtitleService();
 
   final DownloadTask task;
   final DownloadStorageManager storageManager;
   final DownloadProgressCallback? onProgress;
   final OfflineDanmakuService _danmakuService;
+  final OfflineSubtitleService _subtitleService;
 
   /// URL 续期成功后回调，让上层缓存新 URL。
   final void Function(RenewedUrls urls)? onUrlRenewed;
@@ -157,6 +161,26 @@ class DownloadTaskExecutor {
             coverPath,
             cancelToken: _cancelToken,
             options: Options(receiveTimeout: const Duration(seconds: 8)),
+          );
+        }
+      }
+    } catch (_) {
+      // 辅助资产非致命降级
+    }
+
+    // 3. 离线字幕
+    try {
+      if (!isCancelled && task.cid > 0) {
+        final String subtitlePath = await storageManager.absolutePath(
+          storageManager.pathsForTask(task).subtitlesRelativePath,
+        );
+        final File subtitleFile = File(subtitlePath);
+        if (!await subtitleFile.exists()) {
+          await _subtitleService.downloadSubtitles(
+            bvid: task.bvid,
+            cid: task.cid,
+            targetFile: subtitleFile,
+            cancelToken: _cancelToken,
           );
         }
       }

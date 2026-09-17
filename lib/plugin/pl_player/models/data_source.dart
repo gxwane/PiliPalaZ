@@ -23,6 +23,7 @@ class DataSource {
   String? videoSource;
   String? audioSource;
   String? subFiles;
+  File? offlineSubtitleFile;
   DataSourceType type;
   Map<String, String>? httpHeaders; // for headers
   DataSource({
@@ -30,16 +31,19 @@ class DataSource {
     this.videoSource,
     this.audioSource,
     this.subFiles,
+    this.offlineSubtitleFile,
     required this.type,
     this.httpHeaders,
-  }) : assert((type == DataSourceType.file && file != null) ||
-            videoSource != null);
+  }) : assert(
+         (type == DataSourceType.file && file != null) || videoSource != null,
+       );
 
   DataSource copyWith({
     File? file,
     String? videoSource,
     String? audioSource,
     String? subFiles,
+    File? offlineSubtitleFile,
     DataSourceType? type,
     Duration? startAt,
     Map<String, String>? httpHeaders,
@@ -49,6 +53,7 @@ class DataSource {
       videoSource: videoSource ?? this.videoSource,
       audioSource: audioSource ?? this.audioSource,
       subFiles: subFiles ?? this.subFiles,
+      offlineSubtitleFile: offlineSubtitleFile ?? this.offlineSubtitleFile,
       type: type ?? this.type,
       httpHeaders: httpHeaders ?? this.httpHeaders,
     );
@@ -63,7 +68,8 @@ class DataSource {
       subFiles: json['subFiles'],
       type: DataSourceType.values.byName(json['type']),
       httpHeaders: json['httpHeaders']?.map<String, String>(
-          (String key, dynamic value) => MapEntry(key, value!.toString())),
+        (String key, dynamic value) => MapEntry(key, value!.toString()),
+      ),
     );
   }
 

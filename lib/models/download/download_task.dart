@@ -50,6 +50,7 @@ class DownloadTask {
     this.audioRelativePath,
     this.danmakuRelativePath,
     this.coverRelativePath,
+    this.subtitlesRelativePath,
     this.status = DownloadTaskStatus.pending,
     this.totalBytes = 0,
     this.downloadedBytes = 0,
@@ -145,6 +146,9 @@ class DownloadTask {
   /// 封面缓存相对路径。
   String? coverRelativePath;
 
+  /// 离线字幕缓存相对路径，如 `bvid_cid/subtitles.json`。
+  String? subtitlesRelativePath;
+
   // ── 实时下载状态 ──
 
   DownloadTaskStatus status;
@@ -207,6 +211,7 @@ class DownloadTask {
       'audioRelativePath': audioRelativePath,
       'danmakuRelativePath': danmakuRelativePath,
       'coverRelativePath': coverRelativePath,
+      'subtitlesRelativePath': subtitlesRelativePath,
       'status': status.name,
       'totalBytes': totalBytes,
       'downloadedBytes': downloadedBytes,
@@ -236,6 +241,7 @@ class DownloadTask {
       audioRelativePath: map['audioRelativePath'] as String?,
       danmakuRelativePath: map['danmakuRelativePath'] as String?,
       coverRelativePath: map['coverRelativePath'] as String?,
+      subtitlesRelativePath: map['subtitlesRelativePath'] as String?,
       status: DownloadTaskStatus.fromString(map['status'] as String?),
       totalBytes: (map['totalBytes'] as int?) ?? 0,
       downloadedBytes: (map['downloadedBytes'] as int?) ?? 0,
@@ -253,6 +259,7 @@ class DownloadTask {
     String? audioRelativePath,
     String? danmakuRelativePath,
     String? coverRelativePath,
+    String? subtitlesRelativePath,
     DownloadTaskStatus? status,
     int? totalBytes,
     int? downloadedBytes,
@@ -278,6 +285,8 @@ class DownloadTask {
       audioRelativePath: audioRelativePath ?? this.audioRelativePath,
       danmakuRelativePath: danmakuRelativePath ?? this.danmakuRelativePath,
       coverRelativePath: coverRelativePath ?? this.coverRelativePath,
+      subtitlesRelativePath:
+          subtitlesRelativePath ?? this.subtitlesRelativePath,
       status: status ?? this.status,
       totalBytes: totalBytes ?? this.totalBytes,
       downloadedBytes: downloadedBytes ?? this.downloadedBytes,

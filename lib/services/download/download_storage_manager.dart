@@ -60,6 +60,7 @@ class DownloadStorageManager {
       audioRelativePath: p.join(dir, 'audio.m4s'),
       danmakuRelativePath: p.join(dir, 'danmaku.bin'),
       coverRelativePath: p.join(dir, 'cover.jpg'),
+      subtitlesRelativePath: p.join(dir, 'subtitles.json'),
     );
   }
 
@@ -164,10 +165,12 @@ class DownloadPaths {
     required this.audioRelativePath,
     required this.danmakuRelativePath,
     required this.coverRelativePath,
+    required this.subtitlesRelativePath,
   });
 
   final String videoRelativePath;
   final String audioRelativePath;
   final String danmakuRelativePath;
   final String coverRelativePath;
+  final String subtitlesRelativePath;
 }

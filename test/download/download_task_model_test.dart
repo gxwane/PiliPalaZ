@@ -147,6 +147,10 @@ void main() {
         equals(original.danmakuRelativePath),
       );
       expect(restored.coverRelativePath, equals(original.coverRelativePath));
+      expect(
+        restored.subtitlesRelativePath,
+        equals(original.subtitlesRelativePath),
+      );
       expect(restored.status, equals(original.status));
       expect(restored.totalBytes, equals(original.totalBytes));
       expect(restored.downloadedBytes, equals(original.downloadedBytes));
@@ -180,6 +184,7 @@ void main() {
       expect(task.downloadedBytes, equals(0));
       expect(task.errorMessage, isNull);
       expect(task.videoRelativePath, isNull);
+      expect(task.subtitlesRelativePath, isNull);
     });
 
     test('toMap 不包含 downloadSpeed（瞬态字段）', () {
