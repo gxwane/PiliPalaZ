@@ -31,37 +31,44 @@ class _VideoSettingState extends State<VideoSetting> {
   @override
   void initState() {
     super.initState();
-    defaultVideoQa = setting.get(SettingBoxKey.defaultVideoQa,
-        defaultValue: VideoQuality.values.last.code);
-    defaultAudioQa = setting.get(SettingBoxKey.defaultAudioQa,
-        defaultValue: AudioQuality.values.last.code);
-    defaultDecode = setting.get(SettingBoxKey.defaultDecode,
-        defaultValue: VideoDecodeFormats.values.last.code);
-    secondDecode = setting.get(SettingBoxKey.secondDecode,
-        defaultValue: VideoDecodeFormats.values[1].code);
-    hardwareDecoding = setting.get(SettingBoxKey.hardwareDecoding,
-        defaultValue: Platform.isAndroid ? 'auto-safe' : 'auto');
-    videoSync =
-        setting.get(SettingBoxKey.videoSync, defaultValue: 'display-resample');
-    defaultCDNService = setting.get(SettingBoxKey.CDNService,
-        defaultValue: CDNService.backupUrl.code);
+    defaultVideoQa = setting.get(
+      SettingBoxKey.defaultVideoQa,
+      defaultValue: VideoQuality.values.last.code,
+    );
+    defaultAudioQa = setting.get(
+      SettingBoxKey.defaultAudioQa,
+      defaultValue: AudioQuality.values.last.code,
+    );
+    defaultDecode = setting.get(
+      SettingBoxKey.defaultDecode,
+      defaultValue: VideoDecodeFormats.values.last.code,
+    );
+    secondDecode = setting.get(
+      SettingBoxKey.secondDecode,
+      defaultValue: VideoDecodeFormats.values[1].code,
+    );
+    hardwareDecoding = setting.get(
+      SettingBoxKey.hardwareDecoding,
+      defaultValue: Platform.isAndroid ? 'auto-safe' : 'auto',
+    );
+    videoSync = setting.get(SettingBoxKey.videoSync, defaultValue: 'audio');
+    defaultCDNService = setting.get(
+      SettingBoxKey.CDNService,
+      defaultValue: CDNService.backupUrl.code,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     TextStyle titleStyle = Theme.of(context).textTheme.titleMedium!;
-    TextStyle subTitleStyle = Theme.of(context)
-        .textTheme
-        .labelMedium!
-        .copyWith(color: Theme.of(context).colorScheme.outline);
+    TextStyle subTitleStyle = Theme.of(context).textTheme.labelMedium!.copyWith(
+      color: Theme.of(context).colorScheme.outline,
+    );
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
         titleSpacing: 0,
-        title: Text(
-          '音视频设置',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        title: Text('音视频设置', style: Theme.of(context).textTheme.titleMedium),
       ),
       body: ListView(
         children: [
@@ -83,15 +90,18 @@ class _VideoSettingState extends State<VideoSetting> {
             // enabled: false,
             // onTap: null,
             title: Text("b站定向流量支持", style: titleStyle),
-            subtitle: Text("若有b站定向流量且未使用代理等，则会自动使用。可查阅运营商的流量记录确认，此功能无法关闭。",
-                style: subTitleStyle),
+            subtitle: Text(
+              "若有b站定向流量且未使用代理等，则会自动使用。可查阅运营商的流量记录确认，此功能无法关闭。",
+              style: subTitleStyle,
+            ),
             leading: const Icon(Icons.perm_data_setting_outlined),
             trailing: Transform.scale(
               alignment: Alignment.centerRight, // 缩放Switch的大小后保持右侧对齐, 避免右侧空隙过大
               scale: 0.8,
               child: Switch(
-                thumbIcon: WidgetStateProperty.resolveWith<Icon?>(
-                    (Set<WidgetState> states) {
+                thumbIcon: WidgetStateProperty.resolveWith<Icon?>((
+                  Set<WidgetState> states,
+                ) {
                   if (states.isNotEmpty &&
                       states.first == WidgetState.selected) {
                     return const Icon(Icons.lock_outline_rounded);
@@ -119,11 +129,12 @@ class _VideoSettingState extends State<VideoSetting> {
                 context: context,
                 builder: (context) {
                   return SelectDialog<String>(
-                      title: 'CDN 设置',
-                      value: defaultCDNService,
-                      values: CDNService.values.map((e) {
-                        return {'title': e.description, 'value': e.code};
-                      }).toList());
+                    title: 'CDN 设置',
+                    value: defaultCDNService,
+                    values: CDNService.values.map((e) {
+                      return {'title': e.description, 'value': e.code};
+                    }).toList(),
+                  );
                 },
               );
               if (result != null) {
@@ -153,11 +164,12 @@ class _VideoSettingState extends State<VideoSetting> {
                 context: context,
                 builder: (context) {
                   return SelectDialog<int>(
-                      title: '默认画质',
-                      value: defaultVideoQa,
-                      values: VideoQuality.values.reversed.map((e) {
-                        return {'title': e.description, 'value': e.code};
-                      }).toList());
+                    title: '默认画质',
+                    value: defaultVideoQa,
+                    values: VideoQuality.values.reversed.map((e) {
+                      return {'title': e.description, 'value': e.code};
+                    }).toList(),
+                  );
                 },
               );
               if (result != null) {
@@ -180,11 +192,12 @@ class _VideoSettingState extends State<VideoSetting> {
                 context: context,
                 builder: (context) {
                   return SelectDialog<int>(
-                      title: '默认音质',
-                      value: defaultAudioQa,
-                      values: AudioQuality.values.reversed.map((e) {
-                        return {'title': e.description, 'value': e.code};
-                      }).toList());
+                    title: '默认音质',
+                    value: defaultAudioQa,
+                    values: AudioQuality.values.reversed.map((e) {
+                      return {'title': e.description, 'value': e.code};
+                    }).toList(),
+                  );
                 },
               );
               if (result != null) {
@@ -207,11 +220,12 @@ class _VideoSettingState extends State<VideoSetting> {
                 context: context,
                 builder: (context) {
                   return SelectDialog<String>(
-                      title: '默认解码格式',
-                      value: defaultDecode,
-                      values: VideoDecodeFormats.values.map((e) {
-                        return {'title': e.description, 'value': e.code};
-                      }).toList());
+                    title: '默认解码格式',
+                    value: defaultDecode,
+                    values: VideoDecodeFormats.values.map((e) {
+                      return {'title': e.description, 'value': e.code};
+                    }).toList(),
+                  );
                 },
               );
               if (result != null) {
@@ -234,11 +248,12 @@ class _VideoSettingState extends State<VideoSetting> {
                 context: context,
                 builder: (context) {
                   return SelectDialog<String>(
-                      title: '次选解码格式',
-                      value: secondDecode,
-                      values: VideoDecodeFormats.values.map((e) {
-                        return {'title': e.description, 'value': e.code};
-                      }).toList());
+                    title: '次选解码格式',
+                    value: secondDecode,
+                    values: VideoDecodeFormats.values.map((e) {
+                      return {'title': e.description, 'value': e.code};
+                    }).toList(),
+                  );
                 },
               );
               if (result != null) {
@@ -261,7 +276,7 @@ class _VideoSettingState extends State<VideoSetting> {
             title: '始终扩大缓冲区',
             leading: Icon(Icons.storage_outlined),
             subTitle:
-                '普通网络默认视频4MB/直播16MB；Android VPN下自动使用32MB/64MB，开启后所有网络始终扩大（下次加载生效）',
+                'Wi-Fi默认视频32MB/直播16MB，移动网络16MB；VPN下自动扩大至64MB/32MB。开启后所有网络始终使用扩大缓冲区（下次加载生效）',
             setKey: SettingBoxKey.expandBuffer,
             defaultVal: false,
           ),
@@ -271,7 +286,7 @@ class _VideoSettingState extends State<VideoSetting> {
             title: Text('视频同步', style: titleStyle),
             leading: const Icon(Icons.view_timeline_outlined),
             subtitle: Text(
-              '当前：$videoSync（此项即mpv的--video-sync）',
+              '当前：$videoSync（推荐默认 audio，降低高刷卡死风险；下次加载生效）',
               style: subTitleStyle,
             ),
             onTap: () async {
@@ -279,21 +294,23 @@ class _VideoSettingState extends State<VideoSetting> {
                 context: context,
                 builder: (context) {
                   return SelectDialog<String>(
-                      title: '视频同步',
-                      value: videoSync,
-                      values: [
-                        'audio',
-                        'display-resample',
-                        'display-resample-vdrop',
-                        'display-resample-desync',
-                        'display-tempo',
-                        'display-vdrop',
-                        'display-adrop',
-                        'display-desync',
-                        'desync'
-                      ].map((e) {
-                        return {'title': e, 'value': e};
-                      }).toList());
+                    title: '视频同步',
+                    value: videoSync,
+                    values:
+                        [
+                          'audio',
+                          'display-resample',
+                          'display-resample-vdrop',
+                          'display-resample-desync',
+                          'display-tempo',
+                          'display-vdrop',
+                          'display-adrop',
+                          'display-desync',
+                          'desync',
+                        ].map((e) {
+                          return {'title': e, 'value': e};
+                        }).toList(),
+                  );
                 },
               );
               if (result != null) {
@@ -316,12 +333,14 @@ class _VideoSettingState extends State<VideoSetting> {
                 context: context,
                 builder: (context) {
                   return SelectDialog<String>(
-                      title: '硬解模式',
-                      value: hardwareDecoding,
-                      values: ['auto', 'auto-copy', 'auto-safe', 'no', 'yes']
-                          .map((e) {
+                    title: '硬解模式',
+                    value: hardwareDecoding,
+                    values: ['auto', 'auto-copy', 'auto-safe', 'no', 'yes'].map(
+                      (e) {
                         return {'title': e, 'value': e};
-                      }).toList());
+                      },
+                    ).toList(),
+                  );
                 },
               );
               if (result != null) {

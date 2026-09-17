@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### 修复
+
+- 播放器定格卡死与高倍速缓冲断流综合治理：
+  - 动态缓冲容量阶梯与解复用器配置：点播 Wi-Fi 默认解复用器缓冲提升至 32MB，蜂窝网络 16MB，扩展/VPN 模式 64MB；直播默认 16MB，扩展 32MB；回退缓冲解耦为 `(maxBytes ~/ 4).clamp(2MB, 8MB)`；前向预读锁定为点播 30s / 直播 10s；卡顿恢复设为点播 2.0s / 直播 1.0s；多网并发准确识别避免 Wi-Fi 下被误判为蜂窝限制；
+  - 根治 Android 动态高刷屏下的播放定格假死：将移动端 `video-sync` 默认基线由 `display-resample` 调整为 `audio`，避免动态帧率与 LTPO 高刷屏下重采样算法发散导致 AudioTrack 欠载死锁；在存储层引入平滑迁移与备份导入对称守卫，自动将老用户的历史遗留配置规整为 `audio` 并保护主动自定义配置；
+  - DASH 外置音轨与视频流断线自愈：在底层 FFmpeg 协议层注入 `stream-lavf-o` 网络重连参数（`reconnect=1,reconnect_streamed=1,reconnect_delay_max=5,reconnect_on_network_error=1`），解决 B 站音视频分离流中音频连接闲置被 CDN 断开导致的播放停滞，配合 30s 前瞻缓冲实现网络抖动无感自愈。
+
 ## [1.4.0-beta.4] - 2026-09-17
 
 ### 新增

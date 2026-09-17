@@ -56,6 +56,17 @@ class GStorage {
       SettingBoxKey.defaultPicQa,
       defaultValue: 10,
     ); // 设置全局变量
+    await migrateVideoSyncV2();
+  }
+
+  static Future<void> migrateVideoSyncV2() async {
+    if (setting.get(SettingBoxKey.videoSyncV2Migrated, defaultValue: false) !=
+        true) {
+      if (setting.get(SettingBoxKey.videoSync) == 'display-resample') {
+        await setting.put(SettingBoxKey.videoSync, 'audio');
+      }
+      await setting.put(SettingBoxKey.videoSyncV2Migrated, true);
+    }
   }
 
   // 特殊处理playerGestureActionMap的逻辑
@@ -104,6 +115,7 @@ class GStorage {
       fromEncodableManually(Map<dynamic, dynamic>.from(settingData)),
     );
     await video.putAll(Map<dynamic, dynamic>.from(videoData));
+    await migrateVideoSyncV2();
   }
 
   static void regAdapter() {
@@ -134,7 +146,7 @@ class GStorage {
 
 class SettingBoxKey {
   /// 播放器
-  static const String btmProgressBehavior = 'btmProgressBehavior', defaultVideoSpeed = 'defaultVideoSpeed', autoUpgradeEnable = 'autoUpgradeEnable', feedBackEnable = 'feedBackEnable', defaultVideoQa = 'defaultVideoQa', defaultAudioQa = 'defaultAudioQa', autoPlayEnable = 'autoPlayEnable', fullScreenMode = 'fullScreenMode', defaultDecode = 'defaultDecode', secondDecode = 'secondDecode', danmakuEnable = 'danmakuEnable', defaultToastOp = 'defaultToastOp', defaultPicQa = 'defaultPicQa', enableHA = 'enableHA', useOpenSLES = 'useOpenSLES', expandBuffer = 'expandBuffer', hardwareDecoding = 'hardwareDecoding', videoSync = 'videoSync', enableVerticalExpand = 'enableVerticalExpand', enableOnlineTotal = 'enableOnlineTotal', enableAutoEnter = 'enableAutoEnter', enableAutoExit = 'enableAutoExit', enableLongShowControl = 'enableLongShowControl', allowRotateScreen = 'allowRotateScreen', horizontalScreen = 'horizontalScreen', p1080 = 'p1080', CDNService = 'CDNService', disableAudioCDN = 'disableAudioCDN',
+  static const String btmProgressBehavior = 'btmProgressBehavior', defaultVideoSpeed = 'defaultVideoSpeed', autoUpgradeEnable = 'autoUpgradeEnable', feedBackEnable = 'feedBackEnable', defaultVideoQa = 'defaultVideoQa', defaultAudioQa = 'defaultAudioQa', autoPlayEnable = 'autoPlayEnable', fullScreenMode = 'fullScreenMode', defaultDecode = 'defaultDecode', secondDecode = 'secondDecode', danmakuEnable = 'danmakuEnable', defaultToastOp = 'defaultToastOp', defaultPicQa = 'defaultPicQa', enableHA = 'enableHA', useOpenSLES = 'useOpenSLES', expandBuffer = 'expandBuffer', hardwareDecoding = 'hardwareDecoding', videoSync = 'videoSync', videoSyncV2Migrated = 'videoSyncV2Migrated', enableVerticalExpand = 'enableVerticalExpand', enableOnlineTotal = 'enableOnlineTotal', enableAutoEnter = 'enableAutoEnter', enableAutoExit = 'enableAutoExit', enableLongShowControl = 'enableLongShowControl', allowRotateScreen = 'allowRotateScreen', horizontalScreen = 'horizontalScreen', p1080 = 'p1080', CDNService = 'CDNService', disableAudioCDN = 'disableAudioCDN',
   // enableCDN = 'enableCDN',
   autoMiniPlayer = 'autoMiniPlayer', autoPiP = 'autoPiP', pipNoDanmaku = 'pipNoDanmaku', enableAutoLongPressSpeed = 'enableAutoLongPressSpeed', enableLongPressSpeedIncrease = 'enableLongPressSpeedIncrease', subtitlePreference = 'subtitlePreference', playerGestureActionMap = 'playerGestureActionMap',
   // youtube 双击快进快退

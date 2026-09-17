@@ -754,7 +754,7 @@ class PlPlayerController with WidgetsBindingObserver {
           'hwdec': hwdec,
           'videoSync': setting.get(
             SettingBoxKey.videoSync,
-            defaultValue: 'display-resample',
+            defaultValue: 'audio',
           ),
           'expandedBuffer': setting.get(
             SettingBoxKey.expandBuffer,
@@ -868,19 +868,45 @@ class PlPlayerController with WidgetsBindingObserver {
     }
   }
 
-  Future<bool> _detectActiveAndroidVpn() async {
-    if (!Platform.isAndroid) return false;
+  Future<({bool vpnActive, bool isMobileNetwork})>
+  _detectNetworkConditions() async {
     try {
       final List<ConnectivityResult> results = await Connectivity()
           .checkConnectivity();
-      return hasActiveVpn(results);
+      final bool vpnActive = Platform.isAndroid && hasActiveVpn(results);
+      final bool isMobileNetwork = hasActiveMobile(results);
+      return (vpnActive: vpnActive, isMobileNetwork: isMobileNetwork);
     } catch (err) {
       await _diagnosticSession?.checkpoint(
-        'vpn_detection_error',
+        'network_detection_error',
         <String, Object?>{'error': err.toString()},
       );
-      return false;
+      return (vpnActive: false, isMobileNetwork: false);
     }
+  }
+
+  Future<void> _applyDemuxerBufferProperties(
+    NativePlayer pp,
+    PlayerBufferPolicy policy,
+  ) {
+    return Future.wait([
+      pp.setProperty('demuxer-max-bytes', policy.demuxerMaxBytes.toString()),
+      pp.setProperty(
+        'demuxer-max-back-bytes',
+        policy.demuxerMaxBackBytes.toString(),
+      ),
+      pp.setProperty(
+        'demuxer-readahead-secs',
+        policy.demuxerReadaheadSecs.toString(),
+      ),
+      pp.setProperty(
+        'demuxer-hysteresis-secs',
+        policy.demuxerHysteresisSecs.toString(),
+      ),
+      pp.setProperty('cache-pause-wait', policy.cachePauseWait.toString()),
+      pp.setProperty('network-timeout', policy.networkTimeout.toString()),
+      pp.setProperty('stream-lavf-o', defaultStreamLavfOptions),
+    ]);
   }
 
   // 配置播放器
@@ -906,11 +932,13 @@ class PlPlayerController with WidgetsBindingObserver {
       SettingBoxKey.expandBuffer,
       defaultValue: false,
     );
-    final bool vpnActive = await _detectActiveAndroidVpn();
+    final ({bool vpnActive, bool isMobileNetwork}) network =
+        await _detectNetworkConditions();
     final PlayerBufferPolicy bufferPolicy = resolvePlayerBufferPolicy(
       isLive: videoType.value == 'live',
       forceExpanded: forceExpanded,
-      vpnActive: vpnActive,
+      vpnActive: network.vpnActive,
+      isMobileNetwork: network.isMobileNetwork,
     );
     final int bufferSize = bufferPolicy.bufferSize;
     final String? effectiveHwdec = enableHA
@@ -923,7 +951,13 @@ class PlPlayerController with WidgetsBindingObserver {
           'reuse': _videoPlayerController != null,
           'bufferSize': bufferSize,
           'bufferReason': bufferPolicy.reason.name,
-          'vpnActive': vpnActive,
+          'maxBackBytes': bufferPolicy.demuxerMaxBackBytes,
+          'readaheadSecs': bufferPolicy.demuxerReadaheadSecs,
+          'hysteresisSecs': bufferPolicy.demuxerHysteresisSecs,
+          'cachePauseWait': bufferPolicy.cachePauseWait,
+          'networkTimeout': bufferPolicy.networkTimeout,
+          'vpnActive': network.vpnActive,
+          'isMobileNetwork': network.isMobileNetwork,
           'initialPositionMs': initialPosition.inMilliseconds,
           'effectiveHwdec': effectiveHwdec,
         });
@@ -931,7 +965,6 @@ class PlPlayerController with WidgetsBindingObserver {
         _videoPlayerController ??
         Player(
           configuration: PlayerConfiguration(
-            // 默认缓冲 4M 大小
             bufferSize: bufferSize,
             logLevel: MPVLogLevel.v,
           ),
@@ -939,8 +972,7 @@ class PlPlayerController with WidgetsBindingObserver {
     await _diagnosticSession?.checkpoint('native_player_ready');
     final NativePlayer pp = player.platform as NativePlayer;
     await _diagnosticSession?.checkpoint('native_properties_begin');
-    await pp.setProperty('demuxer-max-bytes', bufferSize.toString());
-    await pp.setProperty('demuxer-max-back-bytes', bufferSize.toString());
+    await _applyDemuxerBufferProperties(pp, bufferPolicy);
     // 解除倍速限制
     await pp.setProperty("af", "scaletempo2=max-speed=8");
     //  音量不一致
@@ -951,10 +983,10 @@ class PlPlayerController with WidgetsBindingObserver {
           : "audiotrack,opensles";
       await pp.setProperty("ao", ao);
     }
-    // video-sync=display-resample
+    // video-sync=audio
     await pp.setProperty(
       "video-sync",
-      setting.get(SettingBoxKey.videoSync, defaultValue: 'display-resample'),
+      setting.get(SettingBoxKey.videoSync, defaultValue: 'audio'),
     );
     if (Platform.isAndroid && _videoController != null) {
       await pp.setProperty('vf', '');
@@ -1068,6 +1100,24 @@ class PlPlayerController with WidgetsBindingObserver {
       if (expectedSession != null && expectedSession != _playbackSession) {
         return false;
       }
+      final ({bool vpnActive, bool isMobileNetwork}) network =
+          await _detectNetworkConditions();
+      final PlayerBufferPolicy bufferPolicy = resolvePlayerBufferPolicy(
+        isLive: videoType.value == 'live',
+        forceExpanded: setting.get(
+          SettingBoxKey.expandBuffer,
+          defaultValue: false,
+        ),
+        vpnActive: network.vpnActive,
+        isMobileNetwork: network.isMobileNetwork,
+      );
+      if (expectedSession != null && expectedSession != _playbackSession) {
+        return false;
+      }
+      await _applyDemuxerBufferProperties(
+        _videoPlayerController!.platform as NativePlayer,
+        bufferPolicy,
+      );
       _positionGuard.expectPosition(currentPos);
       await _videoPlayerController!.open(
         Media(
