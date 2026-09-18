@@ -3,7 +3,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 const int _mebibyte = 1024 * 1024;
 
 const String defaultStreamLavfOptions =
-    'reconnect=1,reconnect_streamed=1,reconnect_delay_max=5,reconnect_on_network_error=1';
+    'reconnect=1,reconnect_streamed=1,reconnect_delay_max=5,reconnect_on_network_error=1,reconnect_on_http_error=5xx';
 
 enum PlayerBufferReason { cellular, standard, vpn, userExpanded }
 

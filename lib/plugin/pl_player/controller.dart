@@ -2060,11 +2060,22 @@ class PlPlayerController with WidgetsBindingObserver {
     }
   }
 
-  /// 关闭控制栏
+  /// 锁定/解锁控制栏（300ms 防抖与防爆 Toast）
   void onLockControl(bool val) {
-    feedBack();
-    _controlsLock.value = val;
-    showControls.value = !val;
+    EasyThrottle.throttle(
+      'player_lock_control',
+      const Duration(milliseconds: 300),
+      () {
+        feedBack();
+        _controlsLock.value = val;
+        showControls.value = !val;
+        if (!PlPlayerController.isHeadlessTestMode) {
+          try {
+            SmartDialog.showToast(val ? '已锁定屏幕' : '已解锁屏幕');
+          } catch (_) {}
+        }
+      },
+    );
   }
 
   void toggleFullScreen(bool val) {

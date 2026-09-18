@@ -83,7 +83,9 @@ public class VideoOutput implements TextureRegistry.SurfaceProducer.Callback {
                     return;
                 }
                 surfaceProducer.setSize(width, height);
-                onSurfaceAvailable();
+                if (this.wid == 0) {
+                    onSurfaceAvailable();
+                }
             } catch (Throwable e) {
                 Log.e(TAG, "setSurfaceSize", e);
             }
@@ -108,6 +110,7 @@ public class VideoOutput implements TextureRegistry.SurfaceProducer.Callback {
             if (wid != 0) {
                 final long widReference = wid;
                 handler.postDelayed(() -> deleteGlobalObjectRef(widReference), 5000);
+                wid = 0;
             }
         }
     }

@@ -1596,131 +1596,175 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         }),
 
         // 锁
-        SafeArea(
-          child: Obx(() {
-            bool isEquivalentFullScreen = _isEquivalentFullScreen;
-            return Align(
-              alignment: Alignment.centerLeft,
-              child: FractionalTranslation(
-                translation: const Offset(1, -0.2),
+        Positioned(
+          left: max(
+            16.0,
+            max(
+                  MediaQuery.paddingOf(context).left,
+                  MediaQuery.viewPaddingOf(context).left,
+                ) +
+                8.0,
+          ),
+          top: 0,
+          bottom: 0,
+          width: 44.0,
+          child: Center(
+            child: Obx(() {
+              final bool isLandscape =
+                  MediaQuery.orientationOf(context) == Orientation.landscape;
+              final bool isLocked = playerController.controlsLock.value;
+              final bool isVisible = resolveExtraButtonVisibility(
+                isLive: playerController.videoType.value == 'live',
+                enableExtraButtonOnFullScreen: enableExtraButtonOnFullScreen,
+                showControls: playerController.showControls.value,
+                isFullScreen: playerController.isFullScreen.value,
+                isEquivalentFullScreen: _isEquivalentFullScreen,
+                isLandscape: isLandscape,
+                controlsLock: isLocked,
+              );
+
+              return IgnorePointer(
+                ignoring: !isVisible,
                 child: Visibility(
-                  visible:
-                      playerController.videoType.value != 'live' &&
-                      enableExtraButtonOnFullScreen &&
-                      playerController.showControls.value &&
-                      (isEquivalentFullScreen ||
-                          playerController.controlsLock.value),
+                  visible: isVisible,
                   child: ComBtn(
+                    size: 44.0,
+                    backgroundColor: const Color(0x73000000),
+                    shape: const CircleBorder(),
+                    semanticsLabel: isLocked ? '解锁屏幕' : '锁定屏幕',
+                    hint: isLocked ? '双击解锁播放器控件' : '双击锁定播放器控件',
                     icon: FaIcon(
-                      playerController.controlsLock.value
+                      isLocked
                           ? FontAwesomeIcons.lock
                           : FontAwesomeIcons.lockOpen,
-                      semanticLabel: playerController.controlsLock.value
-                          ? '解锁'
-                          : '锁定',
-                      size: 15,
+                      size: 16,
                       color: Colors.white,
                     ),
-                    fuc: () => playerController.onLockControl(
-                      !playerController.controlsLock.value,
-                    ),
+                    fuc: () => playerController.onLockControl(!isLocked),
                   ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
+          ),
         ),
 
         // 截图
-        SafeArea(
-          child: Obx(() {
-            bool isEquivalentFullScreen = _isEquivalentFullScreen;
-            return Align(
-              alignment: Alignment.centerRight,
-              child: FractionalTranslation(
-                translation: const Offset(-1, -0.2),
+        Positioned(
+          right: max(
+            16.0,
+            max(
+                  MediaQuery.paddingOf(context).right,
+                  MediaQuery.viewPaddingOf(context).right,
+                ) +
+                8.0,
+          ),
+          top: 0,
+          bottom: 0,
+          width: 44.0,
+          child: Center(
+            child: Obx(() {
+              final bool isLandscape =
+                  MediaQuery.orientationOf(context) == Orientation.landscape;
+              final bool isVisible = resolveScreenshotButtonVisibility(
+                enableExtraButtonOnFullScreen: enableExtraButtonOnFullScreen,
+                showControls: playerController.showControls.value,
+                isFullScreen: playerController.isFullScreen.value,
+                isEquivalentFullScreen: _isEquivalentFullScreen,
+                isLandscape: isLandscape,
+                controlsLock: playerController.controlsLock.value,
+              );
+
+              return IgnorePointer(
+                ignoring: !isVisible,
                 child: Visibility(
-                  visible:
-                      playerController.showControls.value &&
-                      isEquivalentFullScreen &&
-                      enableExtraButtonOnFullScreen,
+                  visible: isVisible,
                   child: ComBtn(
+                    size: 44.0,
+                    backgroundColor: const Color(0x73000000),
+                    shape: const CircleBorder(),
+                    semanticsLabel: '屏幕截图',
+                    hint: '双击截取当前视频画面',
                     icon: const Icon(
                       Icons.photo_camera,
-                      semanticLabel: '截图',
-                      size: 20,
+                      size: 18,
                       color: Colors.white,
                     ),
                     fuc: () {
-                      SmartDialog.showToast('截图中');
-                      playerController.screenshot(format: 'image/png').then((
-                        value,
-                      ) {
-                        if (value != null) {
-                          if (!context.mounted) return;
-                          SmartDialog.showToast('点击弹窗保存截图');
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return AlertDialog(
-                                // title: const Text('点击保存'),
-                                titlePadding: EdgeInsets.zero,
-                                contentPadding: const EdgeInsets.all(8),
-                                insetPadding: EdgeInsets.only(
-                                  left: context.width / 2,
-                                ),
-                                //移除圆角
-                                shape: const RoundedRectangleBorder(),
-                                content: GestureDetector(
-                                  onTap: () async {
-                                    String name = DateTime.now()
-                                        .toString()
-                                        .replaceAll(' ', '_')
-                                        .replaceAll(':', '-')
-                                        .split('.')
-                                        .first;
-                                    final SaveResult result =
-                                        await SaverGallery.saveImage(
-                                          value,
-                                          fileName: name,
-                                          extension: 'png',
-                                          androidRelativePath:
-                                              "Pictures/Screenshots",
-                                          skipIfExists: false,
-                                        );
+                      EasyThrottle.throttle(
+                        'player_screenshot',
+                        const Duration(milliseconds: 1000),
+                        () {
+                          SmartDialog.showToast('截图中');
+                          playerController.screenshot(format: 'image/png').then(
+                            (value) {
+                              if (value != null) {
+                                if (!context.mounted) return;
+                                SmartDialog.showToast('点击弹窗保存截图');
+                                showDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return AlertDialog(
+                                      // title: const Text('点击保存'),
+                                      titlePadding: EdgeInsets.zero,
+                                      contentPadding: const EdgeInsets.all(8),
+                                      insetPadding: EdgeInsets.only(
+                                        left: context.width / 2,
+                                      ),
+                                      //移除圆角
+                                      shape: const RoundedRectangleBorder(),
+                                      content: GestureDetector(
+                                        onTap: () async {
+                                          String name = DateTime.now()
+                                              .toString()
+                                              .replaceAll(' ', '_')
+                                              .replaceAll(':', '-')
+                                              .split('.')
+                                              .first;
+                                          final SaveResult result =
+                                              await SaverGallery.saveImage(
+                                                value,
+                                                fileName: name,
+                                                extension: 'png',
+                                                androidRelativePath:
+                                                    "Pictures/Screenshots",
+                                                skipIfExists: false,
+                                              );
 
-                                    if (result.isSuccess) {
-                                      Get.back();
-                                      SmartDialog.showToast(
-                                        '$name.png已保存到相册/截图',
-                                      );
-                                    } else {
-                                      await SmartDialog.showToast(
-                                        '保存失败，${result.errorMessage}',
-                                      );
-                                    }
+                                          if (result.isSuccess) {
+                                            Get.back();
+                                            SmartDialog.showToast(
+                                              '$name.png已保存到相册/截图',
+                                            );
+                                          } else {
+                                            await SmartDialog.showToast(
+                                              '保存失败，${result.errorMessage}',
+                                            );
+                                          }
+                                        },
+                                        child: ConstrainedBox(
+                                          constraints: BoxConstraints(
+                                            maxWidth: context.width / 3,
+                                            maxHeight: context.height / 3,
+                                          ),
+                                          child: Image.memory(value),
+                                        ),
+                                      ),
+                                    );
                                   },
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(
-                                      maxWidth: context.width / 3,
-                                      maxHeight: context.height / 3,
-                                    ),
-                                    child: Image.memory(value),
-                                  ),
-                                ),
-                              );
+                                );
+                              } else {
+                                SmartDialog.showToast('截图失败');
+                              }
                             },
                           );
-                        } else {
-                          SmartDialog.showToast('截图失败');
-                        }
-                      });
+                        },
+                      );
                     },
                   ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
+          ),
         ),
         //
         Obx(() {
@@ -1897,4 +1941,36 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       ],
     );
   }
+}
+
+bool resolveExtraButtonVisibility({
+  required bool isLive,
+  required bool enableExtraButtonOnFullScreen,
+  required bool showControls,
+  required bool isFullScreen,
+  required bool isEquivalentFullScreen,
+  required bool isLandscape,
+  required bool controlsLock,
+}) {
+  if (controlsLock) {
+    return showControls;
+  }
+  if (isLive || !enableExtraButtonOnFullScreen || !showControls) {
+    return false;
+  }
+  return true;
+}
+
+bool resolveScreenshotButtonVisibility({
+  required bool enableExtraButtonOnFullScreen,
+  required bool showControls,
+  required bool isFullScreen,
+  required bool isEquivalentFullScreen,
+  required bool isLandscape,
+  bool controlsLock = false,
+}) {
+  if (controlsLock || !enableExtraButtonOnFullScreen || !showControls) {
+    return false;
+  }
+  return isFullScreen || isEquivalentFullScreen || isLandscape;
 }

@@ -212,7 +212,7 @@ void main() {
     test('defines safe reconnect options for FFmpeg/libavformat', () {
       expect(
         defaultStreamLavfOptions,
-        'reconnect=1,reconnect_streamed=1,reconnect_delay_max=5,reconnect_on_network_error=1',
+        'reconnect=1,reconnect_streamed=1,reconnect_delay_max=5,reconnect_on_network_error=1,reconnect_on_http_error=5xx',
       );
       expect(defaultStreamLavfOptions, contains('reconnect=1'));
       expect(defaultStreamLavfOptions, contains('reconnect_streamed=1'));
@@ -221,11 +221,12 @@ void main() {
         defaultStreamLavfOptions,
         contains('reconnect_on_network_error=1'),
       );
+      expect(defaultStreamLavfOptions, contains('reconnect_on_http_error=5xx'));
       // Ensure dangerous reconnect parameters are NOT present
       expect(defaultStreamLavfOptions, isNot(contains('reconnect_at_eof')));
       expect(
         defaultStreamLavfOptions,
-        isNot(contains('reconnect_on_http_error')),
+        isNot(contains('reconnect_on_http_error=4xx')),
       );
     });
   });
