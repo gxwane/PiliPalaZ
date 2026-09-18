@@ -888,44 +888,21 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     final PlPlayerController playerController = widget.controller;
     final Color colorTheme = Theme.of(context).colorScheme.primary;
     const TextStyle textStyle = TextStyle(color: Colors.white, fontSize: 12);
-    final activeVideoController =
-        videoController ?? playerController.videoController;
-    final bool showNativeVideo =
-        !PlPlayerController.isHeadlessTestMode && activeVideoController != null;
-    Widget video = showNativeVideo
-        ? Video(
-            key: ValueKey(
-              '${playerController.videoFit.value}'
-              '${playerController.continuePlayInBackground.value}'
-              '${playerController.subtitleFontSize.value}'
-              '${playerController.subtitleBottomPadding.value}',
-            ),
-            controller: activeVideoController,
-            controls: NoVideoControls,
-            pauseUponEnteringBackgroundMode:
-                !playerController.continuePlayInBackground.value,
-            resumeUponEnteringForegroundMode: true,
-            // 字幕尺寸调节
-            subtitleViewConfiguration: SubtitleViewConfiguration(
-              style: playerController.subtitleStyle.value,
-              padding: EdgeInsets.only(
-                bottom: playerController.subtitleBottomPadding.value,
-              ),
-            ),
-            fit: playerController.videoFit.value,
-          )
-        : const SizedBox.expand(
-            child: ColoredBox(
-              color: Colors.black,
-              child: Center(
-                child: Text(
-                  'Headless Video Placeholder',
-                  key: Key('headless_video_placeholder'),
-                  style: TextStyle(color: Colors.white70),
-                ),
-              ),
-            ),
-          );
+    final ValueKey<String> viewKey = ValueKey(
+      '${playerController.videoFit.value}'
+      '${playerController.continuePlayInBackground.value}'
+      '${playerController.subtitleFontSize.value}'
+      '${playerController.subtitleBottomPadding.value}',
+    );
+    Widget video = playerController.buildVideoView(
+      key: viewKey,
+      fit: playerController.videoFit.value,
+      subtitleStyle: playerController.subtitleStyle.value,
+      subtitleBottomPadding: playerController.subtitleBottomPadding.value,
+      pauseUponEnteringBackgroundMode:
+          !playerController.continuePlayInBackground.value,
+      resumeUponEnteringForegroundMode: true,
+    );
     return Stack(
       fit: StackFit.passthrough,
       key: _playerKey,
@@ -1080,15 +1057,21 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                           playerController.controls = false;
                           int rationalWidth = 16;
                           int rationalHeight = 9;
-                          final vpc = playerController.videoPlayerController;
-                          if (playerController.canControlPlayback &&
-                              vpc != null) {
-                            final state = vpc.state;
-                            final width = state.width ?? 0;
-                            final height = state.height ?? 0;
-                            if (width > 0 && height > 0) {
-                              rationalWidth = width;
-                              rationalHeight = height;
+                          final dim = playerController.currentDimension;
+                          if (dim.hasSize) {
+                            rationalWidth = dim.width;
+                            rationalHeight = dim.height;
+                          } else {
+                            final vpc = playerController.videoPlayerController;
+                            if (playerController.canControlPlayback &&
+                                vpc != null) {
+                              final state = vpc.state;
+                              final width = state.width ?? 0;
+                              final height = state.height ?? 0;
+                              if (width > 0 && height > 0) {
+                                rationalWidth = width;
+                                rationalHeight = height;
+                              }
                             }
                           }
                           FlPiP().enable(

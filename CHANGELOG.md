@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+### 重构
+
+- 播放器架构全平台抽象解耦（Phase 2: Player Engine Abstraction）：
+  - 抽离统一播放器内核抽象契约 `IPlayerEngine`，全面抹平底层播放引擎（`media_kit`、`libmpv` 与后续 `Media3`）差异；
+  - 建立统一媒体源与状态数据结构：`PlayerMediaItem`、`VideoDimension`、`EnginePlaybackState` 及错误自愈模型 `EngineError`；
+  - 实现 `MpvPlayerEngine` 适配类，完整内聚 libmpv 解复用器缓冲调控、`video-sync=audio`、断网重连与 Surface 销毁回调安全排空逻辑；
+  - 落地 `HeadlessPlayerEngine`，彻底解耦自动化单元/旅程测试对原生平台动态库的硬性依赖；
+  - 重构 `PlPlayerController` 与 `view.dart` 对接引擎抽象契约与统一视图工厂 `buildVideoView()`，向下保留兼容垫片与画中画宽高同步获取，达成全业务零回归。
+
 ## [1.4.0] - 2026-09-18
 
 ### 新增

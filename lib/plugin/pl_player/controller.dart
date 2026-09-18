@@ -62,6 +62,7 @@ class PlPlayerController with WidgetsBindingObserver {
   static Player? _videoPlayerController;
   VideoController? _videoController;
   PlaybackCommandCoordinator? _playbackCommands;
+  IPlayerEngine? _engine;
 
   // 添加一个私有静态变量来保存实例
   static PlPlayerController? _instance;
@@ -242,19 +243,86 @@ class PlPlayerController with WidgetsBindingObserver {
   /// [videoPlayerController] instance of Player
   Player? get videoPlayerController => _videoPlayerController;
 
+  /// [engine] instance of IPlayerEngine
+  IPlayerEngine? get engine => _engine;
+
+  /// [currentDimension] synchronous video dimension
+  VideoDimension get currentDimension =>
+      _engine?.currentDimension ??
+      VideoDimension(
+        _videoPlayerController?.state.width ?? 0,
+        _videoPlayerController?.state.height ?? 0,
+      );
+
   int get _playbackSession => _playbackLifecycle.session;
 
   bool get canControlPlayback =>
       playbackLifecycleState.value == PlaybackLifecycleState.ready &&
       _playbackLifecycle.canControlPlayback &&
       _playbackCommands != null &&
-      (_videoPlayerController != null || isHeadlessTestMode);
+      (_videoPlayerController != null || isHeadlessTestMode || _engine != null);
 
   bool get isPlaying =>
       playerStatus.status.value == PlayerStatus.playing && canControlPlayback;
 
   /// [videoController] instance of Player
   VideoController? get videoController => _videoController;
+
+  /// 统一视图构建工厂（优先交由引擎渲染）
+  Widget buildVideoView({
+    Key? key,
+    BoxFit fit = BoxFit.contain,
+    TextStyle? subtitleStyle,
+    double? subtitleBottomPadding,
+    bool pauseUponEnteringBackgroundMode = false,
+    bool resumeUponEnteringForegroundMode = true,
+  }) {
+    if (isHeadlessTestMode || (_engine == null && _videoController == null)) {
+      return const SizedBox.expand(
+        key: Key('headless_video_placeholder'),
+        child: ColoredBox(
+          color: Colors.black,
+          child: Center(
+            child: Text(
+              'Headless Video Placeholder',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ),
+        ),
+      );
+    }
+    if (_engine != null) {
+      return _engine!.buildVideoView(
+        key: key,
+        fit: fit,
+        subtitleStyle: subtitleStyle,
+        subtitleBottomPadding: subtitleBottomPadding,
+        pauseUponEnteringBackgroundMode: pauseUponEnteringBackgroundMode,
+        resumeUponEnteringForegroundMode: resumeUponEnteringForegroundMode,
+      );
+    }
+    return Video(
+      key: key,
+      controller: _videoController!,
+      controls: NoVideoControls,
+      pauseUponEnteringBackgroundMode: pauseUponEnteringBackgroundMode,
+      resumeUponEnteringForegroundMode: resumeUponEnteringForegroundMode,
+      subtitleViewConfiguration: SubtitleViewConfiguration(
+        style:
+            subtitleStyle ??
+            const TextStyle(
+              height: 1.4,
+              fontSize: 24,
+              letterSpacing: 0.2,
+              wordSpacing: 0.2,
+              color: Color(0xffffffff),
+              backgroundColor: Color(0xaa000000),
+            ),
+        padding: EdgeInsets.only(bottom: subtitleBottomPadding ?? 24.0),
+      ),
+      fit: fit,
+    );
+  }
 
   Rx<bool> get isSliderMoving => _isSliderMoving;
 
@@ -776,6 +844,17 @@ class PlPlayerController with WidgetsBindingObserver {
       }
 
       if (isHeadlessTestMode) {
+        _engine = HeadlessPlayerEngine(
+          onPlayingChanged: (bool playing) {
+            playerStatus.status.value = playing
+                ? PlayerStatus.playing
+                : PlayerStatus.paused;
+            videoPlayerServiceHandler.onStatusChange(
+              playerStatus.status.value,
+              isBuffering.value,
+            );
+          },
+        );
         _playbackCommands = PlaybackCommandCoordinator(
           engine: HeadlessTestPlaybackEngine((bool playing) {
             playerStatus.status.value = playing
@@ -1041,6 +1120,15 @@ class PlPlayerController with WidgetsBindingObserver {
       );
     }
     await _diagnosticSession?.checkpoint('video_controller_ready');
+    _engine = MpvPlayerEngine(
+      existingPlayer: player,
+      existingVideoController: _videoController,
+      bufferPolicy: bufferPolicy,
+      enableHardwareAcceleration: enableHA,
+      hwdec: effectiveHwdec,
+      videoSync: setting.get(SettingBoxKey.videoSync, defaultValue: 'audio'),
+      useOpenSLES: setting.get(SettingBoxKey.useOpenSLES, defaultValue: false),
+    );
 
     player.setPlaylistMode(looping);
     await _diagnosticSession?.checkpoint('media_open_begin');
@@ -2490,6 +2578,15 @@ class PlPlayerController with WidgetsBindingObserver {
 
   Future<void> _disposeNativePlayer() async {
     _cancelAllTimers();
+    final IPlayerEngine? engine = _engine;
+    _engine = null;
+    if (engine != null) {
+      try {
+        await engine.dispose();
+      } catch (err) {
+        debugPrint('dispose engine failed: $err');
+      }
+    }
     final Player? player = _videoPlayerController;
     _videoPlayerController = null;
     _videoController = null;

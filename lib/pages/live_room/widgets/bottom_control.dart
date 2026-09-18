@@ -103,14 +103,20 @@ class _BottomControlState extends State<BottomControl> {
                   int rationalHeight = 9;
                   if (controller != null) {
                     controller.controls = false;
-                    final vpc = controller.videoPlayerController;
-                    if (controller.canControlPlayback && vpc != null) {
-                      final state = vpc.state;
-                      final width = state.width ?? 0;
-                      final height = state.height ?? 0;
-                      if (width > 0 && height > 0) {
-                        rationalWidth = width;
-                        rationalHeight = height;
+                    final dim = controller.currentDimension;
+                    if (dim.hasSize) {
+                      rationalWidth = dim.width;
+                      rationalHeight = dim.height;
+                    } else {
+                      final vpc = controller.videoPlayerController;
+                      if (controller.canControlPlayback && vpc != null) {
+                        final state = vpc.state;
+                        final width = state.width ?? 0;
+                        final height = state.height ?? 0;
+                        if (width > 0 && height > 0) {
+                          rationalWidth = width;
+                          rationalHeight = height;
+                        }
                       }
                     }
                   }

@@ -1,5 +1,3 @@
-library pl_player;
-
 export './controller.dart';
 export './view.dart';
 export './models/data_source.dart';
@@ -14,3 +12,6 @@ export './playback_resource_ownership.dart';
 export './widgets/app_bar_ani.dart';
 export './utils/fullscreen.dart';
 export './utils.dart';
+export './engine/player_engine_interface.dart';
+export './engine/impl/mpv_player_engine.dart';
+export './engine/impl/headless_player_engine.dart';
