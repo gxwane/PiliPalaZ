@@ -25,6 +25,7 @@ class MainActivity: FlPiPActivity() {
         AppUpdateChannel(this, flutterEngine)
         OrientationChannel(this, flutterEngine)
         DiskSpaceChannel(this, flutterEngine)
+        io.github.gxwane.pilipalaz.media3.Media3PlayerPlugin.registerWith(flutterEngine, this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

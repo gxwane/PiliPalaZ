@@ -12,6 +12,12 @@
   - 实现 `MpvPlayerEngine` 适配类，完整内聚 libmpv 解复用器缓冲调控、`video-sync=audio`、断网重连与 Surface 销毁回调安全排空逻辑；
   - 落地 `HeadlessPlayerEngine`，彻底解耦自动化单元/旅程测试对原生平台动态库的硬性依赖；
   - 重构 `PlPlayerController` 与 `view.dart` 对接引擎抽象契约与统一视图工厂 `buildVideoView()`，向下保留兼容垫片与画中画宽高同步获取，达成全业务零回归。
+- Android 原生 Media3/ExoPlayer 播放内核接入（Phase 3: Android Media3 Native Engine）：
+  - 引入 AndroidX Media3 (1.5.1) 原生依赖，落地 `Media3PlayerPlugin`、`Media3PlayerHolder` 与 `Media3SurfaceManager`；
+  - 采用 Flutter 3.38+ 推荐的 `TextureRegistry.SurfaceProducer` 与双重销毁安全守卫，根治 Impeller/Vulkan 架构下的纹理崩溃与内存泄漏；
+  - 原生支持 B 站 DASH 音视频双流直出（`MergingMediaSource`）与精确剪裁，统一网络请求头与 25 秒防抖缓冲池；
+  - 实现 Dart 端 `Media3PlayerEngine` 并入统一引擎体系，通过 Platform Channel 达成 100ms 节流事件同步；
+  - 确保 Media3 专注于音视频解码渲染，100% 隔离 AudioFocus 与 MediaSession，杜绝与前台服务及 `audio_service` 冲突。
 
 ## [1.4.0] - 2026-09-18
 

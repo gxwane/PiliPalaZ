@@ -1120,15 +1120,25 @@ class PlPlayerController with WidgetsBindingObserver {
       );
     }
     await _diagnosticSession?.checkpoint('video_controller_ready');
-    _engine = MpvPlayerEngine(
-      existingPlayer: player,
-      existingVideoController: _videoController,
-      bufferPolicy: bufferPolicy,
-      enableHardwareAcceleration: enableHA,
-      hwdec: effectiveHwdec,
-      videoSync: setting.get(SettingBoxKey.videoSync, defaultValue: 'audio'),
-      useOpenSLES: setting.get(SettingBoxKey.useOpenSLES, defaultValue: false),
+    final String selectedKernel = setting.get(
+      SettingBoxKey.playerKernel,
+      defaultValue: 'mpv',
     );
+    if (selectedKernel == 'media3' && Platform.isAndroid) {
+      final media3Engine = Media3PlayerEngine();
+      await media3Engine.initialize();
+      _engine = media3Engine;
+    } else {
+      _engine = MpvPlayerEngine(
+        existingPlayer: player,
+        existingVideoController: _videoController,
+        bufferPolicy: bufferPolicy,
+        enableHardwareAcceleration: enableHA,
+        hwdec: effectiveHwdec,
+        videoSync: setting.get(SettingBoxKey.videoSync, defaultValue: 'audio'),
+        useOpenSLES: setting.get(SettingBoxKey.useOpenSLES, defaultValue: false),
+      );
+    }
 
     player.setPlaylistMode(looping);
     await _diagnosticSession?.checkpoint('media_open_begin');
