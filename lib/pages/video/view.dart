@@ -803,7 +803,9 @@ class _VideoDetailPageState extends State<VideoDetailPage>
       resizeToAvoidBottomInset: false,
       key: scaffoldKey,
       // backgroundColor: Colors.black,
-      appBar: removeSafeArea
+      appBar:
+          removeSafeArea ||
+              MediaQuery.of(context).orientation == Orientation.landscape
           ? null
           : AppBar(
               backgroundColor: showStatusBarBackgroundColor
@@ -859,50 +861,51 @@ class _VideoDetailPageState extends State<VideoDetailPage>
               child: playerPopScope(videoWidth, videoHeight),
             );
           }),
-          Expanded(
-            child: ColoredBox(
-              key: Key(heroTag),
-              color: Theme.of(context).colorScheme.surface,
-              child: videoDetailController.isOffline
-                  ? pullToFullScreen(
-                      CustomScrollView(
-                        cacheExtent: 3500,
-                        key: const PageStorageKey<String>('离线简介'),
-                        slivers: <Widget>[
-                          OfflineVideoIntroPanel(heroTag: heroTag),
+          if (MediaQuery.of(context).orientation != Orientation.landscape)
+            Expanded(
+              child: ColoredBox(
+                key: Key(heroTag),
+                color: Theme.of(context).colorScheme.surface,
+                child: videoDetailController.isOffline
+                    ? pullToFullScreen(
+                        CustomScrollView(
+                          cacheExtent: 3500,
+                          key: const PageStorageKey<String>('离线简介'),
+                          slivers: <Widget>[
+                            OfflineVideoIntroPanel(heroTag: heroTag),
+                          ],
+                        ),
+                      )
+                    : Column(
+                        children: [
+                          Expanded(
+                            child: TabBarView(
+                              physics: const CustomTabBarViewScrollPhysics(),
+                              controller: videoDetailController.tabCtr,
+                              children: <Widget>[
+                                pullToFullScreen(
+                                  CustomScrollView(
+                                    cacheExtent: 3500,
+                                    key: const PageStorageKey<String>('简介'),
+                                    slivers: <Widget>[
+                                      videoIntro,
+                                      if (!videoDetailController
+                                          .sourceType
+                                          .isPgc) ...[
+                                        divider,
+                                        relatedVideo,
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                videoReply,
+                              ],
+                            ),
+                          ),
                         ],
                       ),
-                    )
-                  : Column(
-                      children: [
-                        Expanded(
-                          child: TabBarView(
-                            physics: const CustomTabBarViewScrollPhysics(),
-                            controller: videoDetailController.tabCtr,
-                            children: <Widget>[
-                              pullToFullScreen(
-                                CustomScrollView(
-                                  cacheExtent: 3500,
-                                  key: const PageStorageKey<String>('简介'),
-                                  slivers: <Widget>[
-                                    videoIntro,
-                                    if (!videoDetailController
-                                        .sourceType
-                                        .isPgc) ...[
-                                      divider,
-                                      relatedVideo,
-                                    ],
-                                  ],
-                                ),
-                              ),
-                              videoReply,
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+              ),
             ),
-          ),
         ],
       ),
     ),

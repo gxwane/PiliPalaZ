@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### 修复
+
+- 修复手机在视频播放页旋转至横屏时底部布局溢出（`RenderFlex overflowed by 24 pixels on the bottom`）问题：
+  - 针对常规手机横屏播放场景，修复 [`view.dart`](file:///E:/Documents/PiliPalaZ/lib/pages/video/view.dart) 中 `childWhenDisabled` 的 `Scaffold` 在横屏时仍渲染 `AppBar(toolbarHeight: 0)` 占用 24dp 状态栏高度的缺陷，在横屏下置空 `AppBar`；
+  - 在横屏下排除垂直排列的 `Expanded` 简介/评论标签页，使全屏高度播放器独占显示，彻底消除弹性子组件空间挤压与黄黑警告条。
+
 ## [1.5.0-beta.1] - 2026-09-20
 
 ### 修复
