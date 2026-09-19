@@ -288,22 +288,37 @@ class Media3PlayerEngine implements IPlayerEngine {
   }) {
     final int? texId = _textureId;
     if (texId == null) {
-      return const SizedBox.expand(
-        child: ColoredBox(color: Colors.black),
+      return SizedBox.expand(
+        key: key,
+        child: const ColoredBox(color: Colors.black),
       );
     }
 
-    return Container(
+    return StreamBuilder<VideoDimension>(
       key: key,
-      color: Colors.black,
-      child: Center(
-        child: _dimension.hasSize
-            ? AspectRatio(
-                aspectRatio: _dimension.aspectRatio,
-                child: Texture(textureId: texId),
-              )
-            : Texture(textureId: texId),
-      ),
+      stream: dimensionStream,
+      initialData: _dimension,
+      builder: (BuildContext context, AsyncSnapshot<VideoDimension> snapshot) {
+        final VideoDimension dimension = snapshot.data ?? _dimension;
+        Widget videoWidget = Texture(textureId: texId);
+        if (dimension.hasSize) {
+          videoWidget = ClipRect(
+            child: FittedBox(
+              fit: fit,
+              child: SizedBox(
+                width: dimension.width.toDouble(),
+                height: dimension.height.toDouble(),
+                child: videoWidget,
+              ),
+            ),
+          );
+        }
+
+        return Container(
+          color: Colors.black,
+          child: Center(child: videoWidget),
+        );
+      },
     );
   }
 

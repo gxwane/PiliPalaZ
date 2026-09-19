@@ -36,9 +36,7 @@ class Media3PlayerPlugin(
             when (call.method) {
                 "create" -> {
                     disposePlayer()
-                    val holder = Media3PlayerHolder(context) { width, height ->
-                        surfaceManager?.onVideoSizeChanged(width, height)
-                    }
+                    val holder = Media3PlayerHolder(context)
                     val surface = Media3SurfaceManager(flutterEngine, holder.exoPlayer)
                     playerHolder = holder
                     surfaceManager = surface

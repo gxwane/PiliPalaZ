@@ -112,12 +112,14 @@ void main() {
       expect(methodCalls.last.method, 'dispose');
     });
 
-    test('buildVideoView returns Container with Texture when textureId is available', () async {
+    test('buildVideoView returns reactive StreamBuilder when textureId is available', () async {
       final engine = Media3PlayerEngine();
       await engine.initialize();
 
-      final widget = engine.buildVideoView();
-      expect(widget, isA<Container>());
+      const testKey = ValueKey('test_key');
+      final widget = engine.buildVideoView(key: testKey);
+      expect(widget, isA<StreamBuilder<VideoDimension>>());
+      expect(widget.key, testKey);
 
       await engine.dispose();
     });

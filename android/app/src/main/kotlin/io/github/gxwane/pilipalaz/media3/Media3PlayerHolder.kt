@@ -28,7 +28,6 @@ import io.flutter.plugin.common.EventChannel
 @OptIn(UnstableApi::class)
 class Media3PlayerHolder(
     private val context: Context,
-    private val onVideoSizeChangedListener: (width: Int, height: Int) -> Unit,
 ) : Player.Listener {
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -198,12 +197,18 @@ class Media3PlayerHolder(
     }
 
     override fun onVideoSizeChanged(videoSize: VideoSize) {
-        onVideoSizeChangedListener(videoSize.width, videoSize.height)
+        if (videoSize.width <= 0 || videoSize.height <= 0) return
+        val isRotated = videoSize.unappliedRotationDegrees == 90 || videoSize.unappliedRotationDegrees == 270
+        var width = if (isRotated) videoSize.height else videoSize.width
+        var height = if (isRotated) videoSize.width else videoSize.height
+        if (videoSize.pixelWidthHeightRatio > 0f && videoSize.pixelWidthHeightRatio != 1f) {
+            width = Math.max(1, Math.round(width * videoSize.pixelWidthHeightRatio))
+        }
         eventSink?.success(
             mapOf(
                 "event" to "videoSizeChanged",
-                "width" to videoSize.width,
-                "height" to videoSize.height,
+                "width" to width,
+                "height" to height,
             )
         )
     }
