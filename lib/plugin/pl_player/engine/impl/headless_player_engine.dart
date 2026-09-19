@@ -130,6 +130,25 @@ class HeadlessPlayerEngine implements IPlayerEngine {
     }
   }
 
+  void emitPosition(Duration position) {
+    _position = position;
+    if (!_isDisposed) _positionController.add(_position);
+  }
+
+  void emitDuration(Duration duration) {
+    _duration = duration;
+    if (!_isDisposed) _durationController.add(duration);
+  }
+
+  void emitBufferedPosition(Duration buffered) {
+    _bufferedPosition = buffered;
+    if (!_isDisposed) _bufferedPositionController.add(buffered);
+  }
+
+  void emitError(EngineError error) {
+    if (!_isDisposed) _errorController.add(error);
+  }
+
   @override
   Future<void> setRate(double rate) async {
     _rate = rate;

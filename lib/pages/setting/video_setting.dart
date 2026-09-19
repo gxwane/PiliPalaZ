@@ -27,10 +27,15 @@ class _VideoSettingState extends State<VideoSetting> {
   late dynamic hardwareDecoding;
   late dynamic videoSync;
   late dynamic defaultCDNService;
+  late dynamic playerKernel;
 
   @override
   void initState() {
     super.initState();
+    playerKernel = setting.get(
+      SettingBoxKey.playerKernel,
+      defaultValue: 'media3',
+    );
     defaultVideoQa = setting.get(
       SettingBoxKey.defaultVideoQa,
       defaultValue: VideoQuality.values.last.code,
@@ -263,6 +268,44 @@ class _VideoSettingState extends State<VideoSetting> {
               }
             },
           ),
+          if (Platform.isAndroid)
+            ListTile(
+              dense: false,
+              title: Text('播放器内核', style: titleStyle),
+              leading: const Icon(Icons.play_circle_outline),
+              subtitle: Text(
+                playerKernel == 'media3'
+                    ? '当前：Media3 (ExoPlayer)（推荐，低功耗、原生双流直出杜绝卡死）'
+                    : '当前：MPV (media_kit)（传统内核，备用）',
+                style: subTitleStyle,
+              ),
+              onTap: () async {
+                String? result = await showDialog(
+                  context: context,
+                  builder: (context) {
+                    return SelectDialog<String>(
+                      title: '播放器内核',
+                      value: playerKernel,
+                      values: [
+                        {
+                          'title': 'Media3 (ExoPlayer) - 推荐，低功耗高稳定',
+                          'value': 'media3',
+                        },
+                        {
+                          'title': 'MPV (media_kit) - 传统内核，备用',
+                          'value': 'mpv',
+                        },
+                      ],
+                    );
+                  },
+                );
+                if (result != null) {
+                  setting.put(SettingBoxKey.playerKernel, result);
+                  playerKernel = result;
+                  setState(() {});
+                }
+              },
+            ),
           if (Platform.isAndroid)
             const SetSwitchItem(
               title: '优先使用 OpenSL ES 输出音频',

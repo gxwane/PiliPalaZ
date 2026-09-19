@@ -904,9 +904,14 @@ class PlPlayerController with WidgetsBindingObserver {
         seekTo,
       );
       if (session != _playbackSession) return;
-      _attachPlaybackCommands(_videoPlayerController!);
+      _attachPlaybackCommands(
+        _engine ?? MediaKitPlaybackEngine(_videoPlayerController!),
+      );
       // 获取视频时长 00:00
-      _duration.value = duration ?? _videoPlayerController!.state.duration;
+      _duration.value =
+          duration ??
+          _engine?.currentDuration ??
+          _videoPlayerController!.state.duration;
       updateDurationSecond();
       // 数据加载完成
       dataStatus.status.value = DataStatus.loaded;
@@ -1122,23 +1127,42 @@ class PlPlayerController with WidgetsBindingObserver {
     await _diagnosticSession?.checkpoint('video_controller_ready');
     final String selectedKernel = setting.get(
       SettingBoxKey.playerKernel,
-      defaultValue: 'mpv',
+      defaultValue: 'media3',
     );
     if (selectedKernel == 'media3' && Platform.isAndroid) {
-      final media3Engine = Media3PlayerEngine();
-      await media3Engine.initialize();
-      _engine = media3Engine;
-    } else {
-      _engine = MpvPlayerEngine(
-        existingPlayer: player,
-        existingVideoController: _videoController,
-        bufferPolicy: bufferPolicy,
-        enableHardwareAcceleration: enableHA,
-        hwdec: effectiveHwdec,
-        videoSync: setting.get(SettingBoxKey.videoSync, defaultValue: 'audio'),
-        useOpenSLES: setting.get(SettingBoxKey.useOpenSLES, defaultValue: false),
-      );
+      try {
+        final media3Engine = Media3PlayerEngine();
+        await media3Engine.initialize();
+        await media3Engine.open(
+          PlayerMediaItem.fromDataSource(
+            dataSource,
+            startPosition: seekTo,
+            isLive: videoType.value == 'live',
+          ),
+          autoPlay: false,
+        );
+        _engine = media3Engine;
+        await _diagnosticSession?.checkpoint('media3_open_complete');
+        return player;
+      } catch (err) {
+        debugPrint('Media3 init failed: $err. Falling back to MPV.');
+        SmartDialog.showToast('Media3 内核启动失败，已降级为 MPV 内核');
+        await _diagnosticSession?.checkpoint(
+          'media3_init_failed_fallback_to_mpv',
+          <String, Object?>{'error': err.toString()},
+        );
+      }
     }
+
+    _engine = MpvPlayerEngine(
+      existingPlayer: player,
+      existingVideoController: _videoController,
+      bufferPolicy: bufferPolicy,
+      enableHardwareAcceleration: enableHA,
+      hwdec: effectiveHwdec,
+      videoSync: setting.get(SettingBoxKey.videoSync, defaultValue: 'audio'),
+      useOpenSLES: setting.get(SettingBoxKey.useOpenSLES, defaultValue: false),
+    );
 
     player.setPlaylistMode(looping);
     await _diagnosticSession?.checkpoint('media_open_begin');
@@ -1181,6 +1205,19 @@ class PlPlayerController with WidgetsBindingObserver {
         'media_refresh_begin',
         <String, Object?>{'positionMs': currentPos.inMilliseconds},
       );
+      if (_engine is Media3PlayerEngine) {
+        _positionGuard.expectPosition(currentPos);
+        await _engine!.open(
+          PlayerMediaItem.fromDataSource(
+            dataSource,
+            startPosition: currentPos,
+            isLive: videoType.value == 'live',
+          ),
+          autoPlay: true,
+        );
+        await _diagnosticSession?.checkpoint('media_refresh_complete');
+        return true;
+      }
       if (!canControlPlayback || _videoPlayerController == null) {
         SmartDialog.showToast('视频播放器未就绪，请稍后重试');
         return false;
@@ -1541,8 +1578,115 @@ class PlPlayerController with WidgetsBindingObserver {
   final List<Function(Duration position)> _positionListeners = [];
   final List<Function(PlayerStatus status)> _statusListeners = [];
 
+  void _applyEngineStateChange(
+    int session,
+    EnginePlaybackState state,
+    Duration position,
+  ) {
+    if (session != _playbackSession) return;
+    if (state == EnginePlaybackState.buffering) {
+      isBuffering.value = true;
+      videoPlayerServiceHandler.onStatusChange(
+        playerStatus.status.value,
+        true,
+      );
+    } else if (state == EnginePlaybackState.playing) {
+      isBuffering.value = false;
+      playerStatus.status.value = PlayerStatus.playing;
+      videoPlayerServiceHandler.onStatusChange(
+        PlayerStatus.playing,
+        false,
+      );
+      for (var element in _statusListeners) {
+        element(PlayerStatus.playing);
+      }
+      if (position.inSeconds != 0) {
+        makeHeartBeat(positionSeconds.value, type: 'status');
+      }
+    } else if (state == EnginePlaybackState.paused) {
+      isBuffering.value = false;
+      playerStatus.status.value = PlayerStatus.paused;
+      videoPlayerServiceHandler.onStatusChange(
+        PlayerStatus.paused,
+        false,
+      );
+      for (var element in _statusListeners) {
+        element(PlayerStatus.paused);
+      }
+    } else if (state == EnginePlaybackState.completed) {
+      isBuffering.value = false;
+      playerStatus.status.value = PlayerStatus.completed;
+      for (var element in _statusListeners) {
+        element(PlayerStatus.completed);
+      }
+      makeHeartBeat(positionSeconds.value, type: 'completed');
+    }
+  }
+
+  void _startMedia3Listeners(int session, Media3PlayerEngine engine) {
+    void listener() => _applyEngineStateChange(
+      session,
+      engine.playbackState.value,
+      engine.currentPosition,
+    );
+    engine.playbackState.addListener(listener);
+    _applyEngineStateChange(
+      session,
+      engine.playbackState.value,
+      engine.currentPosition,
+    );
+
+    subscriptions.addAll([
+      engine.positionStream.listen((Duration event) {
+        if (session != _playbackSession) return;
+        final PlaybackPositionDecision decision = _positionGuard.evaluate(
+          event,
+          isPlaying: engine.isPlaying,
+          isBuffering: isBuffering.value,
+          isLive: videoType.value == 'live',
+        );
+        if (decision.action == PlaybackPositionAction.ignore) return;
+        if (decision.action == PlaybackPositionAction.correct) {
+          unawaited(
+            _correctUnexpectedPosition(
+              session: session,
+              reportedPosition: event,
+              targetPosition: decision.correctionTarget!,
+              regression: decision.regression!,
+            ),
+          );
+          return;
+        }
+        _position.value = event;
+        updatePositionSecond();
+        if (!isSliderMoving.value) {
+          _sliderPosition.value = event;
+          updateSliderPositionSecond();
+        }
+        for (var element in _positionListeners) {
+          element(event);
+        }
+        makeHeartBeat(event.inSeconds);
+      }),
+      engine.durationStream.listen((Duration event) {
+        if (session != _playbackSession) return;
+        duration.value = event;
+        updateDurationSecond();
+      }),
+      engine.bufferedPositionStream.listen((Duration event) {
+        if (session != _playbackSession) return;
+        _buffered.value = event;
+        updateBufferedSecond();
+      }),
+    ]);
+  }
+
   /// 播放事件监听
   void startListeners(int session) {
+    if (_engine is Media3PlayerEngine) {
+      _startMedia3Listeners(session, _engine as Media3PlayerEngine);
+      return;
+    }
     final Player player = videoPlayerController!;
     subscriptions.addAll([
       player.stream.playing.listen((event) {
@@ -1804,6 +1948,7 @@ class PlPlayerController with WidgetsBindingObserver {
           await _videoPlayerController?.stream.buffer.first;
         }
         danmakuController?.clear();
+        await _engine?.seek(position);
         await _videoPlayerController?.seek(position);
       } catch (_) {}
     } else {
@@ -1821,6 +1966,7 @@ class PlPlayerController with WidgetsBindingObserver {
           try {
             await _videoPlayerController?.stream.buffer.first;
             danmakuController?.clear();
+            await _engine?.seek(position);
             await _videoPlayerController?.seek(position);
           } catch (_) {}
           t.cancel();
@@ -1835,6 +1981,7 @@ class PlPlayerController with WidgetsBindingObserver {
     if (!canControlPlayback) return;
     if (!isHeadlessTestMode) {
       try {
+        await _engine?.setRate(speed);
         await _videoPlayerController?.setRate(speed);
       } catch (_) {}
     }
@@ -1973,6 +2120,9 @@ class PlPlayerController with WidgetsBindingObserver {
     try {
       FlutterVolumeController.updateShowSystemUI(false);
       await FlutterVolumeController.setVolume(volumeNew);
+      if (videoPlayerVolume) {
+        await _engine?.setVolume(volumeNew);
+      }
     } catch (err) {
       print(err);
     }
@@ -2657,9 +2807,9 @@ class PlPlayerController with WidgetsBindingObserver {
     updateDurationSecond();
   }
 
-  void _attachPlaybackCommands(Player player) {
+  void _attachPlaybackCommands(PlaybackEngine engine) {
     _playbackCommands = PlaybackCommandCoordinator(
-      engine: MediaKitPlaybackEngine(player),
+      engine: engine,
       audioSession: audioSessionHandler,
       onControlsVisibilityChanged: (bool visible) {
         controls = visible;

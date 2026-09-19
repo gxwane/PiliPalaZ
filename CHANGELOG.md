@@ -18,6 +18,11 @@
   - 原生支持 B 站 DASH 音视频双流直出（`MergingMediaSource`）与精确剪裁，统一网络请求头与 25 秒防抖缓冲池；
   - 实现 Dart 端 `Media3PlayerEngine` 并入统一引擎体系，通过 Platform Channel 达成 100ms 节流事件同步；
   - 确保 Media3 专注于音视频解码渲染，100% 隔离 AudioFocus 与 MediaSession，杜绝与前台服务及 `audio_service` 冲突。
+- 播放器内核双引擎灰度切换与全业务对齐（Phase 4: Dual-Engine Switch & Alignment）：
+  - 音视频设置页增加“播放器内核”选项，Android 默认推荐采用 Media3 (ExoPlayer) 内核，保留 MPV (media_kit) 传统内核作为容灾备用；
+  - 彻底治理控制器“精神分裂”缺陷，统一通过 `_engine` 驱动媒体装载、倍速调控、精准 Seek、音量调节与状态监听；
+  - 落地 Media3 内核异常自动降级机制，若原生层初始化异常无感回退至 MPV 并记录诊断检查点；
+  - 建立双引擎统一条约单元与集成测试套件（`test/player_kernel_selection_test.dart`），全量 649 个测试 100% 通过。
 
 ## [1.4.0] - 2026-09-18
 
