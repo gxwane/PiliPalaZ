@@ -109,10 +109,10 @@ class Media3PlayerPlugin(
     }
 
     private fun disposePlayer() {
-        surfaceManager?.release()
-        surfaceManager = null
         playerHolder?.release()
         playerHolder = null
+        surfaceManager?.release()
+        surfaceManager = null
     }
 
     companion object {

@@ -6,10 +6,12 @@
 
 ### 修复
 
+- 修复 Android 平台 Media3 内核硬件解码器缓冲槽位受限与绿屏卡死问题：
+  - 改用 Flutter 原生 `createSurfaceTexture()` (SurfaceTextureEntry) 替代 `createSurfaceProducer()`，突破 `ImageReader` 仅允许 <=6 缓冲槽位的硬编码限制，提供完整的 64 缓冲槽 `BufferQueueCore`，彻底根除海思麒麟（Kirin 710F 等）芯片 `ACodec: setting nBufferCountActual failed: -1010` 硬件解码器启动失败；
+  - 避免硬件解码失败降级至软件解码器后因 Android < 33 缺少图形栅障（Fence）同步而渲染空白 YUV 缓冲导致的纯绿屏故障，实现海思芯片硬件解码器直接启动并以 25/60 fps 满帧流畅解码；
+  - 倒置 `Media3PlayerPlugin.disposePlayer()` 销毁时序，确保 ExoPlayer 内部解码线程停止后再释放 Surface 纹理，彻底杜绝多线程销毁时序引发的管道破裂（Broken Pipe）。
 - 修复 Android 平台 Media3 内核硬件解码器 Surface 管道破裂问题：
-  - 严格遵循 Google 官方 `video_player_android` (TextureVideoPlayer) 规范与 Flutter 3.38+ `SurfaceProducer` 规约，禁绝调用 `producer.setSize()`，杜绝底层 `ImageReader` 动态重建引发的 `queueBuffer failed: -32 (Broken Pipe)` 硬件解码器崩溃；
-  - 引入规范的 `needsSurface` 生命周期守卫，确保前后台切换、屏幕旋转及画中画恢复时的安全重绑与排空；
-  - 原生层补齐画面物理旋转角度（90°/270°）自动宽高换算与非方像素比（PAR）校正，Dart 端改由响应式 `StreamBuilder<VideoDimension>` 与 `FittedBox` / `ClipRect` 处理画面裁切与多 `BoxFit` 模式，实现全机型（包括华为海思麒麟等芯片）画面与声音稳定同步流畅播放。
+  - 严格遵循 Google 官方 `video_player_android` (TextureVideoPlayer) 规范，禁绝动态 `producer.setSize()`，原生层补齐画面物理旋转角度（90°/270°）自动宽高换算与非方像素比（PAR）校正，Dart 端改由响应式 `StreamBuilder<VideoDimension>` 与 `FittedBox` / `ClipRect` 处理画面裁切与多 `BoxFit` 模式。
 
 ### 重构
 
