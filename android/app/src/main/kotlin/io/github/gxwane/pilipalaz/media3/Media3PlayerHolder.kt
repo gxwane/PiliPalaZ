@@ -16,6 +16,7 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
@@ -58,7 +59,11 @@ class Media3PlayerHolder(
             .setPrioritizeTimeOverSizeThresholds(false)
             .build()
 
-        exoPlayer = ExoPlayer.Builder(context)
+        val renderersFactory = DefaultRenderersFactory(context)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+            .setEnableDecoderFallback(true) // 审计规约：必须开启解码器降级，规避海思等特定芯片在 H.264 HP 5.1 上硬解崩溃
+
+        exoPlayer = ExoPlayer.Builder(context, renderersFactory)
             .setLoadControl(loadControl)
             .build()
 

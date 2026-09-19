@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/plugin/pl_player/engine/player_engine_interface.dart';
 import 'package:pilipalaz/plugin/pl_player/engine/impl/headless_player_engine.dart';
@@ -119,6 +120,22 @@ void main() {
       await sub1.cancel();
       await sub2.cancel();
       await engine.dispose();
+    });
+
+    test('engineGeneration observable increments and notifies listeners', () async {
+      final engineGeneration = 0.obs;
+      final history = <int>[];
+      final sub = engineGeneration.listen(history.add);
+
+      engineGeneration.value++;
+      expect(engineGeneration.value, 1);
+      expect(history, [1]);
+
+      engineGeneration.value++;
+      expect(engineGeneration.value, 2);
+      expect(history, [1, 2]);
+
+      await sub.cancel();
     });
   });
 }

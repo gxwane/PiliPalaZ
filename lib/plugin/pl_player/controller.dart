@@ -246,6 +246,9 @@ class PlPlayerController with WidgetsBindingObserver {
   /// [engine] instance of IPlayerEngine
   IPlayerEngine? get engine => _engine;
 
+  /// [engineGeneration] 内核代际标识，用于在引擎平滑降级时通知 UI 重新构建对应视图
+  final RxInt engineGeneration = 0.obs;
+
   /// [currentDimension] synchronous video dimension
   VideoDimension get currentDimension =>
       _engine?.currentDimension ??
@@ -773,6 +776,7 @@ class PlPlayerController with WidgetsBindingObserver {
     // 历史记录开关
     bool enableHeart = true,
     HardwareDecodeFailureHandler? onHardwareDecodeFailure,
+    bool forceMpv = false,
   }) async {
     _resourceOwnership.claim(owner);
     final int session = _playbackLifecycle.beginLoading();
@@ -902,6 +906,7 @@ class PlPlayerController with WidgetsBindingObserver {
         width,
         height,
         seekTo,
+        forceMpv: forceMpv,
       );
       if (session != _playbackSession) return;
       _attachPlaybackCommands(
@@ -1001,8 +1006,9 @@ class PlPlayerController with WidgetsBindingObserver {
     String? hwdec,
     double? width,
     double? height,
-    Duration? seekTo,
-  ) async {
+    Duration? seekTo, {
+    bool forceMpv = false,
+  }) async {
     // 每次配置时先移除监听
     await removeListeners();
     final Duration initialPosition = seekTo ?? Duration.zero;
@@ -1129,7 +1135,7 @@ class PlPlayerController with WidgetsBindingObserver {
       SettingBoxKey.playerKernel,
       defaultValue: 'media3',
     );
-    if (selectedKernel == 'media3' && Platform.isAndroid) {
+    if (!forceMpv && selectedKernel == 'media3' && Platform.isAndroid) {
       try {
         final media3Engine = Media3PlayerEngine();
         await media3Engine.initialize();
@@ -1620,15 +1626,86 @@ class PlPlayerController with WidgetsBindingObserver {
         element(PlayerStatus.completed);
       }
       makeHeartBeat(positionSeconds.value, type: 'completed');
+    } else if (state == EnginePlaybackState.error) {
+      isBuffering.value = false;
+    }
+  }
+
+  VoidCallback? _media3PlaybackStateListener;
+  Media3PlayerEngine? _media3ListeningEngine;
+  bool _media3FallbackInFlight = false;
+
+  Future<void> _fallbackFromMedia3ToMpv(
+    int session, {
+    EngineError? error,
+  }) async {
+    if (_media3FallbackInFlight || session != _playbackSession) return;
+    if (_engine is! Media3PlayerEngine) return;
+    _media3FallbackInFlight = true;
+
+    try {
+      final Duration resumePosition = _position.value;
+      final bool resumePlaying = isPlaying || _autoPlay;
+
+      SmartDialog.showToast('Media3 播放异常，已降级为 MPV 内核');
+      await _diagnosticSession?.checkpoint(
+        'media3_runtime_error_fallback_to_mpv',
+        <String, Object?>{
+          'positionMs': resumePosition.inMilliseconds,
+          'error': error?.message ?? 'unknown',
+        },
+      );
+
+      // 1. 彻底解绑并释放 Media3 资源，释放底层硬件解码器与 Surface
+      await removeListeners();
+      final oldEngine = _engine;
+      _engine = null;
+      await oldEngine?.dispose();
+
+      if (session != _playbackSession) return;
+
+      // 2. 重新走 setDataSource 初始化 MPV，并强制 forceMpv
+      final PlayerResourceOwner owner =
+          _resourceOwnership.currentOwner ?? PlayerResourceOwner();
+      await setDataSource(
+        dataSource,
+        owner: owner,
+        autoplay: resumePlaying,
+        looping: _looping,
+        seekTo: resumePosition,
+        speed: _playbackSpeed.value,
+        direction: _direction.value,
+        bvid: _bvid,
+        cid: _cid,
+        enableHeart: _enableHeart,
+        forceMpv: true,
+      );
+      engineGeneration.value++;
+    } catch (err, stackTrace) {
+      debugPrint('Media3 to MPV fallback failed: $err');
+      await _recordPlayerFailure(
+        DiagnosticFailureKind.playerNativeFailure,
+        err,
+        stackTrace,
+        completeSession: true,
+      );
+    } finally {
+      _media3FallbackInFlight = false;
     }
   }
 
   void _startMedia3Listeners(int session, Media3PlayerEngine engine) {
+    if (_media3PlaybackStateListener != null && _media3ListeningEngine != null) {
+      _media3ListeningEngine!.playbackState
+          .removeListener(_media3PlaybackStateListener!);
+    }
     void listener() => _applyEngineStateChange(
       session,
       engine.playbackState.value,
       engine.currentPosition,
     );
+    _media3PlaybackStateListener = listener;
+    _media3ListeningEngine = engine;
     engine.playbackState.addListener(listener);
     _applyEngineStateChange(
       session,
@@ -1637,6 +1714,10 @@ class PlPlayerController with WidgetsBindingObserver {
     );
 
     subscriptions.addAll([
+      engine.errorStream.listen((EngineError error) {
+        if (session != _playbackSession) return;
+        unawaited(_fallbackFromMedia3ToMpv(session, error: error));
+      }),
       engine.positionStream.listen((Duration event) {
         if (session != _playbackSession) return;
         final PlaybackPositionDecision decision = _positionGuard.evaluate(
@@ -1922,6 +2003,12 @@ class PlPlayerController with WidgetsBindingObserver {
 
   /// 移除事件监听
   Future<void> removeListeners() async {
+    if (_media3PlaybackStateListener != null && _media3ListeningEngine != null) {
+      _media3ListeningEngine!.playbackState
+          .removeListener(_media3PlaybackStateListener!);
+      _media3PlaybackStateListener = null;
+      _media3ListeningEngine = null;
+    }
     final List<StreamSubscription<dynamic>> current =
         List<StreamSubscription<dynamic>>.from(subscriptions);
     subscriptions.clear();

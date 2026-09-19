@@ -26,7 +26,7 @@ class Media3SurfaceManager(
     init {
         producer.setCallback(this)
         val initialSurface: Surface? = producer.surface
-        if (initialSurface != null) {
+        if (initialSurface != null && initialSurface.isValid) {
             player.setVideoSurface(initialSurface)
         }
     }
@@ -34,25 +34,29 @@ class Media3SurfaceManager(
     override fun onSurfaceAvailable() {
         // 当应用返回前台、旋转或从 PiP 恢复时，Flutter 提供新 Surface
         val surface: Surface? = producer.surface
-        if (surface != null) {
+        if (surface != null && surface.isValid) {
             player.setVideoSurface(surface)
         }
     }
 
     override fun onSurfaceCleanup() {
         // 在 Flutter 释放底层图形缓冲前立即解绑，防止 MediaCodec 写入脏缓冲崩溃
-        player.clearVideoSurface()
+        player.setVideoSurface(null)
     }
 
     fun onVideoSizeChanged(width: Int, height: Int) {
         if (width > 0 && height > 0) {
             producer.setSize(width, height)
+            val surface: Surface? = producer.surface
+            if (surface != null && surface.isValid) {
+                player.setVideoSurface(surface)
+            }
         }
     }
 
     fun release() {
         producer.setCallback(null)
-        player.clearVideoSurface()
+        player.setVideoSurface(null)
         producer.release()
     }
 }

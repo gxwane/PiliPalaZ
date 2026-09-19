@@ -3,6 +3,8 @@ final class PlayerResourceOwner {}
 final class PlaybackResourceOwnership {
   PlayerResourceOwner? _owner;
 
+  PlayerResourceOwner? get currentOwner => _owner;
+
   void claim(PlayerResourceOwner owner) {
     _owner = owner;
   }
