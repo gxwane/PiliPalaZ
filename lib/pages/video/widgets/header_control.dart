@@ -1639,6 +1639,10 @@ class _HeaderControlState extends State<HeaderControl> {
           widget.controller!.isFullScreen.value ||
           !widget.controller!.horizontalScreen &&
               MediaQuery.of(context).orientation == Orientation.landscape;
+      final bool isLandscape =
+          MediaQuery.orientationOf(context) == Orientation.landscape;
+      final bool showLandscapeExpandedHeader =
+          isEquivalentFullScreen && isLandscape;
       return AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
@@ -1648,7 +1652,7 @@ class _HeaderControlState extends State<HeaderControl> {
         centerTitle: false,
         automaticallyImplyLeading: false,
         titleSpacing: 10,
-        toolbarHeight: isEquivalentFullScreen ? 100 : null,
+        toolbarHeight: showLandscapeExpandedHeader ? 100 : null,
         title: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
@@ -1697,7 +1701,7 @@ class _HeaderControlState extends State<HeaderControl> {
                   },
                 ),
               ),
-              isEquivalentFullScreen: isEquivalentFullScreen,
+              isEquivalentFullScreen: showLandscapeExpandedHeader,
               expandedTitle: () {
                 final bool isOffline =
                     widget.videoDetailCtr?.isOffline ?? false;
@@ -1755,19 +1759,9 @@ class _HeaderControlState extends State<HeaderControl> {
                 ),
               ),
             ),
-            if (isEquivalentFullScreen)
-              SizedBox(
-                height:
-                    MediaQuery.of(context).orientation == Orientation.landscape
-                    ? 2
-                    : 8,
-              ),
-            // if ((isFullScreen || !horizontalScreen))
-            // const Spacer(),
-            // show current datetime
-            if (isEquivalentFullScreen)
+            if (showLandscapeExpandedHeader) const SizedBox(height: 2),
+            if (showLandscapeExpandedHeader)
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   Obx(
                     () => Text(
@@ -1780,17 +1774,30 @@ class _HeaderControlState extends State<HeaderControl> {
                       semanticsLabel: nowSemanticsLabel,
                     ),
                   ),
-                  const SizedBox(width: 1.5),
-                  if (isEquivalentFullScreen) const SizedBox(width: 42),
-                  for (var i = 0; i < 11; i++) const SizedBox(width: 0),
-                  if (widget.videoDetailCtr?.isOffline != true) ...[
-                    likeVideoButton(),
-                    coinVideoButton(),
-                  ],
-                  shootDanmakuButton(),
-                  danmakuSwitcher(),
-                  pipButton(),
-                  if (widget.videoDetailCtr?.isOffline != true) shareButton(),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const ClampingScrollPhysics(),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (widget.videoDetailCtr?.isOffline != true) ...[
+                              likeVideoButton(),
+                              coinVideoButton(),
+                            ],
+                            shootDanmakuButton(),
+                            danmakuSwitcher(),
+                            pipButton(),
+                            if (widget.videoDetailCtr?.isOffline != true)
+                              shareButton(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
           ],

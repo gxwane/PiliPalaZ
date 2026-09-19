@@ -6,6 +6,9 @@
 
 ### 修复
 
+- 修复全屏放大视频及竖屏全屏时播放器顶栏布局溢出（`RenderFlex overflowed by 22/29 pixels on the right`）问题：
+  - 顶栏 [`HeaderControl`](file:///E:/Documents/PiliPalaZ/lib/pages/video/widgets/header_control.dart) 严格结合全屏状态与横屏方向（`showLandscapeExpandedHeader`），避免在系统物理旋转延迟过渡期间以及竖屏全屏模式下强行渲染第二行操作栏导致宽度溢出；
+  - 首行 `PlayerHeaderActionRow` 保持紧凑模式，保留弹幕开关与画中画等核心操作；第二行操作栏采用 `Expanded` + `Align(centerRight)` + `SingleChildScrollView` 弹性防御架构，清除历史遗留的硬编码空循环与多余占位，确保窄宽与多窗口分屏下绝对零溢出。
 - 修复 Android 平台 Media3 内核硬件解码器缓冲槽位受限与绿屏卡死问题：
   - 改用 Flutter 原生 `createSurfaceTexture()` (SurfaceTextureEntry) 替代 `createSurfaceProducer()`，突破 `ImageReader` 仅允许 <=6 缓冲槽位的硬编码限制，提供完整的 64 缓冲槽 `BufferQueueCore`，彻底根除海思麒麟（Kirin 710F 等）芯片 `ACodec: setting nBufferCountActual failed: -1010` 硬件解码器启动失败；
   - 避免硬件解码失败降级至软件解码器后因 Android < 33 缺少图形栅障（Fence）同步而渲染空白 YUV 缓冲导致的纯绿屏故障，实现海思芯片硬件解码器直接启动并以 25/60 fps 满帧流畅解码；
