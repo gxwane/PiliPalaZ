@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.5.0-beta.1] - 2026-09-20
+
 ### 修复
 
 - 修复全屏放大视频及竖屏全屏时播放器顶栏布局溢出（`RenderFlex overflowed by 22/29 pixels on the right`）问题：
