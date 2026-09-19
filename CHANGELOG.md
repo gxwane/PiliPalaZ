@@ -23,6 +23,10 @@
   - 彻底治理控制器“精神分裂”缺陷，统一通过 `_engine` 驱动媒体装载、倍速调控、精准 Seek、音量调节与状态监听；
   - 落地 Media3 内核异常自动降级机制，若原生层初始化异常无感回退至 MPV 并记录诊断检查点；
   - 建立双引擎统一条约单元与集成测试套件（`test/player_kernel_selection_test.dart`），全量 649 个测试 100% 通过。
+- 播放器架构全量切换与历史残留剥离收官（Phase 5: Full Switch & Cleanup）：
+  - Android 平台全面确立 Media3 (ExoPlayer) 为生产环境默认播放内核，桌面平台平稳保持 MPV 内核；
+  - 收敛控制器与页面离开生命周期，在 `disable()` 路径对称调度 `_engine?.stop()`，彻底消除路由切换可能引入的原生音频残留；
+  - 交付端到端生命周期与容灾断言测试套件（`test/player_engine_phase5_e2e_test.dart`），全量 653 个自动化测试通过。
 
 ## [1.4.0] - 2026-09-18
 

@@ -2044,10 +2044,9 @@ class PlPlayerController with WidgetsBindingObserver {
   void disable() async {
     if (floatingManager.containsFloating(globalId)) return;
     String top = Get.currentRoute;
-    print("top:$top");
     if (!top.startsWith('/video') && !top.startsWith('/live')) {
-      // playerStatus.status.value = PlayerStatus.disabled;
       _heartDuration = 0;
+      await _engine?.stop();
       _videoPlayerController?.stop();
       videoPlayerServiceHandler.clear();
       return;
