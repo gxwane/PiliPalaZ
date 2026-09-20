@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pilipalaz/models/diagnostics/playback_snapshot.dart';
+import 'package:pilipalaz/models/video/play/url.dart';
 
 void main() {
   group('PlaybackSnapshot Model Tests', () {
@@ -81,5 +82,41 @@ void main() {
       expect(markdown, contains('01:02:03 / 00:00'));
       expect(markdown, contains('MPV (media_kit)'));
     });
+
+    test(
+      'AudioItem.fromJson safely handles known and unknown audio quality IDs',
+      () {
+        final item192k = AudioItem.fromJson(<String, dynamic>{
+          'id': 30280,
+          'bandwidth': 192000,
+          'codecs': 'mp4a.40.2',
+          'baseUrl': 'https://example.com/audio.m4s',
+        });
+        expect(item192k.quality, '192K');
+        expect(item192k.codecs, 'mp4a.40.2');
+        expect(item192k.bandWidth, 192000);
+
+        final itemDolby = AudioItem.fromJson(<String, dynamic>{
+          'id': 30250,
+          'bandwidth': 320000,
+          'codecs': 'ec-3',
+        });
+        expect(itemDolby.quality, '杜比全景声');
+
+        final itemHiRes = AudioItem.fromJson(<String, dynamic>{
+          'id': 30251,
+          'codecs': 'fLaC',
+        });
+        expect(itemHiRes.quality, 'Hi-Res无损');
+
+        // Unknown ID must not throw StateError and fallback gracefully
+        final itemUnknown = AudioItem.fromJson(<String, dynamic>{
+          'id': 999999,
+          'codecs': 'opus',
+        });
+        expect(itemUnknown.quality, '未知');
+        expect(itemUnknown.codecs, 'opus');
+      },
+    );
   });
 }

@@ -55,7 +55,7 @@ class HeaderControl extends StatefulWidget implements PreferredSizeWidget {
 }
 
 class _HeaderControlState extends State<HeaderControl> {
-  PlayUrlModel get videoInfo => widget.videoDetailCtr!.data;
+  PlayUrlModel get videoInfo => widget.videoDetailCtr?.data ?? PlayUrlModel();
   List<PlaySpeed> playSpeed = PlaySpeed.values;
   static const TextStyle subTitleStyle = TextStyle(fontSize: 12);
   static const TextStyle titleStyle = TextStyle(fontSize: 14);

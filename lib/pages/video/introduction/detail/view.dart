@@ -654,7 +654,9 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
                     DownloadSheet.show(
                       context,
                       videoDetail: widget.videoDetail!,
-                      playUrlData: videoDetailCtr.data,
+                      playUrlData: videoDetailCtr.hasPlayUrlData
+                          ? videoDetailCtr.data
+                          : null,
                     );
                   }
                 },

@@ -67,14 +67,16 @@ class VideoDetailController extends GetxController
   RxList<String> tabs = <String>['简介', '评论'].obs;
 
   // 请求返回的视频信息
-  late PlayUrlModel data;
+  PlayUrlModel data = PlayUrlModel();
+  bool get hasPlayUrlData =>
+      data.dash != null || (data.durl != null && data.durl!.isNotEmpty);
   // 请求状态
   RxBool isLoading = false.obs;
 
   /// 播放器配置 画质 音质 解码格式
-  late VideoQuality currentVideoQa;
+  VideoQuality currentVideoQa = VideoQuality.high1080;
   AudioQuality? currentAudioQa;
-  late VideoDecodeFormats currentDecodeFormats;
+  VideoDecodeFormats currentDecodeFormats = VideoDecodeFormats.AVC;
   // 是否开始自动播放 存在多p的情况下，第二p需要为true
   RxBool autoPlay = true.obs;
   // 视频资源是否有效
@@ -102,17 +104,17 @@ class VideoDetailController extends GetxController
   PlPlayerController? plPlayerController;
   final PlayerResourceOwner playerResourceOwner = PlayerResourceOwner();
 
-  late VideoItem firstVideo;
-  late AudioItem firstAudio;
-  late String videoUrl;
-  late String audioUrl;
-  late Duration defaultST;
+  VideoItem firstVideo = VideoItem();
+  AudioItem? firstAudio;
+  String videoUrl = '';
+  String audioUrl = '';
+  Duration defaultST = Duration.zero;
   // 亮度
   double? brightness;
   // 默认记录历史记录
   bool enableHeart = true;
   var userInfo;
-  late bool isFirstTime = true;
+  bool isFirstTime = true;
   PreferredSizeWidget? headerControl;
 
   // late bool enableCDN;
@@ -335,13 +337,18 @@ class VideoDetailController extends GetxController
       return;
     }
 
-    /// 根据currentAudioQa 重新设置audioUrl
-    final List<AudioItem> dashAudios = data.dash?.audio ?? <AudioItem>[];
+    /// 根据currentAudioQa 重新设置audioUrl 与 firstAudio
+    final List<AudioItem> dashAudios = <AudioItem>[
+      if (data.dash?.flac?.audio != null) data.dash!.flac!.audio!,
+      if (data.dash?.dolby?.audio != null) ...data.dash!.dolby!.audio!,
+      ...?data.dash?.audio,
+    ];
     if (currentAudioQa != null && dashAudios.isNotEmpty) {
       final AudioItem selectedAudio = dashAudios.firstWhere(
         (AudioItem i) => i.id == currentAudioQa!.code,
         orElse: () => dashAudios.first,
       );
+      firstAudio = selectedAudio;
       audioUrl = VideoUtils.getCdnUrl(selectedAudio);
     }
 
@@ -631,6 +638,7 @@ class VideoDetailController extends GetxController
           codecs: offlineTask!.videoCodec,
         );
         firstAudio = AudioItem(id: offlineTask!.audioQuality);
+        currentAudioQa = AudioQualityCode.fromCode(offlineTask!.audioQuality);
         data = PlayUrlModel(
           timeLength: offlineTask!.duration * 1000,
           quality: offlineTask!.videoQuality,
@@ -684,6 +692,8 @@ class VideoDetailController extends GetxController
           }
           videoUrl = durl.first.url!;
           audioUrl = '';
+          firstAudio = null;
+          currentAudioQa = null;
           defaultST = Duration.zero;
           // 实际为FLV/MP4格式，但已被淘汰，这里仅做兜底处理
           firstVideo = VideoItem(
@@ -780,7 +790,6 @@ class VideoDetailController extends GetxController
         }
 
         /// 优先顺序 设置中指定质量 -> 当前可选的最高质量
-        late AudioItem? firstAudio;
         final List<AudioItem> audiosList = data.dash!.audio ?? <AudioItem>[];
         if (data.dash!.dolby?.audio != null &&
             data.dash!.dolby!.audio!.isNotEmpty) {
@@ -807,13 +816,14 @@ class VideoDetailController extends GetxController
           // audioUrl = enableCDN
           //     ? VideoUtils.getCdnUrl(firstAudio)
           //     : (firstAudio.backupUrl ?? firstAudio.baseUrl!);
-          audioUrl = VideoUtils.getCdnUrl(firstAudio);
-          if (firstAudio.id != null) {
-            currentAudioQa = AudioQualityCode.fromCode(firstAudio.id!)!;
+          audioUrl = VideoUtils.getCdnUrl(firstAudio!);
+          if (firstAudio?.id != null) {
+            currentAudioQa = AudioQualityCode.fromCode(firstAudio!.id!);
           }
         } else {
-          firstAudio = AudioItem();
+          firstAudio = null;
           audioUrl = '';
+          currentAudioQa = null;
         }
         //
         defaultST = normalizeHistoryPosition(
@@ -885,82 +895,78 @@ class VideoDetailController extends GetxController
     }
 
     // 2. 视频流规格
-    String videoQuality = '未知';
-    try {
-      videoQuality = currentVideoQa.description;
-    } catch (_) {
-      if (cacheVideoQa != null) {
-        videoQuality =
-            VideoQualityCode.fromCode(cacheVideoQa!)?.description ?? '未知';
-      }
-    }
+    String videoQuality = currentVideoQa.description;
 
+    final VideoItem video = firstVideo;
     String videoCodec = '未知';
-    try {
-      final String rawCodec = firstVideo.codecs ?? '';
-      final VideoDecodeFormats? format = VideoDecodeFormatsCode.fromString(
-        rawCodec,
-      );
-      videoCodec = format != null
-          ? '${format.description} ($rawCodec)'
-          : (rawCodec.isNotEmpty ? rawCodec : '未知');
-    } catch (_) {}
+    final String rawCodec = video.codecs ?? '';
+    final VideoDecodeFormats? format = VideoDecodeFormatsCode.fromString(
+      rawCodec,
+    );
+    videoCodec = format != null
+        ? '${format.description} ($rawCodec)'
+        : (rawCodec.isNotEmpty ? rawCodec : '未知');
 
     String resolution = '未知';
     final VideoDimension? dim = plPlayerController?.currentDimension;
     if (dim != null && dim.hasSize) {
       resolution = '${dim.width}x${dim.height}';
-    } else {
-      try {
-        if (firstVideo.width != null && firstVideo.height != null) {
-          resolution = '${firstVideo.width}x${firstVideo.height} (流规格)';
-        }
-      } catch (_) {}
+    } else if (video.width != null && video.height != null) {
+      resolution = '${video.width}x${video.height} (流规格)';
     }
 
     String frameRate = '未知';
-    try {
-      if (firstVideo.frameRate != null && firstVideo.frameRate!.isNotEmpty) {
-        frameRate = '${firstVideo.frameRate} fps';
-      }
-    } catch (_) {}
+    if (video.frameRate != null && video.frameRate!.isNotEmpty) {
+      frameRate = '${video.frameRate} fps';
+    }
 
     String videoBitrate = '未知';
-    try {
-      if (firstVideo.bandWidth != null && firstVideo.bandWidth! > 0) {
-        videoBitrate =
-            '${(firstVideo.bandWidth! / 1000).toStringAsFixed(1)} kbps';
-      }
-    } catch (_) {}
+    if (video.bandWidth != null && video.bandWidth! > 0) {
+      videoBitrate = '${(video.bandWidth! / 1000).toStringAsFixed(1)} kbps';
+    }
 
     // 3. 音频流规格
+    final AudioItem? audio = firstAudio;
+    final int? audioId = audio?.id;
     String audioQuality = '无独立音频';
-    try {
-      if (currentAudioQa != null) {
-        audioQuality = currentAudioQa!.description;
-      } else if (firstAudio.id != null) {
-        audioQuality =
-            AudioQualityCode.fromCode(firstAudio.id!)?.description ?? '未知';
-      }
-    } catch (_) {}
+    if (currentAudioQa != null) {
+      audioQuality = currentAudioQa!.description;
+    } else if (audioId != null) {
+      audioQuality = AudioQualityCode.fromCode(audioId)?.description ?? '未知';
+    } else if (data.dash == null && data.durl != null) {
+      audioQuality = '内嵌音频 (单流)';
+    }
 
     String audioCodec = '未知';
-    try {
-      final String rawAudioCodec = firstAudio.codecs ?? '';
-      if (rawAudioCodec.isNotEmpty) {
-        audioCodec = rawAudioCodec;
-      } else if (firstAudio.baseUrl != null && firstAudio.baseUrl!.isNotEmpty) {
-        audioCodec = 'AAC / MP4A';
-      }
-    } catch (_) {}
+    final String rawAudioCodec = audio?.codecs ?? '';
+    if (rawAudioCodec.isNotEmpty) {
+      audioCodec = rawAudioCodec;
+    } else if (audio?.baseUrl != null && audio!.baseUrl!.isNotEmpty) {
+      audioCodec = 'AAC / MP4A';
+    } else if (isOffline && audioId != null) {
+      audioCodec = switch (audioId) {
+        30250 => 'E-AC-3 (杜比全景声)',
+        30251 => 'FLAC (Hi-Res无损)',
+        _ => 'AAC / MP4A',
+      };
+    } else if (data.dash == null && data.durl != null) {
+      audioCodec = '容器封装 (AAC/MP3)';
+    }
 
     String audioBitrate = '未知';
-    try {
-      if (firstAudio.bandWidth != null && firstAudio.bandWidth! > 0) {
-        audioBitrate =
-            '${(firstAudio.bandWidth! / 1000).toStringAsFixed(1)} kbps';
-      }
-    } catch (_) {}
+    final int? audioBandwidth = audio?.bandWidth;
+    if (audioBandwidth != null && audioBandwidth > 0) {
+      audioBitrate = '${(audioBandwidth / 1000).toStringAsFixed(1)} kbps';
+    } else if (audioId != null) {
+      audioBitrate = switch (audioId) {
+        30280 => '~192.0 kbps (标称)',
+        30232 => '~132.0 kbps (标称)',
+        30216 => '~64.0 kbps (标称)',
+        30250 => '~320.0 kbps (杜比)',
+        30251 => '无损压缩',
+        _ => '未知',
+      };
+    }
 
     // 4. 播放与缓冲健康度
     final Duration pos = plPlayerController?.position.value ?? Duration.zero;

@@ -267,9 +267,10 @@ class AudioItem {
     startWithSap = json['startWithSap'] ?? json['start_with_sap'];
     segmentBase = json['segmentBase'] ?? json['segment_base'];
     codecid = json['codecid'];
-    quality = AudioQuality.values
-        .firstWhere((i) => i.code == json['id'])
-        .description;
+    final AudioQuality? matchedQuality = AudioQualityCode.fromCode(
+      json['id'] ?? 0,
+    );
+    quality = matchedQuality?.description ?? '未知';
   }
 }
 

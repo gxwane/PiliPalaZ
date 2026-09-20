@@ -14,6 +14,11 @@
 
 ### 修复
 
+- 修复播放信息（Stats for Nerds）面板中音频编码与音频码率显示为“未知”及音轨状态脱节问题：
+  - 根除 [`controller.dart`](file:///E:/Documents/PiliPalaZ/lib/pages/video/controller.dart) 中局部变量 `late AudioItem? firstAudio;` 遮蔽类属性引发的 `LateInitializationError`，将音轨字段改造为安全可空声明；
+  - 修复 `updatePlayer()` 中音频音轨与底层 URL 脱节缺陷，扩充音轨候选池以完整支持杜比全景声与 Hi-Res/FLAC 无损音轨，防止切换画质时杜比/无损被静默降级为普通音质；
+  - 针对离线缓存播放与 DURL 单流模式补齐音轨规格智能推断，准确展示标称码率、音频编码与单流标识；
+  - 加固 [`AudioItem.fromJson`](file:///E:/Documents/PiliPalaZ/lib/models/video/play/url.dart) 反序列化未知音质枚举容灾，并防御性加固未就绪时缓存与设置菜单对 `data` 的前置读取。
 - 修复手机在视频播放页旋转至横屏时底部布局溢出（`RenderFlex overflowed by 24 pixels on the bottom`）问题：
   - 针对常规手机横屏播放场景，修复 [`view.dart`](file:///E:/Documents/PiliPalaZ/lib/pages/video/view.dart) 中 `childWhenDisabled` 的 `Scaffold` 在横屏时仍渲染 `AppBar(toolbarHeight: 0)` 占用 24dp 状态栏高度的缺陷，在横屏下置空 `AppBar`；
   - 在横屏下排除垂直排列的 `Expanded` 简介/评论标签页，使全屏高度播放器独占显示，彻底消除弹性子组件空间挤压与黄黑警告条。
