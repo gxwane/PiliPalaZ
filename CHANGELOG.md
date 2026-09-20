@@ -4,6 +4,14 @@
 
 ## [Unreleased]
 
+### 新增
+
+- 全面重构并升级「播放信息」统计与排障诊断面板（Stats for Nerds）：
+  - 彻底解决 Media3 内核下由于直接读取已闲置的 media_kit 控制器而导致的字段全空（`nullxnull`、空白参数与空列表）缺陷，统一从 `IPlayerEngine`、`VideoItem`、`AudioItem` 与响应式控制器提取真实运行时指标；
+  - 结构化整合 5 大诊断模块：播放内核与渲染管线（清晰标识当前运行的 Media3 / MPV 内核、SurfaceTexture 渲染后端、硬解配置与音频输出）、视频流规格（画质、画面尺寸、编码格式、帧率、码率）、音频流规格（音质、编码、码率）、播放与缓冲健康度（当前进度、总时长、缓冲进度与百分比、播放状态与倍速）、网络与元数据（稿件来源、BVID、CID、脱敏 CDN 节点）；
+  - 独立抽离模块化组件 [`player_info_dialog.dart`](file:///E:/Documents/PiliPalaZ/lib/pages/video/widgets/player_info_dialog.dart)，移除 [`header_control.dart`](file:///E:/Documents/PiliPalaZ/lib/pages/video/widgets/header_control.dart) 中 180 余行冗余硬编码逻辑，并优化设置弹窗呼出层级；
+  - 提供单项条目点击快捷复制（附带 Toast 提示）与「复制全部 (Markdown)」一键排障数据导出功能，极大便利社区 Issue 与反馈排障。
+
 ### 修复
 
 - 修复手机在视频播放页旋转至横屏时底部布局溢出（`RenderFlex overflowed by 24 pixels on the bottom`）问题：

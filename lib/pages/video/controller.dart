@@ -10,6 +10,7 @@ import 'package:pilipalaz/http/video_api.dart';
 import 'package:pilipalaz/http/pgc.dart';
 import 'package:pilipalaz/models/common/search_type.dart';
 import 'package:pilipalaz/models/common/video_source_type.dart';
+import 'package:pilipalaz/models/diagnostics/playback_snapshot.dart';
 import 'package:pilipalaz/models/download/download_task.dart';
 import 'package:pilipalaz/models/video/play/quality.dart';
 import 'package:pilipalaz/models/video/play/url.dart';
@@ -843,6 +844,188 @@ class VideoDetailController extends GetxController
     } catch (error, stackTrace) {
       return fail('视频加载失败，请重试', error: error, stackTrace: stackTrace);
     }
+  }
+
+  /// 生成当前播放状态的诊断快照
+  PlaybackSnapshot generatePlaybackSnapshot() {
+    final IPlayerEngine? engine = plPlayerController?.engine;
+
+    // 1. 内核与渲染管线
+    String engineName;
+    String rendererType;
+    String hwdecStr;
+    String audioOutput;
+
+    if (engine is Media3PlayerEngine) {
+      engineName = 'Media3 (ExoPlayer)';
+      rendererType = 'Flutter Texture (SurfaceTexture)';
+      hwdecStr = enableHA.value ? 'MediaCodec (硬解优先/软解回退)' : '软件解码';
+      audioOutput = 'AudioTrack';
+    } else if (engine is MpvPlayerEngine) {
+      engineName = 'MPV (media_kit)';
+      rendererType = 'Flutter Texture (VideoController)';
+      hwdecStr = enableHA.value ? '硬件加速 (${hwdec.value})' : '软件解码 (已禁用)';
+      final bool openSles = setting.get(
+        SettingBoxKey.useOpenSLES,
+        defaultValue: false,
+      );
+      audioOutput = Platform.isAndroid
+          ? (openSles ? 'OpenSL ES' : 'AudioTrack (AAudio)')
+          : '系统默认输出';
+    } else if (plPlayerController?.videoPlayerController != null) {
+      engineName = 'MPV (Legacy Fallback)';
+      rendererType = 'Flutter Texture';
+      hwdecStr = enableHA.value ? '开启 (${hwdec.value})' : '关闭';
+      audioOutput = '系统默认输出';
+    } else {
+      engineName = '未就绪 / 空闲';
+      rendererType = '无';
+      hwdecStr = '未知';
+      audioOutput = '未知';
+    }
+
+    // 2. 视频流规格
+    String videoQuality = '未知';
+    try {
+      videoQuality = currentVideoQa.description;
+    } catch (_) {
+      if (cacheVideoQa != null) {
+        videoQuality =
+            VideoQualityCode.fromCode(cacheVideoQa!)?.description ?? '未知';
+      }
+    }
+
+    String videoCodec = '未知';
+    try {
+      final String rawCodec = firstVideo.codecs ?? '';
+      final VideoDecodeFormats? format = VideoDecodeFormatsCode.fromString(
+        rawCodec,
+      );
+      videoCodec = format != null
+          ? '${format.description} ($rawCodec)'
+          : (rawCodec.isNotEmpty ? rawCodec : '未知');
+    } catch (_) {}
+
+    String resolution = '未知';
+    final VideoDimension? dim = plPlayerController?.currentDimension;
+    if (dim != null && dim.hasSize) {
+      resolution = '${dim.width}x${dim.height}';
+    } else {
+      try {
+        if (firstVideo.width != null && firstVideo.height != null) {
+          resolution = '${firstVideo.width}x${firstVideo.height} (流规格)';
+        }
+      } catch (_) {}
+    }
+
+    String frameRate = '未知';
+    try {
+      if (firstVideo.frameRate != null && firstVideo.frameRate!.isNotEmpty) {
+        frameRate = '${firstVideo.frameRate} fps';
+      }
+    } catch (_) {}
+
+    String videoBitrate = '未知';
+    try {
+      if (firstVideo.bandWidth != null && firstVideo.bandWidth! > 0) {
+        videoBitrate =
+            '${(firstVideo.bandWidth! / 1000).toStringAsFixed(1)} kbps';
+      }
+    } catch (_) {}
+
+    // 3. 音频流规格
+    String audioQuality = '无独立音频';
+    try {
+      if (currentAudioQa != null) {
+        audioQuality = currentAudioQa!.description;
+      } else if (firstAudio.id != null) {
+        audioQuality =
+            AudioQualityCode.fromCode(firstAudio.id!)?.description ?? '未知';
+      }
+    } catch (_) {}
+
+    String audioCodec = '未知';
+    try {
+      final String rawAudioCodec = firstAudio.codecs ?? '';
+      if (rawAudioCodec.isNotEmpty) {
+        audioCodec = rawAudioCodec;
+      } else if (firstAudio.baseUrl != null && firstAudio.baseUrl!.isNotEmpty) {
+        audioCodec = 'AAC / MP4A';
+      }
+    } catch (_) {}
+
+    String audioBitrate = '未知';
+    try {
+      if (firstAudio.bandWidth != null && firstAudio.bandWidth! > 0) {
+        audioBitrate =
+            '${(firstAudio.bandWidth! / 1000).toStringAsFixed(1)} kbps';
+      }
+    } catch (_) {}
+
+    // 4. 播放与缓冲健康度
+    final Duration pos = plPlayerController?.position.value ?? Duration.zero;
+    final Duration dur = plPlayerController?.duration.value ?? Duration.zero;
+    final Duration buf = plPlayerController?.buffered.value ?? Duration.zero;
+    final double speed = plPlayerController?.playbackSpeed ?? 1.0;
+
+    String stateStr = '未就绪';
+    if (plPlayerController != null) {
+      if (plPlayerController!.isPlaying) {
+        stateStr = '播放中';
+      } else if (plPlayerController!.playerStatus.status.value ==
+          PlayerStatus.paused) {
+        stateStr = '已暂停';
+      } else if (plPlayerController!.playerStatus.status.value ==
+          PlayerStatus.completed) {
+        stateStr = '已完成';
+      } else {
+        stateStr = '缓冲 / 就绪';
+      }
+    }
+
+    // 5. 网络与标识
+    final String currentBvid = bvid;
+    final int currentCid = cid.value;
+
+    String cdnHost = '未知';
+    if (isOffline) {
+      cdnHost = '本地离线存储';
+    } else {
+      try {
+        if (videoUrl.isNotEmpty) {
+          final Uri? uri = Uri.tryParse(videoUrl);
+          cdnHost = uri?.host.isNotEmpty == true ? uri!.host : '未知';
+        }
+      } catch (_) {}
+    }
+
+    final String srcTypeStr = isOffline
+        ? '离线缓存 (${sourceType.isPgc ? '番剧' : '投稿'})'
+        : (sourceType.isPgc ? '番剧/影视 (PGC)' : '投稿视频 (UGC)');
+
+    return PlaybackSnapshot(
+      engineName: engineName,
+      rendererType: rendererType,
+      hwdec: hwdecStr,
+      audioOutput: audioOutput,
+      videoQuality: videoQuality,
+      videoCodec: videoCodec,
+      resolution: resolution,
+      frameRate: frameRate,
+      videoBitrate: videoBitrate,
+      audioQuality: audioQuality,
+      audioCodec: audioCodec,
+      audioBitrate: audioBitrate,
+      position: pos,
+      duration: dur,
+      bufferedPosition: buf,
+      playbackSpeed: speed,
+      playbackState: stateStr,
+      bvid: currentBvid,
+      cid: currentCid,
+      cdnHost: cdnHost,
+      sourceType: srcTypeStr,
+    );
   }
 
   // mob端全屏状态关闭二级回复

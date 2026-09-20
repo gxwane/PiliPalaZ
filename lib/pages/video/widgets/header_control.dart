@@ -34,6 +34,7 @@ import '../../setting/widgets/select_dialog.dart';
 import 'package:pilipalaz/pages/video/introduction/detail/index.dart';
 
 import 'player_header_action_row.dart';
+import 'player_info_dialog.dart';
 
 class HeaderControl extends StatefulWidget implements PreferredSizeWidget {
   const HeaderControl({
@@ -116,189 +117,12 @@ class _HeaderControlState extends State<HeaderControl> {
   }
 
   void showPlayerInfo() {
-    Player? player = widget.controller?.videoPlayerController;
-    if (player == null) {
-      SmartDialog.showToast('播放器未初始化');
+    final videoDetailCtr = widget.videoDetailCtr;
+    if (videoDetailCtr == null) {
+      SmartDialog.showToast('播放器未就绪');
       return;
     }
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('播放信息'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView(
-              children: [
-                ListTile(
-                  title: const Text("Resolution"),
-                  subtitle: Text(
-                    '${player.state.width}x${player.state.height}',
-                  ),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(
-                        text:
-                            "Resolution\n${player.state.width}x${player.state.height}",
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text("VideoParams"),
-                  subtitle: Text(player.state.videoParams.toString()),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(
-                        text: "VideoParams\n${player.state.videoParams}",
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text("AudioParams"),
-                  subtitle: Text(player.state.audioParams.toString()),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(
-                        text: "AudioParams\n${player.state.audioParams}",
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text("Media"),
-                  subtitle: Text(player.state.playlist.toString()),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(text: "Media\n${player.state.playlist}"),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text("AudioTrack"),
-                  subtitle: Text(player.state.track.audio.toString()),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(
-                        text: "AudioTrack\n${player.state.track.audio}",
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text("VideoTrack"),
-                  subtitle: Text(player.state.track.video.toString()),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(
-                        text: "VideoTrack\n${player.state.track.video}",
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text("pitch"),
-                  subtitle: Text(player.state.pitch.toString()),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(text: "pitch\n${player.state.pitch}"),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text("rate"),
-                  subtitle: Text(player.state.rate.toString()),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(text: "rate\n${player.state.rate}"),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text("AudioBitrate"),
-                  subtitle: Text(player.state.audioBitrate.toString()),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(
-                        text: "AudioBitrate\n${player.state.audioBitrate}",
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text("Volume"),
-                  subtitle: Text(player.state.volume.toString()),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(text: "Volume\n${player.state.volume}"),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text("AudioDevice"),
-                  subtitle: Text(player.state.audioDevice.toString()),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(
-                        text: "AudioDevice\n${player.state.audioDevice}",
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text("AudioDevices"),
-                  subtitle: Text(player.state.audioDevices.toString()),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(
-                        text: "AudioDevices\n${player.state.audioDevices}",
-                      ),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text("Track"),
-                  subtitle: Text(player.state.track.toString()),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(text: "Track\n${player.state.track}"),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text("Tracks"),
-                  subtitle: Text(player.state.tracks.toString()),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(text: "Tracks\n${player.state.tracks}"),
-                    );
-                  },
-                ),
-                ListTile(
-                  title: const Text("Subtitle"),
-                  subtitle: Text(player.state.subtitle.toString()),
-                  onTap: () {
-                    Clipboard.setData(
-                      ClipboardData(text: "Subtitle\n${player.state.subtitle}"),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Get.back(),
-              child: Text(
-                '确定',
-                style: TextStyle(color: Theme.of(context).colorScheme.outline),
-              ),
-            ),
-          ],
-        );
-      },
-    );
+    showPlayerInfoDialog(context, videoDetailCtr);
   }
 
   void showSettingSheet() {
@@ -475,6 +299,7 @@ class _HeaderControlState extends State<HeaderControl> {
             title: const Text('播放信息', style: titleStyle),
             leading: const Icon(Icons.info_outline, size: 20),
             onTap: () {
+              Get.back();
               showPlayerInfo();
             },
           ),
