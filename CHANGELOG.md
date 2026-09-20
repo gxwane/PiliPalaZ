@@ -18,6 +18,10 @@
 
 ### 修复
 
+- 修复播放器播放/暂停按钮状态不同步、播放期间意外熄屏以及多路由跳转返回无画面黑屏缺陷：
+  - 完善 Android Media3 原生层事件流，在 `onIsPlayingChanged` 中精确派发 `playing`/`paused` 状态并对缓冲与播放结束状态增加安全保护，在 Dart 引擎层补全 `paused` 状态机并引入乐观更新，消除通道延迟与按钮状态脱节；
+  - 恢复并规范响应式唤醒锁（Wakelock）管理，建立 `_updateWakelock()` 综合联动播放状态、纯音频后台播放模式与应用前后台生命周期，彻底解决视频播放时自动熄屏且杜绝后台常驻耗电；
+  - 修复播放控制器在多路由切换并返回时画面黑屏（有声音无画面）缺陷：在底层引擎重新完成初始化并获取全新 `textureId` 后强制递增 `engineGeneration` 代际标识，驱动 Flutter `ValueKey` 销毁旧纹理并挂载新纹理组件，同时在页面重入生命周期（`didPopNext`）与恢复播放结束时安全触发视图刷新。
 - 修复播放信息（Stats for Nerds）面板中音频编码与音频码率显示为“未知”及音轨状态脱节问题：
   - 根除 [`controller.dart`](file:///E:/Documents/PiliPalaZ/lib/pages/video/controller.dart) 中局部变量 `late AudioItem? firstAudio;` 遮蔽类属性引发的 `LateInitializationError`，将音轨字段改造为安全可空声明；
   - 修复 `updatePlayer()` 中音频音轨与底层 URL 脱节缺陷，扩充音轨候选池以完整支持杜比全景声与 Hi-Res/FLAC 无损音轨，防止切换画质时杜比/无损被静默降级为普通音质；

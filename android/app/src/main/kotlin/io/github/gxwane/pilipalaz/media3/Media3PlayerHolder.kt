@@ -171,11 +171,24 @@ class Media3PlayerHolder(
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
         mainHandler.removeCallbacks(positionRunnable)
+        emitPlaybackUpdate()
         if (isPlaying) {
-            emitPlaybackUpdate()
             mainHandler.postDelayed(positionRunnable, 100L)
+            eventSink?.success(
+                mapOf(
+                    "event" to "stateChanged",
+                    "state" to "playing",
+                )
+            )
         } else {
-            emitPlaybackUpdate()
+            if (exoPlayer.playbackState == Player.STATE_READY) {
+                eventSink?.success(
+                    mapOf(
+                        "event" to "stateChanged",
+                        "state" to "paused",
+                    )
+                )
+            }
         }
     }
 
@@ -184,7 +197,7 @@ class Media3PlayerHolder(
         val stateString = when (playbackState) {
             Player.STATE_IDLE -> "idle"
             Player.STATE_BUFFERING -> "buffering"
-            Player.STATE_READY -> if (exoPlayer.isPlaying) "playing" else "ready"
+            Player.STATE_READY -> if (exoPlayer.isPlaying) "playing" else "paused"
             Player.STATE_ENDED -> "completed"
             else -> "unknown"
         }

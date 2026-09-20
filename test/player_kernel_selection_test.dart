@@ -29,7 +29,10 @@ void main() {
   group('Player Kernel Setting & Persistence', () {
     test('defaults to media3 and persists kernel selection', () async {
       final box = GStorage.setting;
-      expect(box.get(SettingBoxKey.playerKernel, defaultValue: 'media3'), 'media3');
+      expect(
+        box.get(SettingBoxKey.playerKernel, defaultValue: 'media3'),
+        'media3',
+      );
 
       await box.put(SettingBoxKey.playerKernel, 'mpv');
       expect(box.get(SettingBoxKey.playerKernel), 'mpv');
@@ -64,30 +67,33 @@ void main() {
       expect(engine is IPlayerEngine, isTrue);
     });
 
-    test('PlaybackCommandCoordinator works uniformly with IPlayerEngine', () async {
-      final engine = HeadlessPlayerEngine();
-      await engine.initialize();
-      bool controlsVisible = false;
+    test(
+      'PlaybackCommandCoordinator works uniformly with IPlayerEngine',
+      () async {
+        final engine = HeadlessPlayerEngine();
+        await engine.initialize();
+        bool controlsVisible = false;
 
-      final coordinator = PlaybackCommandCoordinator(
-        engine: engine,
-        audioSession: _MockAudioSession(),
-        onControlsVisibilityChanged: (v) => controlsVisible = v,
-        onFeedback: () {},
-        restartFromBeginning: () async {},
-      );
+        final coordinator = PlaybackCommandCoordinator(
+          engine: engine,
+          audioSession: _MockAudioSession(),
+          onControlsVisibilityChanged: (v) => controlsVisible = v,
+          onFeedback: () {},
+          restartFromBeginning: () async {},
+        );
 
-      expect(coordinator.engine.isPlaying, isFalse);
-      await coordinator.play(hideControls: false);
-      expect(coordinator.engine.isPlaying, isTrue);
-      expect(engine.isPlaying, isTrue);
-      expect(controlsVisible, isTrue);
+        expect(coordinator.engine.isPlaying, isFalse);
+        await coordinator.play(hideControls: false);
+        expect(coordinator.engine.isPlaying, isTrue);
+        expect(engine.isPlaying, isTrue);
+        expect(controlsVisible, isTrue);
 
-      await coordinator.pause();
-      expect(coordinator.engine.isPlaying, isFalse);
-      expect(engine.isPlaying, isFalse);
-      await engine.dispose();
-    });
+        await coordinator.pause();
+        expect(coordinator.engine.isPlaying, isFalse);
+        expect(engine.isPlaying, isFalse);
+        await engine.dispose();
+      },
+    );
   });
 
   group('Engine Stream Synchronization Contract', () {
@@ -122,21 +128,60 @@ void main() {
       await engine.dispose();
     });
 
-    test('engineGeneration observable increments and notifies listeners', () async {
-      final engineGeneration = 0.obs;
-      final history = <int>[];
-      final sub = engineGeneration.listen(history.add);
+    test(
+      'engineGeneration observable increments and notifies listeners',
+      () async {
+        final engineGeneration = 0.obs;
+        final history = <int>[];
+        final sub = engineGeneration.listen(history.add);
 
-      engineGeneration.value++;
-      expect(engineGeneration.value, 1);
-      expect(history, [1]);
+        engineGeneration.value++;
+        expect(engineGeneration.value, 1);
+        expect(history, [1]);
 
-      engineGeneration.value++;
-      expect(engineGeneration.value, 2);
-      expect(history, [1, 2]);
+        engineGeneration.value++;
+        expect(engineGeneration.value, 2);
+        expect(history, [1, 2]);
 
-      await sub.cancel();
-    });
+        await sub.cancel();
+      },
+    );
+
+    test(
+      'wakelock activation logic properly respects playing and onlyAudio states',
+      () {
+        bool computeWakelockEnabled({
+          required bool isPlaying,
+          required bool onlyAudio,
+        }) {
+          return isPlaying && !onlyAudio;
+        }
+
+        // Normal video playback: screen stays awake
+        expect(
+          computeWakelockEnabled(isPlaying: true, onlyAudio: false),
+          isTrue,
+        );
+
+        // Paused: screen can sleep
+        expect(
+          computeWakelockEnabled(isPlaying: false, onlyAudio: false),
+          isFalse,
+        );
+
+        // Audio-only background playback: screen can sleep
+        expect(
+          computeWakelockEnabled(isPlaying: true, onlyAudio: true),
+          isFalse,
+        );
+
+        // Paused audio-only: screen can sleep
+        expect(
+          computeWakelockEnabled(isPlaying: false, onlyAudio: true),
+          isFalse,
+        );
+      },
+    );
   });
 }
 

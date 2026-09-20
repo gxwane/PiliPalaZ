@@ -436,10 +436,10 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     } else {
       videoIntroController.playbackQueueController.markActive();
     }
-    // isShowing = true;
-    // if (mounted) {
-    //   setState(() => {});
-    // }
+    isShowing = true;
+    if (mounted) {
+      setState(() {});
+    }
     if (popRouteStackContinuously != "" &&
         Get.currentRoute != popRouteStackContinuously) {
       return;
@@ -496,6 +496,9 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     restoredController.removeStatusLister(playerListener);
     restoredController.addStatusLister(playerListener);
     listenFullScreenStatus();
+    if (mounted) {
+      setState(() {});
+    }
     unawaited(
       Future<void>.delayed(const Duration(milliseconds: 600), () {
         if (mounted &&

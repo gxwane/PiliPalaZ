@@ -50,7 +50,7 @@ import '../../pages/video/controller.dart';
 import '../../pages/video/introduction/bangumi/controller.dart';
 import '../../pages/video/introduction/detail/controller.dart';
 // import '../../pages/video/controller.dart';
-// import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 Box videoStorage = GStorage.video;
 Box setting = GStorage.setting;
@@ -69,6 +69,7 @@ class PlPlayerController with WidgetsBindingObserver {
 
   // 流事件  监听播放状态变化
   StreamSubscription? _playerEventSubs;
+  StreamSubscription? _audioOnlySubs;
 
   /// [playerStatus] has a [status] observable
   final PlPlayerStatus playerStatus = PlPlayerStatus();
@@ -635,33 +636,53 @@ class PlPlayerController with WidgetsBindingObserver {
     speedsList.sort();
   }
 
+  Future<void> _setWakelock({required bool enable}) async {
+    if (isHeadlessTestMode) return;
+    try {
+      if (enable) {
+        await WakelockPlus.enable();
+      } else {
+        await WakelockPlus.disable();
+      }
+    } on Exception catch (e) {
+      debugPrint('Wakelock error: $e');
+    }
+  }
+
+  void _updateWakelock() {
+    final bool isPlaying = playerStatus.status.value == PlayerStatus.playing;
+    unawaited(_setWakelock(enable: isPlaying && !_onlyPlayAudio.value));
+  }
+
   // 添加一个私有构造函数
   PlPlayerController._() {
     _videoType = videoType;
     updateSettings();
     WidgetsBinding.instance.addObserver(this);
-    // _playerEventSubs = onPlayerStatusChanged.listen((PlayerStatus status) {
-    //   if (status == PlayerStatus.playing) {
-    //     WakelockPlus.enable();
-    //   } else {
-    //     WakelockPlus.disable();
-    //   }
-    // });
+    _playerEventSubs = onPlayerStatusChanged.listen((PlayerStatus status) {
+      _updateWakelock();
+    });
+    _audioOnlySubs = _onlyPlayAudio.listen((bool onlyAudio) {
+      _updateWakelock();
+    });
     enableAutoPip();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (!Platform.isAndroid) return;
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.detached ||
         state == AppLifecycleState.hidden) {
+      unawaited(_setWakelock(enable: false));
+      if (!Platform.isAndroid) return;
       final String route = Get.currentRoute;
       final bool isPlayerRoute =
           route.startsWith('/video') || route.startsWith('/live');
       if (!isPlayerRoute && !floatingManager.containsFloating(globalId)) {
         _nativePlayerStale = true;
       }
+    } else if (state == AppLifecycleState.resumed) {
+      _updateWakelock();
     }
   }
 
@@ -1148,6 +1169,7 @@ class PlPlayerController with WidgetsBindingObserver {
           autoPlay: false,
         );
         _engine = media3Engine;
+        engineGeneration.value++;
         await _diagnosticSession?.checkpoint('media3_open_complete');
         return player;
       } catch (err) {
@@ -1169,6 +1191,7 @@ class PlPlayerController with WidgetsBindingObserver {
       videoSync: setting.get(SettingBoxKey.videoSync, defaultValue: 'audio'),
       useOpenSLES: setting.get(SettingBoxKey.useOpenSLES, defaultValue: false),
     );
+    engineGeneration.value++;
 
     player.setPlaylistMode(looping);
     await _diagnosticSession?.checkpoint('media_open_begin');
@@ -1592,17 +1615,11 @@ class PlPlayerController with WidgetsBindingObserver {
     if (session != _playbackSession) return;
     if (state == EnginePlaybackState.buffering) {
       isBuffering.value = true;
-      videoPlayerServiceHandler.onStatusChange(
-        playerStatus.status.value,
-        true,
-      );
+      videoPlayerServiceHandler.onStatusChange(playerStatus.status.value, true);
     } else if (state == EnginePlaybackState.playing) {
       isBuffering.value = false;
       playerStatus.status.value = PlayerStatus.playing;
-      videoPlayerServiceHandler.onStatusChange(
-        PlayerStatus.playing,
-        false,
-      );
+      videoPlayerServiceHandler.onStatusChange(PlayerStatus.playing, false);
       for (var element in _statusListeners) {
         element(PlayerStatus.playing);
       }
@@ -1612,10 +1629,7 @@ class PlPlayerController with WidgetsBindingObserver {
     } else if (state == EnginePlaybackState.paused) {
       isBuffering.value = false;
       playerStatus.status.value = PlayerStatus.paused;
-      videoPlayerServiceHandler.onStatusChange(
-        PlayerStatus.paused,
-        false,
-      );
+      videoPlayerServiceHandler.onStatusChange(PlayerStatus.paused, false);
       for (var element in _statusListeners) {
         element(PlayerStatus.paused);
       }
@@ -1695,9 +1709,11 @@ class PlPlayerController with WidgetsBindingObserver {
   }
 
   void _startMedia3Listeners(int session, Media3PlayerEngine engine) {
-    if (_media3PlaybackStateListener != null && _media3ListeningEngine != null) {
-      _media3ListeningEngine!.playbackState
-          .removeListener(_media3PlaybackStateListener!);
+    if (_media3PlaybackStateListener != null &&
+        _media3ListeningEngine != null) {
+      _media3ListeningEngine!.playbackState.removeListener(
+        _media3PlaybackStateListener!,
+      );
     }
     void listener() => _applyEngineStateChange(
       session,
@@ -2003,9 +2019,11 @@ class PlPlayerController with WidgetsBindingObserver {
 
   /// 移除事件监听
   Future<void> removeListeners() async {
-    if (_media3PlaybackStateListener != null && _media3ListeningEngine != null) {
-      _media3ListeningEngine!.playbackState
-          .removeListener(_media3PlaybackStateListener!);
+    if (_media3PlaybackStateListener != null &&
+        _media3ListeningEngine != null) {
+      _media3ListeningEngine!.playbackState.removeListener(
+        _media3PlaybackStateListener!,
+      );
       _media3PlaybackStateListener = null;
       _media3ListeningEngine = null;
     }
@@ -2906,6 +2924,7 @@ class PlPlayerController with WidgetsBindingObserver {
   }
 
   Future<void> dispose() async {
+    await _setWakelock(enable: false);
     try {
       if (canControlPlayback) {
         await pause();
@@ -2915,6 +2934,7 @@ class PlPlayerController with WidgetsBindingObserver {
     try {
       _cancelAllTimers();
       _playerEventSubs?.cancel();
+      _audioOnlySubs?.cancel();
       _dataListenerForVideoFit?.cancel();
       _dataListenerForEnterFullScreen?.cancel();
       _playerListenerForEnterPip?.cancel();

@@ -8,31 +8,32 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late List<MethodCall> methodCalls;
-  const MethodChannel methodChannel =
-      MethodChannel('io.github.gxwane.pilipalaz/media3');
+  const MethodChannel methodChannel = MethodChannel(
+    'io.github.gxwane.pilipalaz/media3',
+  );
 
   setUp(() {
     methodCalls = <MethodCall>[];
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(methodChannel, (MethodCall call) async {
-      methodCalls.add(call);
-      switch (call.method) {
-        case 'create':
-          return 42; // mock textureId
-        case 'open':
-        case 'play':
-        case 'pause':
-        case 'stop':
-        case 'seekTo':
-        case 'setPlaybackSpeed':
-        case 'setVolume':
-        case 'setLooping':
-        case 'dispose':
-          return null;
-        default:
-          throw MissingPluginException();
-      }
-    });
+          methodCalls.add(call);
+          switch (call.method) {
+            case 'create':
+              return 42; // mock textureId
+            case 'open':
+            case 'play':
+            case 'pause':
+            case 'stop':
+            case 'seekTo':
+            case 'setPlaybackSpeed':
+            case 'setVolume':
+            case 'setLooping':
+            case 'dispose':
+              return null;
+            default:
+              throw MissingPluginException();
+          }
+        });
   });
 
   tearDown(() {
@@ -68,7 +69,9 @@ void main() {
       final openCall = methodCalls.firstWhere((c) => c.method == 'open');
       expect(openCall.arguments['videoUrl'], 'https://bilibili.com/video.m4s');
       expect(openCall.arguments['audioUrl'], 'https://bilibili.com/audio.m4s');
-      expect(openCall.arguments['headers'], {'Referer': 'https://www.bilibili.com/'});
+      expect(openCall.arguments['headers'], {
+        'Referer': 'https://www.bilibili.com/',
+      });
       expect(openCall.arguments['startPositionMs'], 10000);
       expect(openCall.arguments['autoPlay'], isTrue);
       expect(engine.isPlaying, isTrue);
@@ -83,10 +86,12 @@ void main() {
       await engine.play();
       expect(methodCalls.last.method, 'play');
       expect(engine.isPlaying, isTrue);
+      expect(engine.playbackState.value, EnginePlaybackState.playing);
 
       await engine.pause();
       expect(methodCalls.last.method, 'pause');
       expect(engine.isPlaying, isFalse);
+      expect(engine.playbackState.value, EnginePlaybackState.paused);
 
       await engine.seek(const Duration(seconds: 30));
       expect(methodCalls.last.method, 'seekTo');
@@ -112,17 +117,20 @@ void main() {
       expect(methodCalls.last.method, 'dispose');
     });
 
-    test('buildVideoView returns reactive StreamBuilder when textureId is available', () async {
-      final engine = Media3PlayerEngine();
-      await engine.initialize();
+    test(
+      'buildVideoView returns reactive StreamBuilder when textureId is available',
+      () async {
+        final engine = Media3PlayerEngine();
+        await engine.initialize();
 
-      const testKey = ValueKey('test_key');
-      final widget = engine.buildVideoView(key: testKey);
-      expect(widget, isA<StreamBuilder<VideoDimension>>());
-      expect(widget.key, testKey);
+        const testKey = ValueKey('test_key');
+        final widget = engine.buildVideoView(key: testKey);
+        expect(widget, isA<StreamBuilder<VideoDimension>>());
+        expect(widget.key, testKey);
 
-      await engine.dispose();
-    });
+        await engine.dispose();
+      },
+    );
 
     test('getDiagnosticsInfo returns Media3 telemetry', () async {
       final engine = Media3PlayerEngine();
@@ -134,5 +142,30 @@ void main() {
 
       await engine.dispose();
     });
+
+    test(
+      'eventChannel updates playbackState to paused on stateChanged event',
+      () async {
+        final engine = Media3PlayerEngine();
+        await engine.initialize();
+
+        const StandardMethodCodec codec = StandardMethodCodec();
+        final ByteData message = codec.encodeSuccessEnvelope({
+          'event': 'stateChanged',
+          'state': 'paused',
+        });
+        await TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .handlePlatformMessage(
+              'io.github.gxwane.pilipalaz/media3_events',
+              message,
+              (ByteData? reply) {},
+            );
+
+        expect(engine.playbackState.value, EnginePlaybackState.paused);
+        expect(engine.isPlaying, isFalse);
+
+        await engine.dispose();
+      },
+    );
   });
 }

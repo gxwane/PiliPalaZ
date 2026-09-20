@@ -7,10 +7,12 @@ import 'package:pilipalaz/plugin/pl_player/engine/player_engine_interface.dart';
 
 /// Android 原生 Media3 (ExoPlayer) 播放器引擎实现
 class Media3PlayerEngine implements IPlayerEngine {
-  static const MethodChannel _channel =
-      MethodChannel('io.github.gxwane.pilipalaz/media3');
-  static const EventChannel _eventChannel =
-      EventChannel('io.github.gxwane.pilipalaz/media3_events');
+  static const MethodChannel _channel = MethodChannel(
+    'io.github.gxwane.pilipalaz/media3',
+  );
+  static const EventChannel _eventChannel = EventChannel(
+    'io.github.gxwane.pilipalaz/media3_events',
+  );
 
   int? _textureId;
   final ValueNotifier<EnginePlaybackState> _playbackState =
@@ -103,6 +105,10 @@ class Media3PlayerEngine implements IPlayerEngine {
             _isPlaying = true;
             _isCompleted = false;
             break;
+          case 'paused':
+            _playbackState.value = EnginePlaybackState.paused;
+            _isPlaying = false;
+            break;
           case 'completed':
             _playbackState.value = EnginePlaybackState.completed;
             _isCompleted = true;
@@ -152,8 +158,9 @@ class Media3PlayerEngine implements IPlayerEngine {
         'startPositionMs': item.startPosition?.inMilliseconds,
         'autoPlay': autoPlay,
       });
-      _playbackState.value =
-          autoPlay ? EnginePlaybackState.playing : EnginePlaybackState.ready;
+      _playbackState.value = autoPlay
+          ? EnginePlaybackState.playing
+          : EnginePlaybackState.ready;
       _isPlaying = autoPlay;
     } catch (e) {
       debugPrint('Media3PlayerEngine.open error: $e');
@@ -201,15 +208,18 @@ class Media3PlayerEngine implements IPlayerEngine {
   @override
   Future<void> play() async {
     if (_isDisposed) return;
-    await _channel.invokeMethod<void>('play');
+    _playbackState.value = EnginePlaybackState.playing;
     _isPlaying = true;
+    _isCompleted = false;
+    await _channel.invokeMethod<void>('play');
   }
 
   @override
   Future<void> pause() async {
     if (_isDisposed) return;
-    await _channel.invokeMethod<void>('pause');
+    _playbackState.value = EnginePlaybackState.paused;
     _isPlaying = false;
+    await _channel.invokeMethod<void>('pause');
   }
 
   @override
@@ -233,25 +243,19 @@ class Media3PlayerEngine implements IPlayerEngine {
   @override
   Future<void> setRate(double rate) async {
     if (_isDisposed) return;
-    await _channel.invokeMethod<void>('setPlaybackSpeed', {
-      'speed': rate,
-    });
+    await _channel.invokeMethod<void>('setPlaybackSpeed', {'speed': rate});
   }
 
   @override
   Future<void> setVolume(double volume) async {
     if (_isDisposed) return;
-    await _channel.invokeMethod<void>('setVolume', {
-      'volume': volume,
-    });
+    await _channel.invokeMethod<void>('setVolume', {'volume': volume});
   }
 
   @override
   Future<void> setLooping(bool looping) async {
     if (_isDisposed) return;
-    await _channel.invokeMethod<void>('setLooping', {
-      'looping': looping,
-    });
+    await _channel.invokeMethod<void>('setLooping', {'looping': looping});
   }
 
   @override
