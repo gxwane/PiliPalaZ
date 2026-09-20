@@ -118,10 +118,10 @@ class VideoDetailController extends GetxController
   PreferredSizeWidget? headerControl;
 
   // late bool enableCDN;
-  late int? cacheVideoQa;
-  late String cacheDecode;
-  late String cacheSecondDecode;
-  late int cacheAudioQa;
+  int? cacheVideoQa;
+  String cacheDecode = '';
+  String cacheSecondDecode = '';
+  int cacheAudioQa = 0;
   final HardwareAlternativeRecoveryGuard _hardwareAlternativeRecoveryGuard =
       HardwareAlternativeRecoveryGuard();
 
@@ -1002,7 +1002,7 @@ class VideoDetailController extends GetxController
           final Uri? uri = Uri.tryParse(videoUrl);
           cdnHost = uri?.host.isNotEmpty == true ? uri!.host : '未知';
         }
-      } catch (_) {}
+      } on FormatException catch (_) {}
     }
 
     final String srcTypeStr = isOffline

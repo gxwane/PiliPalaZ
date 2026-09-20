@@ -6,6 +6,10 @@
 
 ### 新增
 
+- 引入基于 AST 的机器自动化架构守卫与静态分析加固体系：
+  - 建立全自动化 AST 架构测试套件（`test/architecture/`），在 `flutter test` 与 CI 门禁中以毫秒级机械拦截局部变量同名遮蔽类属性（`FieldShadowingGuard`）、控制器非法 `late` 声明（`ControllerZeroLateGuard`）及核心诊断链路裸吞错误（`CriticalBareCatchGuard`），彻底替代脆弱的人工 Checklist；
+  - 依托 AST 守卫扫描全库，根除 `video_detail_res.dart`、`login/controller.dart` 等历史遗留的 8 处变量遮蔽隐患与潜在序列化 Bug；
+  - 在 [`analysis_options.yaml`](file:///E:/Documents/PiliPalaZ/analysis_options.yaml) 激活 `unnecessary_late`、`cancel_subscriptions`、`close_sinks` 与 `avoid_shadowing_type_parameters` 严格静态检查规则。
 - 全面重构并升级「播放信息」统计与排障诊断面板（Stats for Nerds）：
   - 彻底解决 Media3 内核下由于直接读取已闲置的 media_kit 控制器而导致的字段全空（`nullxnull`、空白参数与空列表）缺陷，统一从 `IPlayerEngine`、`VideoItem`、`AudioItem` 与响应式控制器提取真实运行时指标；
   - 结构化整合 5 大诊断模块：播放内核与渲染管线（清晰标识当前运行的 Media3 / MPV 内核、SurfaceTexture 渲染后端、硬解配置与音频输出）、视频流规格（画质、画面尺寸、编码格式、帧率、码率）、音频流规格（音质、编码、码率）、播放与缓冲健康度（当前进度、总时长、缓冲进度与百分比、播放状态与倍速）、网络与元数据（稿件来源、BVID、CID、脱敏 CDN 节点）；

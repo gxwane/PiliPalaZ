@@ -828,29 +828,30 @@ class VideoIntroController extends GetxController {
       return false;
     }
 
-    final HotVideoItemModel videoItem = relatedCtr.relatedVideoList[0];
+    final HotVideoItemModel relatedVideoItem = relatedCtr.relatedVideoList[0];
     if (PlPlayerController.getInstance().isFullScreen.value) {
       PlPlayerController.getInstance().toggleFullScreen(false);
     }
     try {
-      if (videoItem.cid != null) {
+      if (relatedVideoItem.cid != null) {
         Get.offNamed(
-          '/video?bvid=${videoItem.bvid}&cid=${videoItem.cid}',
-          arguments: {'videoItem': videoItem, 'heroTag': heroTag},
+          '/video?bvid=${relatedVideoItem.bvid}&cid=${relatedVideoItem.cid}',
+          arguments: {'videoItem': relatedVideoItem, 'heroTag': heroTag},
         );
-        // changeSeasonOrbangu(videoItem.bvid, videoItem.cid, videoItem.aid);
+        // changeSeasonOrbangu(relatedVideoItem.bvid, relatedVideoItem.cid, relatedVideoItem.aid);
       } else {
-        SearchHttp.ab2c(aid: videoItem.aid, bvid: videoItem.bvid).then((
-          cidResult,
-        ) {
+        SearchHttp.ab2c(
+          aid: relatedVideoItem.aid,
+          bvid: relatedVideoItem.bvid,
+        ).then((cidResult) {
           if (cidResult case ApiFailure<int>(:final message)) {
             SmartDialog.showToast(message);
             return;
           }
           final cid = (cidResult as ApiSuccess<int>).data;
           Get.offNamed(
-            '/video?bvid=${videoItem.bvid}&cid=$cid',
-            arguments: {'videoItem': videoItem, 'heroTag': heroTag},
+            '/video?bvid=${relatedVideoItem.bvid}&cid=$cid',
+            arguments: {'videoItem': relatedVideoItem, 'heroTag': heroTag},
           );
         });
       }

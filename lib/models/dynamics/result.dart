@@ -919,20 +919,22 @@ class DynamicLiveModel {
         final data = _parseMap(decoded);
         if (data != null) {
           type = _parseInt(data['type']);
-          final livePlayInfo = _parseMap(data['live_play_info']);
-          if (livePlayInfo != null) {
-            this.livePlayInfo = livePlayInfo;
-            uid = _parseInt(livePlayInfo['uid']);
-            parentAreaName = _parseString(livePlayInfo['parent_area_name']);
-            roomId = _parseInt(livePlayInfo['room_id']);
-            liveId = _parseString(livePlayInfo['live_id']);
-            liveStatus = _parseInt(livePlayInfo['live_status']);
-            cover = _parseString(livePlayInfo['cover']);
-            online = _parseInt(livePlayInfo['online']);
-            areaName = _parseString(livePlayInfo['area_name']);
-            title = _parseString(livePlayInfo['title']);
-            liveStartTime = _parseInt(livePlayInfo['live_start_time']);
-            watchedShow = _parseMap(livePlayInfo['watched_show']);
+          final parsedLivePlayInfo = _parseMap(data['live_play_info']);
+          if (parsedLivePlayInfo != null) {
+            livePlayInfo = parsedLivePlayInfo;
+            uid = _parseInt(parsedLivePlayInfo['uid']);
+            parentAreaName = _parseString(
+              parsedLivePlayInfo['parent_area_name'],
+            );
+            roomId = _parseInt(parsedLivePlayInfo['room_id']);
+            liveId = _parseString(parsedLivePlayInfo['live_id']);
+            liveStatus = _parseInt(parsedLivePlayInfo['live_status']);
+            cover = _parseString(parsedLivePlayInfo['cover']);
+            online = _parseInt(parsedLivePlayInfo['online']);
+            areaName = _parseString(parsedLivePlayInfo['area_name']);
+            title = _parseString(parsedLivePlayInfo['title']);
+            liveStartTime = _parseInt(parsedLivePlayInfo['live_start_time']);
+            watchedShow = _parseMap(parsedLivePlayInfo['watched_show']);
           }
         }
       } catch (e, stack) {

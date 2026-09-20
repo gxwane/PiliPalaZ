@@ -125,7 +125,7 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
 
   // 查看二级评论
   void replyReply(replyItem) {
-    int oid = replyItem.oid;
+    int targetOid = replyItem.oid;
     int rpid = replyItem.rpid!;
     Get.to(
       () => Scaffold(
@@ -135,7 +135,7 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
           title: Text('评论详情', style: Theme.of(context).textTheme.titleMedium),
         ),
         body: VideoReplyReplyPanel(
-          oid: oid,
+          oid: targetOid,
           rpid: rpid,
           source: 'dynamic',
           replyType: ReplyType.values[replyType],

@@ -16,13 +16,13 @@ class VideoDetailResponse {
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = <String, dynamic>{};
-    data["code"] = code;
-    data["message"] = message;
-    data["ttl"] = ttl;
-    data["data"] = data;
+    final Map<String, dynamic> json = <String, dynamic>{};
+    json["code"] = code;
+    json["message"] = message;
+    json["ttl"] = ttl;
+    json["data"] = data?.toJson();
 
-    return data;
+    return json;
   }
 }
 

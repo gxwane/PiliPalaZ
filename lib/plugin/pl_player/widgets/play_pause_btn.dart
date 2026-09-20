@@ -17,8 +17,8 @@ class PlayOrPauseButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final PlPlayerController? controller = this.controller;
-    if (controller == null) {
+    final PlPlayerController? activeController = controller;
+    if (activeController == null) {
       return Semantics(
         button: true,
         enabled: false,
@@ -39,12 +39,12 @@ class PlayOrPauseButton extends StatelessWidget {
       );
     }
     return Obx(() {
-      final PlayerStatus status = controller.playerStatus.status.value;
+      final PlayerStatus status = activeController.playerStatus.status.value;
       final PlaybackLifecycleState lifecycle =
-          controller.playbackLifecycleState.value;
+          activeController.playbackLifecycleState.value;
       final bool canControl =
           lifecycle == PlaybackLifecycleState.ready &&
-          controller.canControlPlayback;
+          activeController.canControlPlayback;
       final bool playing = canControl && status == PlayerStatus.playing;
       return Semantics(
         button: true,
@@ -53,7 +53,7 @@ class PlayOrPauseButton extends StatelessWidget {
         child: ConstrainedBox(
           constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
           child: InkWell(
-            onTap: canControl ? controller.togglePlay : null,
+            onTap: canControl ? activeController.togglePlay : null,
             child: Center(
               child: Icon(
                 playing ? Icons.pause : Icons.play_arrow,

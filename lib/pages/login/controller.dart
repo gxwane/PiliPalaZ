@@ -341,7 +341,7 @@ class LoginPageController extends GetxController
           return;
         }
         TextEditingController textFieldController = TextEditingController();
-        String captchaKey = '';
+        String smsCaptchaKey = '';
         Get.dialog(
           AlertDialog(
             title: const Text("本次登录需要验证您的手机号"),
@@ -416,7 +416,7 @@ class LoginPageController extends GetxController
                       return;
                     }
                     SmartDialog.showToast("短信验证码已发送，请查收");
-                    captchaKey =
+                    smsCaptchaKey =
                         sendSms.payload['captcha_key']?.toString() ?? '';
                   });
                 },
@@ -435,7 +435,7 @@ class LoginPageController extends GetxController
                         tmpCode: currentUri.queryParameters['tmp_token']!,
                         requestId: currentUri.queryParameters['request_id']!,
                         source: currentUri.queryParameters['source']!,
-                        captchaKey: captchaKey,
+                        captchaKey: smsCaptchaKey,
                         refererUrl: url,
                       );
                   final smsVerify = _acceptedResponse(safeCenterSmsVerifyRes);

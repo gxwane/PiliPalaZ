@@ -142,7 +142,7 @@ class _VideoReplyNewDialogState extends State<VideoReplyNewDialog>
 
   @override
   Widget build(BuildContext context) {
-    double keyboardHeight = EdgeInsets.fromViewPadding(
+    keyboardHeight = EdgeInsets.fromViewPadding(
       View.of(context).viewInsets,
       View.of(context).devicePixelRatio,
     ).bottom;

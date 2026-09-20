@@ -188,7 +188,13 @@ void main() {
       'lib/plugin/pl_player/playback_commands.dart',
     ).readAsStringSync();
 
-    expect(button, contains('onTap: canControl ? controller.togglePlay'));
+    expect(
+      button,
+      anyOf(
+        contains('onTap: canControl ? controller.togglePlay'),
+        contains('onTap: canControl ? activeController.togglePlay'),
+      ),
+    );
     expect(button, isNot(contains('onTap: player.playOrPause')));
     expect(button, isNot(contains('videoPlayerController!')));
     expect(button, isNot(contains('late Player player')));

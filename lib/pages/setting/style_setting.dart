@@ -31,10 +31,14 @@ class StyleSetting extends StatefulWidget {
 
 class _StyleSettingState extends State<StyleSetting> {
   final SettingController settingController = Get.put(SettingController());
-  final ColorSelectController colorSelectController =
-      Get.put(ColorSelectController());
-  FlexSchemeVariant _dynamicSchemeVariant = FlexSchemeVariant.values[
-      GStorage.setting.get(SettingBoxKey.schemeVariant, defaultValue: 10)];
+  final ColorSelectController colorSelectController = Get.put(
+    ColorSelectController(),
+  );
+  FlexSchemeVariant _dynamicSchemeVariant =
+      FlexSchemeVariant.values[GStorage.setting.get(
+        SettingBoxKey.schemeVariant,
+        defaultValue: 10,
+      )];
 
   Box setting = GStorage.setting;
   late int picQuality;
@@ -48,48 +52,50 @@ class _StyleSettingState extends State<StyleSetting> {
     picQuality = setting.get(SettingBoxKey.defaultPicQa, defaultValue: 10);
     maxRowWidth =
         setting.get(SettingBoxKey.maxRowWidth, defaultValue: 240.0) as double;
-    upPanelPosition = UpPanelPosition.values[setting.get(
-        SettingBoxKey.upPanelPosition,
-        defaultValue: UpPanelPosition.leftFixed.code)];
-    sideBarPosition = SideBarPositionCode.fromCode(setting.get(
+    upPanelPosition =
+        UpPanelPosition.values[setting.get(
+          SettingBoxKey.upPanelPosition,
+          defaultValue: UpPanelPosition.leftFixed.code,
+        )];
+    sideBarPosition = SideBarPositionCode.fromCode(
+      setting.get(
         SettingBoxKey.sideBarPosition,
-        defaultValue: SideBarPosition.none.code))!;
+        defaultValue: SideBarPosition.none.code,
+      ),
+    )!;
   }
 
   @override
   Widget build(BuildContext context) {
     TextStyle titleStyle = Theme.of(context).textTheme.titleMedium!;
-    TextStyle subTitleStyle = Theme.of(context)
-        .textTheme
-        .labelMedium!
-        .copyWith(color: Theme.of(context).colorScheme.outline);
+    TextStyle subTitleStyle = Theme.of(context).textTheme.labelMedium!.copyWith(
+      color: Theme.of(context).colorScheme.outline,
+    );
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
         titleSpacing: 0,
-        title: Text(
-          '外观设置',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        title: Text('外观设置', style: Theme.of(context).textTheme.titleMedium),
       ),
       body: ListView(
         children: [
           SetSwitchItem(
-              title: '横屏适配',
-              subTitle: '启用横屏布局与逻辑，平板、折叠屏等可开启；建议全屏方向设为【不改变当前方向】',
-              leading: const Icon(Icons.phonelink_outlined),
-              setKey: SettingBoxKey.horizontalScreen,
-              defaultVal: false,
-              callFn: (value) {
-                if (value) {
-                  unawaited(autoScreen());
-                  SmartDialog.showToast('已开启横屏适配');
-                } else {
-                  unawaited(verticalScreen());
-                  SmartDialog.showToast('已关闭横屏适配');
-                }
-                PlPlayerController.updateSettingsIfExist();
-              }),
+            title: '横屏适配',
+            subTitle: '启用横屏布局与逻辑，平板、折叠屏等可开启；建议全屏方向设为【不改变当前方向】',
+            leading: const Icon(Icons.phonelink_outlined),
+            setKey: SettingBoxKey.horizontalScreen,
+            defaultVal: false,
+            callFn: (value) {
+              if (value) {
+                unawaited(autoScreen());
+                SmartDialog.showToast('已开启横屏适配');
+              } else {
+                unawaited(verticalScreen());
+                SmartDialog.showToast('已关闭横屏适配');
+              }
+              PlPlayerController.updateSettingsIfExist();
+            },
+          ),
           // const SetSwitchItem(
           //   title: '改用侧边栏',
           //   subTitle: '开启后底栏与顶栏被替换，且相关设置失效',
@@ -103,8 +109,9 @@ class _StyleSettingState extends State<StyleSetting> {
             title: Text('主页侧栏布局', style: titleStyle),
             leading: const Icon(Icons.chrome_reader_mode_outlined),
             subtitle: Text(
-                '当前：${sideBarPosition.labels}。开启后底栏与顶栏将被替换为侧栏，横屏或折叠屏推荐使用',
-                style: subTitleStyle),
+              '当前：${sideBarPosition.labels}。开启后底栏与顶栏将被替换为侧栏，横屏或折叠屏推荐使用',
+              style: subTitleStyle,
+            ),
             onTap: () async {
               SideBarPosition? result = await showDialog(
                 context: context,
@@ -131,11 +138,14 @@ class _StyleSettingState extends State<StyleSetting> {
             onTap: () => Get.toNamed('/colorSetting'),
             leading: const Icon(Icons.color_lens_outlined),
             title: Text('应用主题', style: titleStyle),
-            subtitle: Obx(() => Text(
+            subtitle: Obx(
+              () => Text(
                 '${settingController.themeType.value.description}   '
                 '${colorSelectController.type.value == 0 ? '动态取色' : '指定颜色'}   '
                 '${_dynamicSchemeVariant.variantName}',
-                style: subTitleStyle)),
+                style: subTitleStyle,
+              ),
+            ),
           ),
           const SetSwitchItem(
             title: 'MD3样式底栏',
@@ -155,17 +165,18 @@ class _StyleSettingState extends State<StyleSetting> {
           ListTile(
             onTap: () async {
               double? result = await showDialog(
-                  context: context,
-                  builder: (context) {
-                    return SlideDialog<double>(
-                      title: '最大列宽度（默认240dp）',
-                      value: maxRowWidth,
-                      min: 150.0,
-                      max: 500.0,
-                      divisions: 35,
-                      suffix: 'dp',
-                    );
-                  });
+                context: context,
+                builder: (context) {
+                  return SlideDialog<double>(
+                    title: '最大列宽度（默认240dp）',
+                    value: maxRowWidth,
+                    min: 150.0,
+                    max: 500.0,
+                    divisions: 35,
+                    suffix: 'dp',
+                  );
+                },
+              );
               if (result != null) {
                 maxRowWidth = result;
                 setting.put(SettingBoxKey.maxRowWidth, result);
@@ -210,8 +221,10 @@ class _StyleSettingState extends State<StyleSetting> {
             dense: false,
             title: Text('动态页Up主显示位置', style: titleStyle),
             leading: const Icon(Icons.person_outlined),
-            subtitle:
-                Text('当前：${upPanelPosition.labels}', style: subTitleStyle),
+            subtitle: Text(
+              '当前：${upPanelPosition.labels}',
+              style: subTitleStyle,
+            ),
             onTap: () async {
               UpPanelPosition? result = await showDialog(
                 context: context,
@@ -245,9 +258,12 @@ class _StyleSettingState extends State<StyleSetting> {
             onTap: () => settingController.setDynamicBadgeMode(context),
             title: Text('动态未读标记', style: titleStyle),
             leading: const Icon(Icons.motion_photos_on_outlined),
-            subtitle: Obx(() => Text(
+            subtitle: Obx(
+              () => Text(
                 '当前标记样式：${settingController.dynamicBadgeType.value.description}',
-                style: subTitleStyle)),
+                style: subTitleStyle,
+              ),
+            ),
           ),
           const SetSwitchItem(
             title: '首页顶栏收起',
@@ -273,12 +289,14 @@ class _StyleSettingState extends State<StyleSetting> {
                 builder: (context) {
                   return StatefulBuilder(
                     builder: (context, StateSetter setState) {
-                      final SettingController settingController =
-                          Get.put(SettingController());
                       return AlertDialog(
                         title: const Text('图片质量'),
                         contentPadding: const EdgeInsets.only(
-                            top: 20, left: 8, right: 8, bottom: 8),
+                          top: 20,
+                          left: 8,
+                          right: 8,
+                          bottom: 8,
+                        ),
                         content: SizedBox(
                           height: 40,
                           child: Slider(
@@ -295,23 +313,27 @@ class _StyleSettingState extends State<StyleSetting> {
                         ),
                         actions: [
                           TextButton(
-                              onPressed: () => Get.back(),
-                              child: Text('取消',
-                                  style: TextStyle(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .outline))),
+                            onPressed: () => Get.back(),
+                            child: Text(
+                              '取消',
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.outline,
+                              ),
+                            ),
+                          ),
                           TextButton(
                             onPressed: () {
                               setting.put(
-                                  SettingBoxKey.defaultPicQa, picQuality);
+                                SettingBoxKey.defaultPicQa,
+                                picQuality,
+                              );
                               Get.back();
                               settingController.picQuality.value = picQuality;
                               GlobalData().imgQuality = picQuality;
                               SmartDialog.showToast('设置成功');
                             },
                             child: const Text('确定'),
-                          )
+                          ),
                         ],
                       );
                     },
@@ -356,18 +378,24 @@ class _StyleSettingState extends State<StyleSetting> {
             leading: const Icon(Icons.opacity_outlined),
             title: Text('气泡提示不透明度', style: titleStyle),
             subtitle: Text('自定义气泡提示(Toast)不透明度', style: subTitleStyle),
-            trailing: Obx(() => Text(
+            trailing: Obx(
+              () => Text(
                 settingController.toastOpacity.value.toStringAsFixed(1),
-                style: Theme.of(context).textTheme.titleSmall)),
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
           ),
           ListTile(
             dense: false,
             onTap: () => settingController.setDefaultHomePage(context),
             leading: const Icon(Icons.home_outlined),
             title: Text('默认启动页', style: titleStyle),
-            subtitle: Obx(() => Text(
+            subtitle: Obx(
+              () => Text(
                 '当前启动页：${defaultNavigationBars.firstWhere((e) => e['id'] == settingController.defaultHomePage.value)['label']}',
-                style: subTitleStyle)),
+                style: subTitleStyle,
+              ),
+            ),
           ),
           ListTile(
             dense: false,
@@ -388,7 +416,7 @@ class _StyleSettingState extends State<StyleSetting> {
               onTap: () => Get.toNamed('/displayModeSetting'),
               title: Text('屏幕帧率', style: titleStyle),
               leading: const Icon(Icons.autofps_select_outlined),
-            )
+            ),
         ],
       ),
     );
