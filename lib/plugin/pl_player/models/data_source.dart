@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:pilipalaz/models/video/play/url.dart';
+
 /// The way in which the video was originally loaded.
 ///
 /// This has nothing to do with the video's file type. It's just the place
@@ -26,6 +28,8 @@ class DataSource {
   File? offlineSubtitleFile;
   DataSourceType type;
   Map<String, String>? httpHeaders; // for headers
+  AudioVolumeMetadata? volumeMetadata;
+
   DataSource({
     this.file,
     this.videoSource,
@@ -34,6 +38,7 @@ class DataSource {
     this.offlineSubtitleFile,
     required this.type,
     this.httpHeaders,
+    this.volumeMetadata,
   }) : assert(
          (type == DataSourceType.file && file != null) || videoSource != null,
        );
@@ -47,6 +52,7 @@ class DataSource {
     DataSourceType? type,
     Duration? startAt,
     Map<String, String>? httpHeaders,
+    AudioVolumeMetadata? volumeMetadata,
   }) {
     return DataSource(
       file: file ?? this.file,
@@ -56,6 +62,7 @@ class DataSource {
       offlineSubtitleFile: offlineSubtitleFile ?? this.offlineSubtitleFile,
       type: type ?? this.type,
       httpHeaders: httpHeaders ?? this.httpHeaders,
+      volumeMetadata: volumeMetadata ?? this.volumeMetadata,
     );
   }
 

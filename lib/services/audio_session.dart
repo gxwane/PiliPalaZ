@@ -28,9 +28,7 @@ class AudioSessionHandler implements PlaybackAudioSession {
         // if (!player.playerStatus.playing) return;
         switch (event.type) {
           case AudioInterruptionType.duck:
-            PlPlayerController.setVolumeIfExists(
-                (PlPlayerController.getVolumeIfExists() ?? 0) * 0.5);
-            // player.setVolume(player.volume.value * 0.5);
+            PlPlayerController.setAudioDuckingIfExists(true);
             break;
           case AudioInterruptionType.pause:
             PlPlayerController.pauseIfExists(isInterrupt: true);
@@ -46,13 +44,11 @@ class AudioSessionHandler implements PlaybackAudioSession {
       } else {
         switch (event.type) {
           case AudioInterruptionType.duck:
-            PlPlayerController.setVolumeIfExists(
-                (PlPlayerController.getVolumeIfExists() ?? 0) * 2);
-            // player.setVolume(player.volume.value * 2);
+            PlPlayerController.setAudioDuckingIfExists(false);
             break;
           case AudioInterruptionType.pause:
             if (_playInterrupted) PlPlayerController.playIfExists();
-              //player.play();
+            //player.play();
             break;
           case AudioInterruptionType.unknown:
             break;

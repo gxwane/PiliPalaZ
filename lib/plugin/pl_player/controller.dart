@@ -26,6 +26,7 @@ import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:pilipalaz/http/video.dart';
 import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/pages/mine/controller.dart';
+import 'package:pilipalaz/models/video/play/url.dart';
 import 'package:pilipalaz/plugin/pl_player/external_audio_command.dart';
 import 'package:pilipalaz/plugin/pl_player/hardware_decode_fallback_guard.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
@@ -34,6 +35,7 @@ import 'package:pilipalaz/plugin/pl_player/player_buffer_policy.dart';
 import 'package:pilipalaz/plugin/pl_player/playback_commands.dart';
 import 'package:pilipalaz/plugin/pl_player/playback_lifecycle.dart';
 import 'package:pilipalaz/plugin/pl_player/playback_position_guard.dart';
+import 'package:pilipalaz/plugin/pl_player/volume_coordinator.dart';
 import 'package:pilipalaz/services/diagnostics/diagnostic_record.dart';
 import 'package:pilipalaz/services/diagnostics/local_diagnostics.dart';
 import 'package:pilipalaz/services/download/offline_subtitle_service.dart';
@@ -63,6 +65,9 @@ class PlPlayerController with WidgetsBindingObserver {
   VideoController? _videoController;
   PlaybackCommandCoordinator? _playbackCommands;
   IPlayerEngine? _engine;
+  final PlaybackVolumeCoordinator _volumeCoordinator =
+      PlaybackVolumeCoordinator();
+  PlaybackVolumeCoordinator get volumeCoordinator => _volumeCoordinator;
 
   // 添加一个私有静态变量来保存实例
   static PlPlayerController? _instance;
@@ -535,11 +540,51 @@ class PlPlayerController with WidgetsBindingObserver {
     await _instance?.setVolume(volumeNew, videoPlayerVolume: videoPlayerVolume);
   }
 
+  static void setAudioDuckingIfExists(bool isDucking) {
+    _instance?.setAudioDucking(isDucking);
+  }
+
+  void setAudioDucking(bool isDucking) {
+    if (_volumeCoordinator.setDucking(isDucking)) {
+      unawaited(_applyEffectiveVolumeToEngine());
+    }
+  }
+
+  static void updateVolumeMetadataIfExists(AudioVolumeMetadata? metadata) {
+    _instance?.updateVolumeMetadata(metadata);
+  }
+
+  void updateVolumeMetadata(AudioVolumeMetadata? metadata) {
+    if (_volumeCoordinator.updateLoudnessMetadata(metadata)) {
+      unawaited(_applyEffectiveVolumeToEngine());
+    }
+  }
+
+  Future<void> setUserVolume(double targetVolume) async {
+    await setVolume(targetVolume);
+  }
+
+  bool syncVolumeFromSystem(int step) {
+    final bool changed = _volumeCoordinator.syncFromHardwareKey(step);
+    if (changed) {
+      _currentVolume.value = _volumeCoordinator.masterVolume;
+    }
+    return changed;
+  }
+
   static void updateSettingsIfExist() {
     _instance?.updateSettings();
   }
 
   void updateSettings() {
+    final bool enableLoudness = setting.get(
+      SettingBoxKey.enableLoudnessBalance,
+      defaultValue: true,
+    );
+    if (_volumeCoordinator.setEnableLoudnessBalance(enableLoudness)) {
+      unawaited(_applyEffectiveVolumeToEngine());
+    }
+
     isOpenDanmu.value = setting.get(
       SettingBoxKey.enableShowDanmaku,
       defaultValue: true,
@@ -829,6 +874,7 @@ class PlPlayerController with WidgetsBindingObserver {
       // if (playerStatus.status.value == PlayerStatus.disabled) return;
 
       this.dataSource = dataSource;
+      _volumeCoordinator.updateLoudnessMetadata(dataSource.volumeMetadata);
       _autoPlay = autoplay;
       _looping = looping;
       // 初始化视频倍速
@@ -880,6 +926,7 @@ class PlPlayerController with WidgetsBindingObserver {
             );
           },
         );
+        await _applyEffectiveVolumeToEngine();
         _playbackCommands = PlaybackCommandCoordinator(
           engine: HeadlessTestPlaybackEngine((bool playing) {
             playerStatus.status.value = playing
@@ -1170,6 +1217,7 @@ class PlPlayerController with WidgetsBindingObserver {
         );
         _engine = media3Engine;
         engineGeneration.value++;
+        await _applyEffectiveVolumeToEngine();
         await _diagnosticSession?.checkpoint('media3_open_complete');
         return player;
       } catch (err) {
@@ -1192,6 +1240,7 @@ class PlPlayerController with WidgetsBindingObserver {
       useOpenSLES: setting.get(SettingBoxKey.useOpenSLES, defaultValue: false),
     );
     engineGeneration.value++;
+    await _applyEffectiveVolumeToEngine();
 
     player.setPlaylistMode(looping);
     await _diagnosticSession?.checkpoint('media_open_begin');
@@ -1567,6 +1616,7 @@ class PlPlayerController with WidgetsBindingObserver {
       }
     }
     getVideoFit();
+    await _applyEffectiveVolumeToEngine();
     // if (_looping) {
     //   await setLooping(_looping);
     // }
@@ -2207,29 +2257,43 @@ class PlPlayerController with WidgetsBindingObserver {
     } catch (_) {}
   }
 
+  Future<void> applyEffectiveVolumeToEngine() async {
+    final double targetVol = _volumeCoordinator.effectiveVolume;
+    try {
+      await _engine?.setVolume(targetVol);
+    } on Exception catch (e) {
+      debugPrint('applyEffectiveVolumeToEngine error: $e');
+    }
+  }
+
+  Future<void> _applyEffectiveVolumeToEngine() =>
+      applyEffectiveVolumeToEngine();
+
   Future<void> setVolume(
     double volumeNew, {
     bool videoPlayerVolume = false,
   }) async {
-    if (volumeNew < 0.0) {
-      volumeNew = 0.0;
-    } else if (volumeNew > 1.0) {
-      volumeNew = 1.0;
-    }
-    if (volume.value == volumeNew) {
+    final double clamped = volumeNew.clamp(0.0, 1.0);
+    if ((volume.value - clamped).abs() < 0.0005) {
       return;
     }
-    volume.value = volumeNew;
+    volume.value = clamped;
+    _volumeCoordinator.setMasterVolume(clamped);
 
-    try {
-      FlutterVolumeController.updateShowSystemUI(false);
-      await FlutterVolumeController.setVolume(volumeNew);
-      if (videoPlayerVolume) {
-        await _engine?.setVolume(volumeNew);
+    final int? stepUp = _volumeCoordinator.checkHardwareStepUpNeeded();
+    if (stepUp != null) {
+      _volumeCoordinator.updateHardwareStep(stepUp);
+      _volumeCoordinator.echoGuard.registerExpectedStep(stepUp);
+      try {
+        FlutterVolumeController.updateShowSystemUI(false);
+        await FlutterVolumeController.setVolume(stepUp / 15.0);
+      } on Exception catch (err) {
+        debugPrint('setVolume error: $err');
       }
-    } catch (err) {
-      print(err);
     }
+
+    await applyEffectiveVolumeToEngine();
+    volumeUpdated();
   }
 
   void volumeUpdated() {

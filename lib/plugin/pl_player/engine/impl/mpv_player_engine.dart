@@ -338,7 +338,8 @@ class MpvPlayerEngine implements IPlayerEngine {
   @override
   Future<void> setVolume(double volume) async {
     if (_isDisposed) return;
-    await _player?.setVolume(volume);
+    if (volume.isNaN || volume.isInfinite) return;
+    await _player?.setVolume((volume * 100.0).clamp(0.0, 100.0));
   }
 
   @override

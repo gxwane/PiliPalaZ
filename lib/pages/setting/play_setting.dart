@@ -32,12 +32,18 @@ class _PlaySettingState extends State<PlaySetting> {
   @override
   void initState() {
     super.initState();
-    defaultFullScreenMode = setting.get(SettingBoxKey.fullScreenMode,
-        defaultValue: FullScreenMode.values.first.code);
-    defaultBtmProgressBehavior = setting.get(SettingBoxKey.btmProgressBehavior,
-        defaultValue: BtmProgressBehavior.values.first.code);
-    defaultSubtitlePreference = setting.get(SettingBoxKey.subtitlePreference,
-        defaultValue: SubtitlePreference.values.first.code);
+    defaultFullScreenMode = setting.get(
+      SettingBoxKey.fullScreenMode,
+      defaultValue: FullScreenMode.values.first.code,
+    );
+    defaultBtmProgressBehavior = setting.get(
+      SettingBoxKey.btmProgressBehavior,
+      defaultValue: BtmProgressBehavior.values.first.code,
+    );
+    defaultSubtitlePreference = setting.get(
+      SettingBoxKey.subtitlePreference,
+      defaultValue: SubtitlePreference.values.first.code,
+    );
   }
 
   @override
@@ -51,18 +57,14 @@ class _PlaySettingState extends State<PlaySetting> {
   @override
   Widget build(BuildContext context) {
     TextStyle titleStyle = Theme.of(context).textTheme.titleMedium!;
-    TextStyle subTitleStyle = Theme.of(context)
-        .textTheme
-        .labelMedium!
-        .copyWith(color: Theme.of(context).colorScheme.outline);
+    TextStyle subTitleStyle = Theme.of(context).textTheme.labelMedium!.copyWith(
+      color: Theme.of(context).colorScheme.outline,
+    );
     return Scaffold(
       appBar: AppBar(
         centerTitle: false,
         titleSpacing: 0,
-        title: Text(
-          '播放器设置',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        title: Text('播放器设置', style: Theme.of(context).textTheme.titleMedium),
       ),
       body: ListView(
         children: [
@@ -107,14 +109,21 @@ class _PlaySettingState extends State<PlaySetting> {
             setKey: SettingBoxKey.enableAdjustBrightnessVolume,
             defaultVal: true,
           ),
+          SetSwitchItem(
+            title: '音量均衡（响度对齐）',
+            subTitle: '依据视频响度元数据自动平衡音量，压制爆音',
+            leading: const Icon(Icons.equalizer_outlined),
+            setKey: SettingBoxKey.enableLoudnessBalance,
+            defaultVal: true,
+            callFn: (bool val) {
+              PlPlayerController.updateSettingsIfExist();
+            },
+          ),
           ListTile(
             dense: false,
             title: Text('中部上下滑动手势', style: titleStyle),
             leading: Icon(MdiIcons.gestureSwipeVertical),
-            subtitle: Text(
-              '设置视频画面中间部分滑动手势对应的操作',
-              style: subTitleStyle,
-            ),
+            subtitle: Text('设置视频画面中间部分滑动手势对应的操作', style: subTitleStyle),
             onTap: () => Get.toNamed('/gestureSetting'),
           ),
           SetSwitchItem(
@@ -129,20 +138,24 @@ class _PlaySettingState extends State<PlaySetting> {
             title: Text('自动启用字幕', style: titleStyle),
             leading: const Icon(Icons.closed_caption_outlined),
             subtitle: Text(
-                '当前选择偏好：'
-                '${SubtitlePreferenceCode.fromCode(defaultSubtitlePreference)!.description}',
-                style: subTitleStyle),
+              '当前选择偏好：'
+              '${SubtitlePreferenceCode.fromCode(defaultSubtitlePreference)!.description}',
+              style: subTitleStyle,
+            ),
             onTap: () async {
               String? result = await showDialog(
                 context: context,
                 builder: (context) {
                   return SelectDialog<String>(
-                      title: '字幕选择偏好',
-                      value: setting.get(SettingBoxKey.subtitlePreference,
-                          defaultValue: SubtitlePreference.values.first.code),
-                      values: SubtitlePreference.values.map((e) {
-                        return {'title': e.description, 'value': e.code};
-                      }).toList());
+                    title: '字幕选择偏好',
+                    value: setting.get(
+                      SettingBoxKey.subtitlePreference,
+                      defaultValue: SubtitlePreference.values.first.code,
+                    ),
+                    values: SubtitlePreference.values.map((e) {
+                      return {'title': e.description, 'value': e.code};
+                    }).toList(),
+                  );
                 },
               );
               if (result != null) {
@@ -175,11 +188,12 @@ class _PlaySettingState extends State<PlaySetting> {
             defaultVal: true,
           ),
           const SetSwitchItem(
-              title: '延长播放控件显示时间',
-              subTitle: '开启后延长至30秒，便于屏幕阅读器滑动切换控件焦点',
-              leading: Icon(Icons.timer_outlined),
-              setKey: SettingBoxKey.enableLongShowControl,
-              defaultVal: false),
+            title: '延长播放控件显示时间',
+            subTitle: '开启后延长至30秒，便于屏幕阅读器滑动切换控件焦点',
+            leading: Icon(Icons.timer_outlined),
+            setKey: SettingBoxKey.enableLongShowControl,
+            defaultVal: false,
+          ),
           const SetSwitchItem(
             title: '全向旋转',
             subTitle: '小屏可受重力转为临时全屏，若系统锁定旋转仍触发请关闭，关闭会影响横屏适配',
@@ -198,25 +212,29 @@ class _PlaySettingState extends State<PlaySetting> {
             },
           ),
           const SetSwitchItem(
-              title: '应用内小窗',
-              subTitle: '离开播放页时，以小窗形式继续播放',
-              leading: Icon(Icons.tab_unselected_outlined),
-              setKey: SettingBoxKey.autoMiniPlayer,
-              defaultVal: false),
+            title: '应用内小窗',
+            subTitle: '离开播放页时，以小窗形式继续播放',
+            leading: Icon(Icons.tab_unselected_outlined),
+            setKey: SettingBoxKey.autoMiniPlayer,
+            defaultVal: false,
+          ),
           if (Platform.isAndroid || Platform.isIOS)
             SetSwitchItem(
-                title: '后台画中画',
-                subTitle: '进入后台时以小窗形式（PiP）播放',
-                leading: const Icon(Icons.picture_in_picture_alt),
-                setKey: SettingBoxKey.autoPiP,
-                defaultVal: false,
-                callFn: (val) {
-                  if (val &&
-                      !setting.get(SettingBoxKey.enableBackgroundPlay,
-                          defaultValue: true)) {
-                    SmartDialog.showToast('建议开启后台音频服务');
-                  }
-                }),
+              title: '后台画中画',
+              subTitle: '进入后台时以小窗形式（PiP）播放',
+              leading: const Icon(Icons.picture_in_picture_alt),
+              setKey: SettingBoxKey.autoPiP,
+              defaultVal: false,
+              callFn: (val) {
+                if (val &&
+                    !setting.get(
+                      SettingBoxKey.enableBackgroundPlay,
+                      defaultValue: true,
+                    )) {
+                  SmartDialog.showToast('建议开启后台音频服务');
+                }
+              },
+            ),
           if (Platform.isAndroid)
             const SetSwitchItem(
               title: '后台画中画不加载弹幕',
@@ -259,11 +277,12 @@ class _PlaySettingState extends State<PlaySetting> {
                 context: context,
                 builder: (context) {
                   return SelectDialog<int>(
-                      title: '默认全屏方向',
-                      value: defaultFullScreenMode,
-                      values: FullScreenMode.values.map((e) {
-                        return {'title': e.description, 'value': e.code};
-                      }).toList());
+                    title: '默认全屏方向',
+                    value: defaultFullScreenMode,
+                    values: FullScreenMode.values.map((e) {
+                      return {'title': e.description, 'value': e.code};
+                    }).toList(),
+                  );
                 },
               );
               if (result != null) {
@@ -286,11 +305,12 @@ class _PlaySettingState extends State<PlaySetting> {
                 context: context,
                 builder: (context) {
                   return SelectDialog<int>(
-                      title: '底部进度条展示',
-                      value: defaultBtmProgressBehavior,
-                      values: BtmProgressBehavior.values.map((e) {
-                        return {'title': e.description, 'value': e.code};
-                      }).toList());
+                    title: '底部进度条展示',
+                    value: defaultBtmProgressBehavior,
+                    values: BtmProgressBehavior.values.map((e) {
+                      return {'title': e.description, 'value': e.code};
+                    }).toList(),
+                  );
                 },
               );
               if (result != null) {

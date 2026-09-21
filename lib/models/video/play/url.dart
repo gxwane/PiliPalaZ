@@ -22,6 +22,7 @@ class PlayUrlModel {
     this.isPreview = false,
     this.errorCode,
     this.isDrm = false,
+    this.volume,
   });
 
   String? from;
@@ -45,6 +46,7 @@ class PlayUrlModel {
   bool isPreview = false;
   int? errorCode;
   bool isDrm = false;
+  AudioVolumeMetadata? volume;
 
   Duration? get playableDuration {
     if (durl?.isNotEmpty == true && durl!.first.length != null) {
@@ -80,6 +82,56 @@ class PlayUrlModel {
     isPreview = json['is_preview'] == true || json['is_preview'] == 1;
     errorCode = json['error_code'];
     isDrm = json['is_drm'] == true || json['is_drm'] == 1;
+    volume = json['volume'] is Map
+        ? AudioVolumeMetadata.fromJson(
+            Map<String, dynamic>.from(json['volume'] as Map),
+          )
+        : null;
+  }
+}
+
+class AudioVolumeMetadata {
+  final double? measuredI;
+  final double? measuredLra;
+  final double? measuredTp;
+  final double? measuredThreshold;
+  final double? targetOffset;
+  final double? targetI;
+  final double? targetTp;
+
+  const AudioVolumeMetadata({
+    this.measuredI,
+    this.measuredLra,
+    this.measuredTp,
+    this.measuredThreshold,
+    this.targetOffset,
+    this.targetI,
+    this.targetTp,
+  });
+
+  static AudioVolumeMetadata? fromJson(Map<String, dynamic>? json) {
+    if (json == null) return null;
+    return AudioVolumeMetadata(
+      measuredI: (json['measured_i'] as num?)?.toDouble(),
+      measuredLra: (json['measured_lra'] as num?)?.toDouble(),
+      measuredTp: (json['measured_tp'] as num?)?.toDouble(),
+      measuredThreshold: (json['measured_threshold'] as num?)?.toDouble(),
+      targetOffset: (json['target_offset'] as num?)?.toDouble(),
+      targetI: (json['target_i'] as num?)?.toDouble(),
+      targetTp: (json['target_tp'] as num?)?.toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'measured_i': measuredI,
+      'measured_lra': measuredLra,
+      'measured_tp': measuredTp,
+      'measured_threshold': measuredThreshold,
+      'target_offset': targetOffset,
+      'target_i': targetI,
+      'target_tp': targetTp,
+    };
   }
 }
 

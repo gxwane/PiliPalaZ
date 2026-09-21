@@ -89,9 +89,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
 
   final RxDouble _volumeValue = 0.0.obs;
   final RxBool _volumeIndicator = false.obs;
-  Timer? _volumeTimer;
-
-  final RxBool _volumeInterceptEventStream = false.obs;
+  Timer? _volumeIndicatorTimer;
+  Timer? _compactionTimer;
+  double _volumeStartY = 0.0;
+  double _volumeStartVal = 0.0;
 
   Box setting = GStorage.setting;
   late FullScreenMode mode;
@@ -236,14 +237,31 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     );
     Future.microtask(() async {
       try {
-        FlutterVolumeController.updateShowSystemUI(true);
-        _volumeValue.value = (await FlutterVolumeController.getVolume())!;
+        FlutterVolumeController.updateShowSystemUI(false);
+        final double? sysVol = await FlutterVolumeController.getVolume();
+        if (!mounted) return;
+        if (sysVol != null) {
+          final int step = (sysVol * 15.0).round();
+          widget.controller.volumeCoordinator.initFromSystem(step, sysVol);
+          _volumeValue.value = widget.controller.volumeCoordinator.masterVolume;
+        }
         FlutterVolumeController.addListener((double value) {
-          if (mounted && !_volumeInterceptEventStream.value) {
-            _volumeValue.value = value;
+          if (!mounted) return;
+          final coordinator = widget.controller.volumeCoordinator;
+          if (coordinator.echoGuard.isEchoEvent(value)) {
+            final int step = (value * 15.0).round();
+            coordinator.updateHardwareStep(step);
+            return;
           }
-        });
-      } catch (_) {}
+          final int step = (value * 15.0).round();
+          final bool changed = widget.controller.syncVolumeFromSystem(step);
+          if (changed) {
+            _volumeValue.value = coordinator.masterVolume;
+            unawaited(widget.controller.applyEffectiveVolumeToEngine());
+            _showVolumeHud();
+          }
+        }, emitOnStart: false);
+      } on Exception catch (_) {}
     });
 
     Future.microtask(() async {
@@ -284,19 +302,57 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     }
   }
 
-  Future<void> setVolume(double value) async {
-    try {
-      FlutterVolumeController.updateShowSystemUI(false);
-      await FlutterVolumeController.setVolume(value);
-    } catch (_) {}
-    _volumeValue.value = value;
+  void _showVolumeHud() {
     _volumeIndicator.value = true;
-    _volumeInterceptEventStream.value = true;
-    _volumeTimer?.cancel();
-    _volumeTimer = Timer(const Duration(milliseconds: 200), () {
+    _volumeIndicatorTimer?.cancel();
+    _volumeIndicatorTimer = Timer(const Duration(milliseconds: 1500), () {
       if (mounted) {
         _volumeIndicator.value = false;
-        _volumeInterceptEventStream.value = false;
+      }
+    });
+  }
+
+  Future<void> setVolume(double value) async {
+    _onMasterVolumeGestureUpdate(value);
+  }
+
+  void _onMasterVolumeGestureUpdate(double targetVolume) {
+    final double clamped = targetVolume.clamp(0.0, 1.0);
+    _volumeValue.value = clamped;
+    _showVolumeHud();
+
+    final coordinator = widget.controller.volumeCoordinator;
+    coordinator.setMasterVolume(clamped);
+
+    // 向上滑动：如果突破当前硬件档位上限，按需提升硬件阶梯
+    final int? stepUp = coordinator.checkHardwareStepUpNeeded();
+    if (stepUp != null) {
+      coordinator.updateHardwareStep(stepUp);
+      coordinator.echoGuard.registerExpectedStep(stepUp);
+      try {
+        FlutterVolumeController.updateShowSystemUI(false);
+        FlutterVolumeController.setVolume(stepUp / 15.0);
+      } on Exception catch (_) {}
+    }
+
+    unawaited(widget.controller.applyEffectiveVolumeToEngine());
+  }
+
+  void _scheduleHardwareCompaction() {
+    _compactionTimer?.cancel();
+    _compactionTimer = Timer(const Duration(milliseconds: 300), () async {
+      if (!mounted) return;
+      final coordinator = widget.controller.volumeCoordinator;
+      final int? compactionStep = coordinator
+          .checkHardwareStepCompactionNeeded();
+      if (compactionStep != null) {
+        coordinator.updateHardwareStep(compactionStep);
+        coordinator.echoGuard.registerExpectedStep(compactionStep);
+        try {
+          FlutterVolumeController.updateShowSystemUI(false);
+          await FlutterVolumeController.setVolume(compactionStep / 15.0);
+        } on Exception catch (_) {}
+        await widget.controller.applyEffectiveVolumeToEngine();
       }
     });
   }
@@ -326,8 +382,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   void dispose() {
     _brightnessTimer?.cancel();
     _brightnessTimer = null;
-    _volumeTimer?.cancel();
-    _volumeTimer = null;
+    _volumeIndicatorTimer?.cancel();
+    _volumeIndicatorTimer = null;
+    _compactionTimer?.cancel();
+    _compactionTimer = null;
     _systemBrightnessSub?.cancel();
     _systemBrightnessSub = null;
     _appBrightnessSub?.cancel();
@@ -950,6 +1008,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                     _gestureType = enableAdjustBrightnessVolume
                         ? 'right'
                         : 'middle';
+                    if (_gestureType == 'right') {
+                      _volumeStartY = details.localFocalPoint.dy;
+                      _volumeStartVal = _volumeValue.value;
+                    }
                   }
                 } else {
                   return;
@@ -1117,18 +1179,25 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                   // print('middle_up:$cumulativeDy');
                 }
               } else if (_gestureType == 'right') {
-                // 右边区域
-                final double level =
-                    min(renderBox.size.height, renderBox.size.width) * 0.5;
-                EasyThrottle.throttle(
-                  'setVolume',
-                  const Duration(milliseconds: 20),
-                  () {
-                    final double volume = _volumeValue.value - delta.dy / level;
-                    final double result = volume.clamp(0.0, 1.0);
-                    setVolume(result);
-                  },
-                );
+                // 右边区域：1% 细粒度单轨主音量手势
+                final double travel = max(320.0, renderBox.size.height * 0.75);
+                final double deltaY =
+                    details.localFocalPoint.dy - _volumeStartY;
+                double rawVolume = _volumeStartVal - deltaY / travel;
+
+                // 动态虚拟锚点算法：触顶/触底推移锚点，折返在第 1 像素即刻回退，彻底消除死区
+                if (rawVolume > 1.0) {
+                  _volumeStartY =
+                      details.localFocalPoint.dy +
+                      (1.0 - _volumeStartVal) * travel;
+                  rawVolume = 1.0;
+                } else if (rawVolume < 0.0) {
+                  _volumeStartY =
+                      details.localFocalPoint.dy - _volumeStartVal * travel;
+                  rawVolume = 0.0;
+                }
+
+                _onMasterVolumeGestureUpdate(rawVolume);
               }
             },
             onInteractionEnd: (ScaleEndDetails details) {
@@ -1141,6 +1210,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
               }
               interacting = false;
               _initialFocalPoint = Offset.zero;
+              if (_gestureType == 'right') {
+                _scheduleHardwareCompaction();
+              }
               _gestureType = null;
             },
             child: Transform.flip(

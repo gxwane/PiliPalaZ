@@ -153,7 +153,7 @@ class SettingBoxKey {
   enableQuickDouble = 'enableQuickDouble', enableAdjustBrightnessVolume = 'enableAdjustBrightnessVolume', enableExtraButtonOnFullScreen = 'enableExtraButtonOnFullScreen',
   // fullScreenGestureReverse = 'fullScreenGestureReverse',
   // enableFloatingWindowGesture = 'enableFloatingWindowGesture',
-  enableShowDanmaku = 'enableShowDanmaku', enableBackgroundPlay = 'enableBackgroundPlay', continuePlayInBackground = 'continuePlayInBackground', setSystemBrightness = 'setSystemBrightness',
+  enableShowDanmaku = 'enableShowDanmaku', enableBackgroundPlay = 'enableBackgroundPlay', continuePlayInBackground = 'continuePlayInBackground', setSystemBrightness = 'setSystemBrightness', enableLoudnessBalance = 'enableLoudnessBalance', enablePlayerSoftwareVolume = 'enablePlayerSoftwareVolume',
   /// 隐私
   anonymity = 'anonymity',
   /// 推荐
