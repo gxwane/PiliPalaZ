@@ -28,6 +28,7 @@ class _PlaySettingState extends State<PlaySetting> {
   late int defaultFullScreenMode;
   late int defaultBtmProgressBehavior;
   late Map<PlayerMiddleGesture, PlayerGestureAction> defaultMiddleGestureAction;
+  late double defaultVolumeSensitivity;
 
   @override
   void initState() {
@@ -44,6 +45,17 @@ class _PlaySettingState extends State<PlaySetting> {
       SettingBoxKey.subtitlePreference,
       defaultValue: SubtitlePreference.values.first.code,
     );
+    defaultVolumeSensitivity =
+        (setting.get(SettingBoxKey.volumeGestureSensitivity, defaultValue: 1.0)
+                as num)
+            .toDouble();
+  }
+
+  String _getVolumeSensitivityDesc(double val) {
+    if (val == 0.75) return '0.75x（精准/长行程）';
+    if (val == 1.25) return '1.25x（敏捷）';
+    if (val == 1.5) return '1.5x（极速/短行程）';
+    return '1.0x（标准/推荐）';
   }
 
   @override
@@ -107,6 +119,48 @@ class _PlaySettingState extends State<PlaySetting> {
             subTitle: '关闭则触发中部上下滑动手势',
             leading: Icon(MdiIcons.tuneVerticalVariant),
             setKey: SettingBoxKey.enableAdjustBrightnessVolume,
+            defaultVal: true,
+          ),
+          ListTile(
+            dense: false,
+            title: Text('音量滑动手势灵敏度', style: titleStyle),
+            leading: const Icon(Icons.speed_outlined),
+            subtitle: Text(
+              '当前灵敏度：${_getVolumeSensitivityDesc(defaultVolumeSensitivity)}',
+              style: subTitleStyle,
+            ),
+            onTap: () async {
+              double? result = await showDialog<double>(
+                context: context,
+                builder: (context) {
+                  return SelectDialog<double>(
+                    title: '音量滑动手势灵敏度',
+                    value: defaultVolumeSensitivity,
+                    values: const [
+                      {'title': '0.75x（精准/长行程）', 'value': 0.75},
+                      {'title': '1.0x（标准/推荐）', 'value': 1.0},
+                      {'title': '1.25x（敏捷）', 'value': 1.25},
+                      {'title': '1.5x（极速/短行程）', 'value': 1.5},
+                    ],
+                  );
+                },
+              );
+              if (result != null) {
+                await setting.put(
+                  SettingBoxKey.volumeGestureSensitivity,
+                  result,
+                );
+                setState(() {
+                  defaultVolumeSensitivity = result;
+                });
+              }
+            },
+          ),
+          SetSwitchItem(
+            title: '手势边缘防误触保护',
+            subTitle: '避让顶部通知栏、底部手势横条与两翼侧滑返回',
+            leading: const Icon(Icons.touch_app_outlined),
+            setKey: SettingBoxKey.enableGestureEdgeDeadzone,
             defaultVal: true,
           ),
           SetSwitchItem(

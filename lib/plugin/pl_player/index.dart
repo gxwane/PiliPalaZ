@@ -16,3 +16,4 @@ export './engine/player_engine_interface.dart';
 export './engine/impl/mpv_player_engine.dart';
 export './engine/impl/headless_player_engine.dart';
 export './engine/impl/media3_player_engine.dart';
+export './player_gesture_coordinator.dart';

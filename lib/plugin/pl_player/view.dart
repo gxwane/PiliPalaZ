@@ -43,6 +43,7 @@ import 'widgets/common_btn.dart';
 import 'widgets/episode_nav_btn.dart';
 import 'widgets/forward_seek.dart';
 import 'widgets/play_pause_btn.dart';
+import 'player_gesture_coordinator.dart';
 
 class PLVideoPlayer extends StatefulWidget {
   const PLVideoPlayer({
@@ -99,6 +100,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   late int defaultBtmProgressBehavior;
   late bool enableQuickDouble;
   late bool enableAdjustBrightnessVolume;
+  late double volumeGestureSensitivity;
+  late bool enableGestureEdgeDeadzone;
   // late bool fullScreenGestureReverse;
   // late bool enableFloatingWindowGesture;
   late Map<PlayerMiddleGesture, PlayerGestureAction> middleGestureAction;
@@ -200,6 +203,13 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       SettingBoxKey.enableAdjustBrightnessVolume,
       defaultValue: true,
     );
+    volumeGestureSensitivity =
+        (setting.get(SettingBoxKey.volumeGestureSensitivity, defaultValue: 1.0)
+                as num)
+            .toDouble();
+    enableGestureEdgeDeadzone =
+        setting.get(SettingBoxKey.enableGestureEdgeDeadzone, defaultValue: true)
+            as bool;
     // fullScreenGestureReverse = setting
     //     .get(SettingBoxKey.fullScreenGestureReverse, defaultValue: false);
     // enableFloatingWindowGesture = setting
@@ -985,6 +995,16 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                   _playerKey.currentContext!.findRenderObject() as RenderBox;
 
               if (_gestureType == null) {
+                // ── 边缘防误触死区拦截（避让通知栏下拉、底部手势条、侧滑返回） ──
+                if (PlayerGestureCoordinator.isInsideDeadzone(
+                  details.localFocalPoint,
+                  renderBox.size,
+                  isFullScreen: playerController.isFullScreen.value,
+                  enableDeadzone: enableGestureEdgeDeadzone,
+                )) {
+                  return;
+                }
+
                 if (cumulativeDelta.distance < 1) return;
                 if (cumulativeDelta.dx.abs() > 3 * cumulativeDelta.dy.abs()) {
                   _gestureType = 'horizontal';
@@ -1180,22 +1200,18 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                 }
               } else if (_gestureType == 'right') {
                 // 右边区域：1% 细粒度单轨主音量手势
-                final double travel = max(320.0, renderBox.size.height * 0.75);
-                final double deltaY =
-                    details.localFocalPoint.dy - _volumeStartY;
-                double rawVolume = _volumeStartVal - deltaY / travel;
-
-                // 动态虚拟锚点算法：触顶/触底推移锚点，折返在第 1 像素即刻回退，彻底消除死区
-                if (rawVolume > 1.0) {
-                  _volumeStartY =
-                      details.localFocalPoint.dy +
-                      (1.0 - _volumeStartVal) * travel;
-                  rawVolume = 1.0;
-                } else if (rawVolume < 0.0) {
-                  _volumeStartY =
-                      details.localFocalPoint.dy - _volumeStartVal * travel;
-                  rawVolume = 0.0;
-                }
+                final double travel = PlayerGestureCoordinator.calculateTravel(
+                  renderBox.size.height,
+                  sensitivity: volumeGestureSensitivity,
+                );
+                final double rawVolume =
+                    PlayerGestureCoordinator.computeUpdatedVolume(
+                      currentY: details.localFocalPoint.dy,
+                      startY: _volumeStartY,
+                      startVolume: _volumeStartVal,
+                      travel: travel,
+                      onUpdateAnchorY: (double newY) => _volumeStartY = newY,
+                    );
 
                 _onMasterVolumeGestureUpdate(rawVolume);
               }
