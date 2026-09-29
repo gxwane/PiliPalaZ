@@ -87,11 +87,7 @@ class VideoCardV extends StatelessWidget {
               if (res case ApiSuccess<DynamicItemModel>(:final data)) {
                 Get.toNamed(
                   '/dynamicDetail',
-                  arguments: {
-                    'item': data,
-                    'floor': 1,
-                    'action': 'detail',
-                  },
+                  arguments: {'item': data, 'floor': 1, 'action': 'detail'},
                 );
               } else {
                 SmartDialog.showToast(
@@ -337,7 +333,9 @@ class VideoStat extends StatelessWidget {
               text: TextSpan(
                 style: TextStyle(
                   fontSize: Theme.of(context).textTheme.labelSmall!.fontSize,
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.8),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.8),
                 ),
                 text: Utils.formatTimestampToRelativeTime(videoItem.pubdate),
               ),
@@ -356,7 +354,9 @@ class VideoStat extends StatelessWidget {
               text: TextSpan(
                 style: TextStyle(
                   fontSize: Theme.of(context).textTheme.labelSmall!.fontSize,
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.8),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.8),
                 ),
                 text: Utils.shortenChineseDateString(
                   videoItem.desc.split(' · ').last,

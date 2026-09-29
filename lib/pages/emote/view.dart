@@ -17,8 +17,9 @@ class EmotePanel extends StatefulWidget {
 
 class _EmotePanelState extends State<EmotePanel>
     with AutomaticKeepAliveClientMixin {
-  final EmotePanelController _emotePanelController =
-      Get.put(EmotePanelController());
+  final EmotePanelController _emotePanelController = Get.put(
+    EmotePanelController(),
+  );
   late Future<ApiResult<EmoteModelData>> _futureBuilderFuture;
 
   @override
@@ -34,104 +35,103 @@ class _EmotePanelState extends State<EmotePanel>
   Widget build(BuildContext context) {
     super.build(context);
     return FutureBuilder<ApiResult<EmoteModelData>>(
-        future: _futureBuilderFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            final result = snapshot.data;
-            if (result is ApiSuccess<EmoteModelData>) {
-              List<Packages> emotePackage = _emotePanelController.emotePackage;
+      future: _futureBuilderFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          final result = snapshot.data;
+          if (result is ApiSuccess<EmoteModelData>) {
+            List<Packages> emotePackage = _emotePanelController.emotePackage;
 
-              return Column(
-                children: [
-                  Expanded(
-                      child: TabBarView(
+            return Column(
+              children: [
+                Expanded(
+                  child: TabBarView(
                     physics: const CustomTabBarViewScrollPhysics(),
                     controller: _emotePanelController.tabController,
-                    children: emotePackage.map(
-                      (e) {
-                        int size = e.emote!.first.meta!.size!;
-                        int type = e.type!;
-                        return Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-                          child: GridView.builder(
-                            gridDelegate:
-                                SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent:
-                                  type == 4 ? 100 : (size == 1 ? 40 : 60),
-                              crossAxisSpacing: 8,
-                              mainAxisSpacing: 8,
-                              mainAxisExtent: size == 1 ? 40 : 60,
-                            ),
-                            itemCount: e.emote!.length,
-                            itemBuilder: (context, index) {
-                              return Material(
-                                color: Colors.transparent,
-                                clipBehavior: Clip.hardEdge,
-                                // shape: RoundedRectangleBorder(
-                                //   borderRadius: BorderRadius.circular(4),
-                                // ),
-                                child: InkWell(
-                                  onTap: () {
-                                    widget.onChoose(e, e.emote![index]);
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(3),
-                                    child: type == 4
-                                        ? Text(
-                                            e.emote![index].text!,
-                                            overflow: TextOverflow.clip,
-                                            maxLines: 1,
-                                          )
-                                        : NetworkImgLayer(
-                                            src: e.emote![index].url!,
-                                            width: size * 38,
-                                            height: size * 38,
-                                            semanticsLabel:
-                                                e.emote![index].text!,
-                                            type: 'emote',
-                                          ),
-                                  ),
+                    children: emotePackage.map((e) {
+                      int size = e.emote!.first.meta!.size!;
+                      int type = e.type!;
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                        child: GridView.builder(
+                          gridDelegate:
+                              SliverGridDelegateWithMaxCrossAxisExtent(
+                                maxCrossAxisExtent: type == 4
+                                    ? 100
+                                    : (size == 1 ? 40 : 60),
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                                mainAxisExtent: size == 1 ? 40 : 60,
+                              ),
+                          itemCount: e.emote!.length,
+                          itemBuilder: (context, index) {
+                            return Material(
+                              color: Colors.transparent,
+                              clipBehavior: Clip.hardEdge,
+                              // shape: RoundedRectangleBorder(
+                              //   borderRadius: BorderRadius.circular(4),
+                              // ),
+                              child: InkWell(
+                                onTap: () {
+                                  widget.onChoose(e, e.emote![index]);
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.all(3),
+                                  child: type == 4
+                                      ? Text(
+                                          e.emote![index].text!,
+                                          overflow: TextOverflow.clip,
+                                          maxLines: 1,
+                                        )
+                                      : NetworkImgLayer(
+                                          src: e.emote![index].url!,
+                                          width: size * 38,
+                                          height: size * 38,
+                                          semanticsLabel: e.emote![index].text!,
+                                          type: 'emote',
+                                        ),
                                 ),
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ).toList(),
-                  )),
-                  Divider(
-                    height: 1,
-                    color: Theme.of(context).dividerColor.withOpacity(0.1),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    }).toList(),
                   ),
-                  TabBar(
-                    controller: _emotePanelController.tabController,
-                    dividerColor: Colors.transparent,
-                    isScrollable: true,
-                    tabs: _emotePanelController.emotePackage
-                        .map(
-                          (e) => NetworkImgLayer(
-                            width: 36,
-                            height: 36,
-                            type: 'emote',
-                            src: e.url,
-                          ),
-                        )
-                        .toList(),
-                  ),
-                  SizedBox(height: MediaQuery.of(context).padding.bottom),
-                ],
-              );
-            } else {
-              return Center(
-                child: Text(
-                  (result as ApiFailure<EmoteModelData>?)?.message ??
-                      '表情加载失败',
                 ),
-              );
-            }
+                Divider(
+                  height: 1,
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+                ),
+                TabBar(
+                  controller: _emotePanelController.tabController,
+                  dividerColor: Colors.transparent,
+                  isScrollable: true,
+                  tabs: _emotePanelController.emotePackage
+                      .map(
+                        (e) => NetworkImgLayer(
+                          width: 36,
+                          height: 36,
+                          type: 'emote',
+                          src: e.url,
+                        ),
+                      )
+                      .toList(),
+                ),
+                SizedBox(height: MediaQuery.of(context).padding.bottom),
+              ],
+            );
           } else {
-            return const Center(child: Text('加载中...'));
+            return Center(
+              child: Text(
+                (result as ApiFailure<EmoteModelData>?)?.message ?? '表情加载失败',
+              ),
+            );
           }
-        });
+        } else {
+          return const Center(child: Text('加载中...'));
+        }
+      },
+    );
   }
 }

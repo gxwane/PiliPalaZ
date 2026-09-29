@@ -8,10 +8,7 @@ import 'package:get/get.dart';
 class BangumiIntroDetail extends StatelessWidget {
   final dynamic bangumiDetail;
 
-  const BangumiIntroDetail({
-    super.key,
-    this.bangumiDetail,
-  });
+  const BangumiIntroDetail({super.key, this.bangumiDetail});
 
   @override
   Widget build(BuildContext context) {
@@ -34,11 +31,11 @@ class BangumiIntroDetail extends StatelessWidget {
                 width: 32,
                 height: 3,
                 decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSecondaryContainer
-                        .withOpacity(0.5),
-                    borderRadius: const BorderRadius.all(Radius.circular(3))),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSecondaryContainer.withValues(alpha: 0.5),
+                  borderRadius: const BorderRadius.all(Radius.circular(3)),
+                ),
               ),
             ),
           ),
@@ -83,37 +80,28 @@ class BangumiIntroDetail extends StatelessWidget {
                         style: smallTitle,
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        bangumiDetail!.newEp!['desc'],
-                        style: smallTitle,
-                      ),
+                      Text(bangumiDetail!.newEp!['desc'], style: smallTitle),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  Text(
-                    '简介：',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  Text('简介：', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 4),
                   Text(
                     '${bangumiDetail!.evaluate!}',
                     style: smallTitle.copyWith(fontSize: 13),
                   ),
                   const SizedBox(height: 20),
-                  Text(
-                    '声优：',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+                  Text('声优：', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 4),
                   Text(
                     bangumiDetail.actors,
                     style: smallTitle.copyWith(fontSize: 13),
                   ),
-                  SizedBox(height: MediaQuery.of(context).padding.bottom + 20)
+                  SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
                 ],
               ),
             ),
-          )
+          ),
         ],
       ),
     );

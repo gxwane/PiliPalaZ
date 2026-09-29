@@ -13,8 +13,8 @@ class StatView extends StatelessWidget {
   Widget build(BuildContext context) {
     Map<String, Color> colorObject = {
       'white': Colors.white,
-      'gray': Theme.of(context).colorScheme.outline.withOpacity(0.8),
-      'black': Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+      'gray': Theme.of(context).colorScheme.outline.withValues(alpha: 0.8),
+      'black': Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
     };
     Color color = colorObject[theme]!;
     return Row(
@@ -29,10 +29,7 @@ class StatView extends StatelessWidget {
         const SizedBox(width: 2),
         Text(
           Utils.numFormat(view!),
-          style: TextStyle(
-            fontSize: size == 'medium' ? 12 : 11,
-            color: color,
-          ),
+          style: TextStyle(fontSize: size == 'medium' ? 12 : 11, color: color),
           overflow: TextOverflow.clip,
           semanticsLabel:
               '${Utils.numFormat(view!)}次${goto == "picture" ? "浏览" : "播放"}',

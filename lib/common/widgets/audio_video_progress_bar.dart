@@ -269,9 +269,10 @@ class ProgressBar extends LeafRenderObjectWidget {
       onDragUpdate: onDragUpdate,
       onDragEnd: onDragEnd,
       barHeight: barHeight,
-      baseBarColor: baseBarColor ?? primaryColor.withOpacity(0.24),
+      baseBarColor: baseBarColor ?? primaryColor.withValues(alpha: 0.24),
       progressBarColor: progressBarColor ?? primaryColor,
-      bufferedBarColor: bufferedBarColor ?? primaryColor.withOpacity(0.24),
+      bufferedBarColor:
+          bufferedBarColor ?? primaryColor.withValues(alpha: 0.24),
       barCapShape: barCapShape,
       thumbRadius: thumbRadius,
       thumbColor: thumbColor ?? primaryColor,
@@ -302,9 +303,10 @@ class ProgressBar extends LeafRenderObjectWidget {
       ..onDragUpdate = onDragUpdate
       ..onDragEnd = onDragEnd
       ..barHeight = barHeight
-      ..baseBarColor = baseBarColor ?? primaryColor.withOpacity(0.24)
+      ..baseBarColor = baseBarColor ?? primaryColor.withValues(alpha: 0.24)
       ..progressBarColor = progressBarColor ?? primaryColor
-      ..bufferedBarColor = bufferedBarColor ?? primaryColor.withOpacity(0.24)
+      ..bufferedBarColor =
+          bufferedBarColor ?? primaryColor.withValues(alpha: 0.24)
       ..barCapShape = barCapShape
       ..thumbRadius = thumbRadius
       ..thumbColor = thumbColor ?? primaryColor
@@ -325,16 +327,34 @@ class ProgressBar extends LeafRenderObjectWidget {
     properties.add(StringProperty('progress', progress.toString()));
     properties.add(StringProperty('total', total.toString()));
     properties.add(StringProperty('buffered', buffered.toString()));
-    properties.add(ObjectFlagProperty<ValueChanged<Duration>>('onSeek', onSeek,
-        ifNull: 'unimplemented'));
-    properties.add(ObjectFlagProperty<ThumbDragStartCallback>(
-        'onDragStart', onDragStart,
-        ifNull: 'unimplemented'));
-    properties.add(ObjectFlagProperty<ThumbDragUpdateCallback>(
-        'onDragUpdate', onDragUpdate,
-        ifNull: 'unimplemented'));
-    properties.add(ObjectFlagProperty<VoidCallback>('onDragEnd', onDragEnd,
-        ifNull: 'unimplemented'));
+    properties.add(
+      ObjectFlagProperty<ValueChanged<Duration>>(
+        'onSeek',
+        onSeek,
+        ifNull: 'unimplemented',
+      ),
+    );
+    properties.add(
+      ObjectFlagProperty<ThumbDragStartCallback>(
+        'onDragStart',
+        onDragStart,
+        ifNull: 'unimplemented',
+      ),
+    );
+    properties.add(
+      ObjectFlagProperty<ThumbDragUpdateCallback>(
+        'onDragUpdate',
+        onDragUpdate,
+        ifNull: 'unimplemented',
+      ),
+    );
+    properties.add(
+      ObjectFlagProperty<VoidCallback>(
+        'onDragEnd',
+        onDragEnd,
+        ifNull: 'unimplemented',
+      ),
+    );
     properties.add(DoubleProperty('barHeight', barHeight));
     properties.add(ColorProperty('baseBarColor', baseBarColor));
     properties.add(ColorProperty('progressBarColor', progressBarColor));
@@ -353,11 +373,13 @@ class ProgressBar extends LeafRenderObjectWidget {
         showName: true,
       ),
     );
-    properties
-        .add(StringProperty('timeLabelLocation', timeLabelLocation.toString()));
+    properties.add(
+      StringProperty('timeLabelLocation', timeLabelLocation.toString()),
+    );
     properties.add(StringProperty('timeLabelType', timeLabelType.toString()));
-    properties
-        .add(DiagnosticsProperty('timeLabelTextStyle', timeLabelTextStyle));
+    properties.add(
+      DiagnosticsProperty('timeLabelTextStyle', timeLabelTextStyle),
+    );
     properties.add(DoubleProperty('timeLabelPadding', timeLabelPadding));
   }
 }
@@ -387,7 +409,8 @@ class ThumbDragDetails {
   final Offset localPosition;
 
   @override
-  String toString() => '${objectRuntimeType(this, 'ThumbDragDetails')}('
+  String toString() =>
+      '${objectRuntimeType(this, 'ThumbDragDetails')}('
       'time: $timeStamp, '
       'global: $globalPosition, '
       'local: $localPosition)';
@@ -432,27 +455,27 @@ class _RenderProgressBar extends RenderBox {
     TextStyle? timeLabelTextStyle,
     double timeLabelPadding = 0.0,
     double textScaleFactor = 1.0,
-  })  : _total = total,
-        _buffered = buffered,
-        _onSeek = onSeek,
-        _onDragStartUserCallback = onDragStart,
-        _onDragUpdateUserCallback = onDragUpdate,
-        _onDragEndUserCallback = onDragEnd,
-        _barHeight = barHeight,
-        _baseBarColor = baseBarColor,
-        _progressBarColor = progressBarColor,
-        _bufferedBarColor = bufferedBarColor,
-        _barCapShape = barCapShape,
-        _thumbRadius = thumbRadius,
-        _thumbColor = thumbColor,
-        _thumbGlowColor = thumbGlowColor,
-        _thumbGlowRadius = thumbGlowRadius,
-        _thumbCanPaintOutsideBar = thumbCanPaintOutsideBar,
-        _timeLabelLocation = timeLabelLocation,
-        _timeLabelType = timeLabelType,
-        _timeLabelTextStyle = timeLabelTextStyle,
-        _timeLabelPadding = timeLabelPadding,
-        _textScaleFactor = textScaleFactor {
+  }) : _total = total,
+       _buffered = buffered,
+       _onSeek = onSeek,
+       _onDragStartUserCallback = onDragStart,
+       _onDragUpdateUserCallback = onDragUpdate,
+       _onDragEndUserCallback = onDragEnd,
+       _barHeight = barHeight,
+       _baseBarColor = baseBarColor,
+       _progressBarColor = progressBarColor,
+       _bufferedBarColor = bufferedBarColor,
+       _barCapShape = barCapShape,
+       _thumbRadius = thumbRadius,
+       _thumbColor = thumbColor,
+       _thumbGlowColor = thumbGlowColor,
+       _thumbGlowRadius = thumbGlowRadius,
+       _thumbCanPaintOutsideBar = thumbCanPaintOutsideBar,
+       _timeLabelLocation = timeLabelLocation,
+       _timeLabelType = timeLabelType,
+       _timeLabelTextStyle = timeLabelTextStyle,
+       _timeLabelPadding = timeLabelPadding,
+       _textScaleFactor = textScaleFactor {
     _drag = _EagerHorizontalDragGestureRecognizer()
       ..onStart = _onDragStart
       ..onUpdate = _onDragUpdate
@@ -488,20 +511,24 @@ class _RenderProgressBar extends RenderBox {
   void _onDragStart(DragStartDetails details) {
     _userIsDraggingThumb = true;
     _updateThumbPosition(details.localPosition);
-    onDragStart?.call(ThumbDragDetails(
-      timeStamp: _currentThumbDuration(),
-      globalPosition: details.globalPosition,
-      localPosition: details.localPosition,
-    ));
+    onDragStart?.call(
+      ThumbDragDetails(
+        timeStamp: _currentThumbDuration(),
+        globalPosition: details.globalPosition,
+        localPosition: details.localPosition,
+      ),
+    );
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
     _updateThumbPosition(details.localPosition);
-    onDragUpdate?.call(ThumbDragDetails(
-      timeStamp: _currentThumbDuration(),
-      globalPosition: details.globalPosition,
-      localPosition: details.localPosition,
-    ));
+    onDragUpdate?.call(
+      ThumbDragDetails(
+        timeStamp: _currentThumbDuration(),
+        globalPosition: details.globalPosition,
+        localPosition: details.localPosition,
+      ),
+    );
   }
 
   void _onDragEnd(DragEndDetails details) {
@@ -959,8 +986,9 @@ class _RenderProgressBar extends RenderBox {
     _rightTimeLabel().paint(canvas, rightLabelOffset);
 
     // progress bar
-    final barDy =
-        (isLabelBelow) ? 0.0 : _leftLabelSize.height + _timeLabelPadding;
+    final barDy = (isLabelBelow)
+        ? 0.0
+        : _leftLabelSize.height + _timeLabelPadding;
     _drawProgressBar(canvas, Offset(0, barDy), Size(barWidth, barHeight));
   }
 
@@ -985,7 +1013,8 @@ class _RenderProgressBar extends RenderBox {
     // progress bar
     final leftLabelWidth = leftLabelSize.width;
     final barHeight = _heightWhenNoLabels();
-    final barWidth = size.width -
+    final barWidth =
+        size.width -
         2 * _defaultSidePadding -
         2 * _timeLabelPadding -
         leftLabelWidth -
@@ -1042,11 +1071,12 @@ class _RenderProgressBar extends RenderBox {
     );
   }
 
-  void _drawBar(
-      {required Canvas canvas,
-      required Size availableSize,
-      required double widthProportion,
-      required Color color}) {
+  void _drawBar({
+    required Canvas canvas,
+    required Size availableSize,
+    required double widthProportion,
+    required Color color,
+  }) {
     final strokeCap = (_barCapShape == BarCapShape.round)
         ? StrokeCap.round
         : StrokeCap.square;
@@ -1086,8 +1116,9 @@ class _RenderProgressBar extends RenderBox {
   }
 
   String _getTimeString(Duration time) {
-    final minutes =
-        time.inMinutes.remainder(Duration.minutesPerHour).toString();
+    final minutes = time.inMinutes
+        .remainder(Duration.minutesPerHour)
+        .toString();
     final seconds = time.inSeconds
         .remainder(Duration.secondsPerMinute)
         .toString()
@@ -1104,7 +1135,8 @@ class _RenderProgressBar extends RenderBox {
     // description
     config.textDirection = TextDirection.ltr;
     config.label = '进度条'; //'Progress bar';
-    config.value = '${(_thumbValue * 100).round()}%，'
+    config.value =
+        '${(_thumbValue * 100).round()}%，'
         '已播放${Utils.durationReadFormat(Utils.timeFormat(progress.inSeconds))}，'
         '共${Utils.durationReadFormat(Utils.timeFormat(total.inSeconds))}';
 

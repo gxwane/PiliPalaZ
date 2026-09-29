@@ -25,15 +25,14 @@ class ActionRowItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: selectStatus
-          ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.6)
-          : Theme.of(context).highlightColor.withOpacity(0.2),
+          ? Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withValues(alpha: 0.6)
+          : Theme.of(context).highlightColor.withValues(alpha: 0.2),
       borderRadius: const BorderRadius.all(Radius.circular(30)),
       clipBehavior: Clip.hardEdge,
       child: InkWell(
-        onTap: () => {
-          feedBack(),
-          onTap!(),
-        },
+        onTap: () => {feedBack(), onTap!()},
         onLongPress: () {
           feedBack();
           if (onLongPress != null) {
@@ -64,17 +63,19 @@ class ActionRowItem extends StatelessWidget {
                   duration: const Duration(milliseconds: 300),
                   transitionBuilder:
                       (Widget child, Animation<double> animation) {
-                    return ScaleTransition(scale: animation, child: child);
-                  },
+                        return ScaleTransition(scale: animation, child: child);
+                      },
                   child: Text(
                     text ?? '',
                     key: ValueKey<String>(text ?? ''),
                     style: TextStyle(
-                        color: selectStatus
-                            ? Theme.of(context).colorScheme.primary
-                            : null,
-                        fontSize:
-                            Theme.of(context).textTheme.labelMedium!.fontSize),
+                      color: selectStatus
+                          ? Theme.of(context).colorScheme.primary
+                          : null,
+                      fontSize: Theme.of(
+                        context,
+                      ).textTheme.labelMedium!.fontSize,
+                    ),
                   ),
                 ),
               ),

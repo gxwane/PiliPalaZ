@@ -40,80 +40,69 @@ class _UpPanelState extends State<UpPanel> {
     liveList = widget.upData!.liveUsers?.items ?? [];
     // return const SizedBox();
     return CustomScrollView(
-        cacheExtent: 3500,
-        physics: const AlwaysScrollableScrollPhysics(),
-        controller: widget.scrollController,
-        slivers: [
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 45,
-              child: TextButton(
-                style: ButtonStyle(
-                  padding: WidgetStateProperty.all(const EdgeInsets.only()),
-                ),
-                child: Column(
-                  children: [
-                    const Spacer(),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Live(${liveList.length})',
-                      style: const TextStyle(
-                        fontSize: 13,
-                      ),
-                      semanticsLabel:
-                          '${_showLiveItems ? '展开' : '收起'}直播中的${liveList.length}个Up',
-                    ),
-                    Icon(_showLiveItems ? Icons.expand_less : Icons.expand_more,
-                        size: 12),
-                    const Spacer(),
-                  ],
-                ),
-                onPressed: () {
-                  setState(() {
-                    _showLiveItems = !_showLiveItems;
-                  });
-                },
+      cacheExtent: 3500,
+      physics: const AlwaysScrollableScrollPhysics(),
+      controller: widget.scrollController,
+      slivers: [
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 45,
+            child: TextButton(
+              style: ButtonStyle(
+                padding: WidgetStateProperty.all(const EdgeInsets.only()),
               ),
-            ),
-          ),
-          const SliverToBoxAdapter(
-            child: SizedBox(
-              height: 10,
-            ),
-          ),
-          SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 1,
-                mainAxisExtent: 76,
-                crossAxisSpacing: 0,
-                mainAxisSpacing: 0,
-              ),
-              delegate: SliverChildListDelegate(
-                [
-                  if (_showLiveItems && liveList.isNotEmpty) ...[
-                    for (int i = 0; i < liveList.length; i++) ...[
-                      upItemBuild(liveList[i], i)
-                    ],
-                  ],
-                  upItemBuild(UpItem(face: '', uname: '全部动态', mid: -1), 0),
-                  upItemBuild(
-                      UpItem(
-                        face: userInfo.face,
-                        uname: '我',
-                        mid: userInfo.mid,
-                      ),
-                      1),
-                  for (int i = 0; i < upList.length; i++) ...[
-                    upItemBuild(upList[i], i + 2)
-                  ],
+              child: Column(
+                children: [
+                  const Spacer(),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Live(${liveList.length})',
+                    style: const TextStyle(fontSize: 13),
+                    semanticsLabel:
+                        '${_showLiveItems ? '展开' : '收起'}直播中的${liveList.length}个Up',
+                  ),
+                  Icon(
+                    _showLiveItems ? Icons.expand_less : Icons.expand_more,
+                    size: 12,
+                  ),
+                  const Spacer(),
                 ],
-              )),
-          const SliverToBoxAdapter(
-            child: SizedBox(
-              height: 200,
+              ),
+              onPressed: () {
+                setState(() {
+                  _showLiveItems = !_showLiveItems;
+                });
+              },
             ),
           ),
-        ]);
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 10)),
+        SliverGrid(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 1,
+            mainAxisExtent: 76,
+            crossAxisSpacing: 0,
+            mainAxisSpacing: 0,
+          ),
+          delegate: SliverChildListDelegate([
+            if (_showLiveItems && liveList.isNotEmpty) ...[
+              for (int i = 0; i < liveList.length; i++) ...[
+                upItemBuild(liveList[i], i),
+              ],
+            ],
+            upItemBuild(UpItem(face: '', uname: '全部动态', mid: -1), 0),
+            upItemBuild(
+              UpItem(face: userInfo.face, uname: '我', mid: userInfo.mid),
+              1,
+            ),
+            for (int i = 0; i < upList.length; i++) ...[
+              upItemBuild(upList[i], i + 2),
+            ],
+          ]),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 200)),
+      ],
+    );
   }
 
   Widget upItemBuild(data, i) {
@@ -164,8 +153,10 @@ class _UpPanelState extends State<UpPanel> {
           return;
         }
         String heroTag = Utils.makeHeroTag(data.mid);
-        Get.toNamed('/member?mid=${data.mid}',
-            arguments: {'face': data.face, 'heroTag': heroTag});
+        Get.toNamed(
+          '/member?mid=${data.mid}',
+          arguments: {'face': data.face, 'heroTag': heroTag},
+        );
       },
       child: AnimatedOpacity(
         opacity: isCurrent ? 1 : 0.6,
@@ -183,13 +174,13 @@ class _UpPanelState extends State<UpPanel> {
                   ? AlignmentDirectional.topCenter
                   : AlignmentDirectional.topEnd,
               padding: const EdgeInsets.only(left: 6, right: 6),
-              isLabelVisible: data.type == 'live' ||
+              isLabelVisible:
+                  data.type == 'live' ||
                   (data.type == 'up' && (data.hasUpdate ?? false)),
               backgroundColor: data.type == 'live'
-                  ? Theme.of(context)
-                      .colorScheme
-                      .secondaryContainer
-                      .withOpacity(0.7)
+                  ? Theme.of(
+                      context,
+                    ).colorScheme.secondaryContainer.withValues(alpha: 0.7)
                   : Theme.of(context).colorScheme.primary,
               child: data.face != ''
                   ? NetworkImgLayer(
@@ -213,11 +204,12 @@ class _UpPanelState extends State<UpPanel> {
               softWrap: true,
               textAlign: TextAlign.center,
               style: TextStyle(
-                  color: currentMid == data.mid
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.outline,
-                  height: 1.1,
-                  fontSize: 12.5),
+                color: currentMid == data.mid
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.outline,
+                height: 1.1,
+                fontSize: 12.5,
+              ),
             ),
           ],
         ),

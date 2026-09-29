@@ -14,8 +14,9 @@ class ReplyMePage extends StatefulWidget {
 }
 
 class _ReplyMePageState extends State<ReplyMePage> {
-  late final ReplyMeController _replyMeController =
-      Get.put(ReplyMeController());
+  late final ReplyMeController _replyMeController = Get.put(
+    ReplyMeController(),
+  );
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -28,19 +29,20 @@ class _ReplyMePageState extends State<ReplyMePage> {
   Future _scrollListener() async {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      EasyThrottle.throttle('my-throttler', const Duration(milliseconds: 800),
-          () async {
-        await _replyMeController.onLoad();
-      });
+      EasyThrottle.throttle(
+        'my-throttler',
+        const Duration(milliseconds: 800),
+        () async {
+          await _replyMeController.onLoad();
+        },
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('回复我的'),
-      ),
+      appBar: AppBar(title: const Text('回复我的')),
       body: RefreshIndicator(
         displacement: 10.0,
         edgeOffset: 10.0,
@@ -50,13 +52,10 @@ class _ReplyMePageState extends State<ReplyMePage> {
         child: SingleChildScrollView(
           controller: _scrollController,
           child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-            return Obx(
-              () {
+            builder: (BuildContext context, BoxConstraints constraints) {
+              return Obx(() {
                 if (_replyMeController.msgFeedReplyMeList.isEmpty) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
                 return ListView.separated(
                   itemCount: _replyMeController.msgFeedReplyMeList.length,
@@ -66,7 +65,9 @@ class _ReplyMePageState extends State<ReplyMePage> {
                     return ListTile(
                       onTap: () {
                         String? nativeUri = _replyMeController
-                            .msgFeedReplyMeList[i].item?.nativeUri;
+                            .msgFeedReplyMeList[i]
+                            .item
+                            ?.nativeUri;
                         if (nativeUri != null) {
                           PiliScheme.routePush(Uri.parse(nativeUri));
                         }
@@ -77,62 +78,77 @@ class _ReplyMePageState extends State<ReplyMePage> {
                         height: 45,
                         type: 'avatar',
                         src: _replyMeController
-                            .msgFeedReplyMeList[i].user?.avatar,
+                            .msgFeedReplyMeList[i]
+                            .user
+                            ?.avatar,
                       ),
                       title: Text(
                         "${_replyMeController.msgFeedReplyMeList[i].user?.nickname}  "
                         "回复了我的${_replyMeController.msgFeedReplyMeList[i].item?.business}",
                         style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                            color: Theme.of(context).colorScheme.primary),
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                       subtitle: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text(
+                            _replyMeController
+                                    .msgFeedReplyMeList[i]
+                                    .item
+                                    ?.sourceContent ??
+                                "",
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 4),
+                          if (_replyMeController
+                                      .msgFeedReplyMeList[i]
+                                      .item
+                                      ?.targetReplyContent !=
+                                  null &&
+                              _replyMeController
+                                      .msgFeedReplyMeList[i]
+                                      .item
+                                      ?.targetReplyContent !=
+                                  "")
                             Text(
-                                _replyMeController.msgFeedReplyMeList[i].item
-                                        ?.sourceContent ??
-                                    "",
-                                style: Theme.of(context).textTheme.bodyMedium),
-                            const SizedBox(height: 4),
-                            if (_replyMeController.msgFeedReplyMeList[i].item
-                                        ?.targetReplyContent !=
-                                    null &&
-                                _replyMeController.msgFeedReplyMeList[i].item
-                                        ?.targetReplyContent !=
-                                    "")
-                              Text(
-                                  "| ${_replyMeController.msgFeedReplyMeList[i].item?.targetReplyContent}",
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelMedium!
-                                      .copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .outline,
-                                          height: 1.5)),
-                            if (_replyMeController.msgFeedReplyMeList[i].item
-                                        ?.rootReplyContent !=
-                                    null &&
-                                _replyMeController.msgFeedReplyMeList[i].item
-                                        ?.rootReplyContent !=
-                                    "")
-                              Text(
-                                  " | ${_replyMeController.msgFeedReplyMeList[i].item?.rootReplyContent}",
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelMedium!
-                                      .copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .outline,
-                                          height: 1.5)),
-                          ]),
+                              "| ${_replyMeController.msgFeedReplyMeList[i].item?.targetReplyContent}",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelMedium!
+                                  .copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.outline,
+                                    height: 1.5,
+                                  ),
+                            ),
+                          if (_replyMeController
+                                      .msgFeedReplyMeList[i]
+                                      .item
+                                      ?.rootReplyContent !=
+                                  null &&
+                              _replyMeController
+                                      .msgFeedReplyMeList[i]
+                                      .item
+                                      ?.rootReplyContent !=
+                                  "")
+                            Text(
+                              " | ${_replyMeController.msgFeedReplyMeList[i].item?.rootReplyContent}",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelMedium!
+                                  .copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.outline,
+                                    height: 1.5,
+                                  ),
+                            ),
+                        ],
+                      ),
                     );
                   },
                   separatorBuilder: (BuildContext context, int index) {
@@ -140,13 +156,13 @@ class _ReplyMePageState extends State<ReplyMePage> {
                       indent: 72,
                       endIndent: 20,
                       height: 6,
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Colors.grey.withValues(alpha: 0.1),
                     );
                   },
                 );
-              },
-            );
-          }),
+              });
+            },
+          ),
         ),
       ),
     );

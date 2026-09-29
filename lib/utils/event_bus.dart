@@ -1,5 +1,5 @@
 // 订阅者回调签名
-typedef void EventCallback(arg);
+typedef EventCallback = void Function(dynamic arg);
 
 class EventBus {
   // 私有构造函数
@@ -15,15 +15,16 @@ class EventBus {
   final _emap = <dynamic, List<EventCallback>>{};
 
   // 添加订阅者
-  void on(eventName, EventCallback f) {
+  void on(Object eventName, EventCallback f) {
     _emap[eventName] ??= <EventCallback>[];
     _emap[eventName]!.add(f);
   }
 
   // 移除订阅者
-  void off(eventName, [EventCallback? f]) {
+  void off(Object? eventName, [EventCallback? f]) {
+    if (eventName == null) return;
     var list = _emap[eventName];
-    if (eventName == null || list == null) return;
+    if (list == null) return;
     if (f == null) {
       _emap[eventName] = [];
     } else {
@@ -32,7 +33,7 @@ class EventBus {
   }
 
   // 触发事件，事件触发后该事件所有订阅者会被调用
-  void emit(eventName, [arg]) {
+  void emit(Object eventName, [dynamic arg]) {
     var list = _emap[eventName];
     if (list == null) return;
     List<EventCallback> tempList = List.from(list);
@@ -42,7 +43,7 @@ class EventBus {
   }
 
   // 获取订阅者数量
-  int getSubscriberCount(eventName) {
+  int getSubscriberCount(Object eventName) {
     var list = _emap[eventName];
     return list?.length ?? 0;
   }

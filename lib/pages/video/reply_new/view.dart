@@ -190,7 +190,7 @@ class _VideoReplyNewDialogState extends State<VideoReplyNewDialog>
           ),
           Divider(
             height: 1,
-            color: Theme.of(context).dividerColor.withOpacity(0.1),
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
           ),
           Container(
             height: 52,

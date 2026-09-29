@@ -20,8 +20,9 @@ class WhisperDetailPage extends StatefulWidget {
 
 class _WhisperDetailPageState extends State<WhisperDetailPage>
     with WidgetsBindingObserver {
-  final WhisperDetailController _whisperDetailController =
-      Get.put(WhisperDetailController());
+  final WhisperDetailController _whisperDetailController = Get.put(
+    WhisperDetailController(),
+  );
   late TextEditingController _replyContentController;
   final FocusNode replyContentFocusNode = FocusNode();
   final _debouncer = Debouncer(milliseconds: 200); // 设置延迟时间
@@ -63,10 +64,13 @@ class _WhisperDetailPageState extends State<WhisperDetailPage>
         if (!mounted) return;
         // 键盘高度
         final viewInsets = EdgeInsets.fromViewPadding(
-            View.of(context).viewInsets, View.of(context).devicePixelRatio);
+          View.of(context).viewInsets,
+          View.of(context).devicePixelRatio,
+        );
         if (keyboardHeight == 0) {
-          emoteHeight = keyboardHeight =
-              keyboardHeight == 0.0 ? viewInsets.bottom : keyboardHeight;
+          emoteHeight = keyboardHeight = keyboardHeight == 0.0
+              ? viewInsets.bottom
+              : keyboardHeight;
           if (emoteHeight == 0 || emoteHeight < keyboardHeight) {
             emoteHeight = keyboardHeight;
           }
@@ -89,13 +93,15 @@ class _WhisperDetailPageState extends State<WhisperDetailPage>
     int cursorPosition = _replyContentController.selection.baseOffset;
     if (cursorPosition == -1) cursorPosition = 0;
     final String currentText = _replyContentController.text;
-    final String newText = currentText.substring(0, cursorPosition) +
+    final String newText =
+        currentText.substring(0, cursorPosition) +
         emote.text! +
         currentText.substring(cursorPosition);
     _replyContentController.value = TextEditingValue(
       text: newText,
-      selection:
-          TextSelection.collapsed(offset: cursorPosition + emote.text!.length),
+      selection: TextSelection.collapsed(
+        offset: cursorPosition + emote.text!.length,
+      ),
     );
   }
 
@@ -117,12 +123,12 @@ class _WhisperDetailPageState extends State<WhisperDetailPage>
                   tooltip: '返回',
                   style: ButtonStyle(
                     padding: WidgetStateProperty.all(EdgeInsets.zero),
-                    backgroundColor: WidgetStateProperty.resolveWith(
-                        (Set<MaterialState> states) {
-                      return Theme.of(context)
-                          .colorScheme
-                          .primaryContainer
-                          .withOpacity(0.6);
+                    backgroundColor: WidgetStateProperty.resolveWith((
+                      Set<MaterialState> states,
+                    ) {
+                      return Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withValues(alpha: 0.6);
                     }),
                   ),
                   onPressed: () => Get.back(),
@@ -140,7 +146,7 @@ class _WhisperDetailPageState extends State<WhisperDetailPage>
                     '/member?mid=${_whisperDetailController.mid}',
                     arguments: {
                       'face': _whisperDetailController.face,
-                      'heroTag': null
+                      'heroTag': null,
                     },
                   );
                 },
@@ -175,31 +181,32 @@ class _WhisperDetailPageState extends State<WhisperDetailPage>
         child: Obx(() {
           List messageList = _whisperDetailController.messageList;
           if (messageList.isEmpty) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
           return RefreshIndicator(
-              displacement: 10.0,
-              edgeOffset: 10.0,
-              onRefresh: _whisperDetailController.querySessionMsg,
-              child: ListView.builder(
-                itemCount: messageList.length,
-                shrinkWrap: true,
-                reverse: true,
-                itemBuilder: (_, int i) {
-                  return ChatItem(
-                      item: messageList[i],
-                      e_infos: _whisperDetailController.eInfos);
-                },
-                padding: const EdgeInsets.only(bottom: 20),
-              ));
+            displacement: 10.0,
+            edgeOffset: 10.0,
+            onRefresh: _whisperDetailController.querySessionMsg,
+            child: ListView.builder(
+              itemCount: messageList.length,
+              shrinkWrap: true,
+              reverse: true,
+              itemBuilder: (_, int i) {
+                return ChatItem(
+                  item: messageList[i],
+                  e_infos: _whisperDetailController.eInfos,
+                );
+              },
+              padding: const EdgeInsets.only(bottom: 20),
+            ),
+          );
         }),
       ),
       // resizeToAvoidBottomInset: true,
       bottomNavigationBar: Container(
         width: double.infinity,
-        height: MediaQuery.of(context).padding.bottom +
+        height:
+            MediaQuery.of(context).padding.bottom +
             70 +
             (toolbarType == 'none'
                 ? 0
@@ -214,7 +221,9 @@ class _WhisperDetailPageState extends State<WhisperDetailPage>
           border: Border(
             top: BorderSide(
               width: 4,
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.1),
             ),
           ),
         ),
@@ -253,26 +262,28 @@ class _WhisperDetailPageState extends State<WhisperDetailPage>
                   child: Container(
                     height: 45,
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withOpacity(0.08),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(40.0),
                     ),
                     child: Semantics(
-                        label: '私信输入框',
-                        child: TextField(
-                          style: Theme.of(context).textTheme.titleMedium,
-                          controller: _replyContentController,
-                          autofocus: false,
-                          focusNode: replyContentFocusNode,
-                          decoration: const InputDecoration(
-                            border: InputBorder.none, // 移除默认边框
-                            hintText: '发个消息聊聊呗~', // 提示文本
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16.0, vertical: 12.0), // 内边距
-                          ),
-                        )),
+                      label: '私信输入框',
+                      child: TextField(
+                        style: Theme.of(context).textTheme.titleMedium,
+                        controller: _replyContentController,
+                        autofocus: false,
+                        focusNode: replyContentFocusNode,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none, // 移除默认边框
+                          hintText: '发个消息聊聊呗~', // 提示文本
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16.0,
+                            vertical: 12.0,
+                          ), // 内边距
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 IconButton(
@@ -291,9 +302,7 @@ class _WhisperDetailPageState extends State<WhisperDetailPage>
               height: toolbarType == 'none'
                   ? 0
                   : (toolbarType == 'input' ? keyboardHeight : emoteHeight),
-              child: EmotePanel(
-                onChoose: onChooseEmote,
-              ),
+              child: EmotePanel(onChoose: onChooseEmote),
             ),
           ],
         ),

@@ -28,19 +28,20 @@ class _LikeMePageState extends State<LikeMePage> {
   Future _scrollListener() async {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      EasyThrottle.throttle('my-throttler', const Duration(milliseconds: 800),
-          () async {
-        await _likeMeController.onLoad();
-      });
+      EasyThrottle.throttle(
+        'my-throttler',
+        const Duration(milliseconds: 800),
+        () async {
+          await _likeMeController.onLoad();
+        },
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('收到的赞'),
-      ),
+      appBar: AppBar(title: const Text('收到的赞')),
       body: RefreshIndicator(
         displacement: 10.0,
         edgeOffset: 10.0,
@@ -50,48 +51,50 @@ class _LikeMePageState extends State<LikeMePage> {
         child: SingleChildScrollView(
           controller: _scrollController,
           child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-            return Obx(
-              () {
+            builder: (BuildContext context, BoxConstraints constraints) {
+              return Obx(() {
                 if (_likeMeController.msgFeedLikeMeLatestList.isEmpty &&
                     _likeMeController.msgFeedLikeMeTotalList.isEmpty) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
                 return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (_likeMeController
-                          .msgFeedLikeMeLatestList.isNotEmpty) ...<Widget>[
-                        Text("    最新",
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelMedium!
-                                .copyWith(
-                                    color:
-                                        Theme.of(context).colorScheme.outline)),
-                        LikeMeList(
-                            msgFeedLikeMeList:
-                                _likeMeController.msgFeedLikeMeLatestList),
-                      ],
-                      if (_likeMeController
-                          .msgFeedLikeMeTotalList.isNotEmpty) ...<Widget>[
-                        Text("    累计",
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelMedium!
-                                .copyWith(
-                                    color:
-                                        Theme.of(context).colorScheme.outline)),
-                        LikeMeList(
-                            msgFeedLikeMeList:
-                                _likeMeController.msgFeedLikeMeTotalList),
-                      ]
-                    ]);
-              },
-            );
-          }),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_likeMeController
+                        .msgFeedLikeMeLatestList
+                        .isNotEmpty) ...<Widget>[
+                      Text(
+                        "    最新",
+                        style: Theme.of(context).textTheme.labelMedium!
+                            .copyWith(
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                      ),
+                      LikeMeList(
+                        msgFeedLikeMeList:
+                            _likeMeController.msgFeedLikeMeLatestList,
+                      ),
+                    ],
+                    if (_likeMeController
+                        .msgFeedLikeMeTotalList
+                        .isNotEmpty) ...<Widget>[
+                      Text(
+                        "    累计",
+                        style: Theme.of(context).textTheme.labelMedium!
+                            .copyWith(
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                      ),
+                      LikeMeList(
+                        msgFeedLikeMeList:
+                            _likeMeController.msgFeedLikeMeTotalList,
+                      ),
+                    ],
+                  ],
+                );
+              });
+            },
+          ),
         ),
       ),
     );
@@ -99,10 +102,7 @@ class _LikeMePageState extends State<LikeMePage> {
 }
 
 class LikeMeList extends StatelessWidget {
-  const LikeMeList({
-    super.key,
-    required this.msgFeedLikeMeList,
-  });
+  const LikeMeList({super.key, required this.msgFeedLikeMeList});
   final RxList<LikeMeItems> msgFeedLikeMeList;
 
   @override
@@ -124,29 +124,33 @@ class LikeMeList extends StatelessWidget {
             children: [
               const Spacer(),
               SizedBox(
-                  width: 50,
-                  height: 50,
-                  child: Stack(
-                    children: [
-                      for (var j = 0;
-                          j < msgFeedLikeMeList[i].users!.length && j < 4;
-                          j++) ...<Widget>[
-                        Positioned(
-                            left: 15 * (j % 2).toDouble(),
-                            top: 15 * (j ~/ 2).toDouble(),
-                            child: NetworkImgLayer(
-                              width: msgFeedLikeMeList[i].users!.length > 1
-                                  ? 30
-                                  : 45,
-                              height: msgFeedLikeMeList[i].users!.length > 1
-                                  ? 30
-                                  : 45,
-                              type: 'avatar',
-                              src: msgFeedLikeMeList[i].users![j].avatar,
-                            )),
-                      ]
+                width: 50,
+                height: 50,
+                child: Stack(
+                  children: [
+                    for (
+                      var j = 0;
+                      j < msgFeedLikeMeList[i].users!.length && j < 4;
+                      j++
+                    ) ...<Widget>[
+                      Positioned(
+                        left: 15 * (j % 2).toDouble(),
+                        top: 15 * (j ~/ 2).toDouble(),
+                        child: NetworkImgLayer(
+                          width: msgFeedLikeMeList[i].users!.length > 1
+                              ? 30
+                              : 45,
+                          height: msgFeedLikeMeList[i].users!.length > 1
+                              ? 30
+                              : 45,
+                          type: 'avatar',
+                          src: msgFeedLikeMeList[i].users![j].avatar,
+                        ),
+                      ),
                     ],
-                  )),
+                  ],
+                ),
+              ),
               const Spacer(),
             ],
           ),
@@ -157,26 +161,33 @@ class LikeMeList extends StatelessWidget {
             "${msgFeedLikeMeList[i].counts! > 1 ? '共 ${msgFeedLikeMeList[i].counts} 人' : ''}"
             "赞了我的${msgFeedLikeMeList[i].item?.business}",
             style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                height: 1.5, color: Theme.of(context).colorScheme.primary),
+              height: 1.5,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          subtitle: msgFeedLikeMeList[i].item?.title != null &&
+          subtitle:
+              msgFeedLikeMeList[i].item?.title != null &&
                   msgFeedLikeMeList[i].item?.title != ""
               ? Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 4),
-                    Text(msgFeedLikeMeList[i].item?.title ?? "",
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-                            color: Theme.of(context).colorScheme.outline,
-                            height: 1.5))
+                    Text(
+                      msgFeedLikeMeList[i].item?.title ?? "",
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                        color: Theme.of(context).colorScheme.outline,
+                        height: 1.5,
+                      ),
+                    ),
                   ],
                 )
               : null,
-          trailing: msgFeedLikeMeList[i].item?.image != null &&
+          trailing:
+              msgFeedLikeMeList[i].item?.image != null &&
                   msgFeedLikeMeList[i].item?.image != ""
               ? NetworkImgLayer(
                   width: 45,
@@ -192,7 +203,7 @@ class LikeMeList extends StatelessWidget {
           indent: 72,
           endIndent: 20,
           height: 6,
-          color: Colors.grey.withOpacity(0.1),
+          color: Colors.grey.withValues(alpha: 0.1),
         );
       },
     );

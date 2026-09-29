@@ -136,9 +136,9 @@ class Utils {
   }
 
   // 完全相对时间显示
-  static String formatTimestampToRelativeTime(timeStamp) {
+  static String formatTimestampToRelativeTime(dynamic timeStamp) {
     var difference = DateTime.now().difference(
-      DateTime.fromMillisecondsSinceEpoch(timeStamp * 1000),
+      DateTime.fromMillisecondsSinceEpoch((timeStamp as num).toInt() * 1000),
     );
 
     if (difference.inDays > 365) {
@@ -157,7 +157,7 @@ class Utils {
   }
 
   // 时间显示，刚刚，x分钟前
-  static String dateFormat(timeStamp, {formatType = 'list'}) {
+  static String dateFormat(dynamic timeStamp, {String formatType = 'list'}) {
     if (timeStamp == 0 || timeStamp == null || timeStamp == '') {
       return '';
     }
@@ -308,9 +308,10 @@ class Utils {
   }
 
   // 时间戳转时间
-  static tampToSeektime(number) {
-    int hours = number ~/ 60;
-    int minutes = number % 60;
+  static String tampToSeektime(dynamic number) {
+    int val = (number as num).toInt();
+    int hours = val ~/ 60;
+    int minutes = val % 60;
 
     String formattedHours = hours.toString().padLeft(2, '0');
     String formattedMinutes = minutes.toString().padLeft(2, '0');

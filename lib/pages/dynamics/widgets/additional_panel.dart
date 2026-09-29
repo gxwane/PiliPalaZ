@@ -47,7 +47,7 @@ Widget addWidget(
   }
 
   final Color bgColor = floor == 1
-      ? Theme.of(context).dividerColor.withOpacity(0.08)
+      ? Theme.of(context).dividerColor.withValues(alpha: 0.08)
       : Theme.of(context).colorScheme.surface;
   final EdgeInsets margin = floor == 1
       ? const EdgeInsets.only(left: 12, right: 12, top: 8)
@@ -283,7 +283,7 @@ Widget addWidget(
                               decoration: BoxDecoration(
                                 color: Theme.of(
                                   context,
-                                ).colorScheme.primary.withOpacity(0.12),
+                                ).colorScheme.primary.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -370,7 +370,7 @@ Widget addWidget(
                     decoration: BoxDecoration(
                       color: Theme.of(
                         context,
-                      ).colorScheme.primary.withOpacity(0.12),
+                      ).colorScheme.primary.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(
@@ -434,10 +434,10 @@ Widget addWidget(
                           ),
                           decoration: BoxDecoration(
                             color: match.status == 2
-                                ? Colors.green.withOpacity(0.15)
+                                ? Colors.green.withValues(alpha: 0.15)
                                 : Theme.of(
                                     context,
-                                  ).dividerColor.withOpacity(0.15),
+                                  ).dividerColor.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -593,10 +593,12 @@ Widget addWidget(
                     ),
                     decoration: BoxDecoration(
                       color: isEnded
-                          ? Theme.of(context).dividerColor.withOpacity(0.12)
+                          ? Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.12)
                           : Theme.of(
                               context,
-                            ).colorScheme.primary.withOpacity(0.12),
+                            ).colorScheme.primary.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(

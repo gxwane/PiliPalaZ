@@ -19,8 +19,10 @@ class _SearchResultPageState extends State<SearchResultPage>
   @override
   void initState() {
     super.initState();
-    _searchResultController = Get.put(SearchResultController(),
-        tag: DateTime.now().millisecondsSinceEpoch.toString());
+    _searchResultController = Get.put(
+      SearchResultController(),
+      tag: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
 
     _tabController = TabController(
       vsync: this,
@@ -35,7 +37,7 @@ class _SearchResultPageState extends State<SearchResultPage>
       appBar: AppBar(
         shape: Border(
           bottom: BorderSide(
-            color: Theme.of(context).dividerColor.withOpacity(0.08),
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.08),
             width: 1,
           ),
         ),
@@ -66,13 +68,13 @@ class _SearchResultPageState extends State<SearchResultPage>
               ),
               child: TabBar(
                 controller: _tabController,
-                tabs: [
-                  for (var i in SearchType.values) Tab(text: i.label),
-                ],
+                tabs: [for (var i in SearchType.values) Tab(text: i.label)],
                 isScrollable: true,
                 indicatorWeight: 0,
-                indicatorPadding:
-                    const EdgeInsets.symmetric(horizontal: 3, vertical: 8),
+                indicatorPadding: const EdgeInsets.symmetric(
+                  horizontal: 3,
+                  vertical: 8,
+                ),
                 indicator: BoxDecoration(
                   color: Theme.of(context).colorScheme.secondaryContainer,
                   borderRadius: const BorderRadius.all(Radius.circular(20)),
@@ -86,9 +88,10 @@ class _SearchResultPageState extends State<SearchResultPage>
                 onTap: (index) {
                   if (index == _searchResultController!.tabIndex) {
                     Get.find<SearchPanelController>(
-                            tag: SearchType.values[index].type +
-                                _searchResultController!.keyword!)
-                        .animateToTop();
+                      tag:
+                          SearchType.values[index].type +
+                          _searchResultController!.keyword!,
+                    ).animateToTop();
                   }
 
                   _searchResultController!.tabIndex = index;
@@ -105,8 +108,8 @@ class _SearchResultPageState extends State<SearchResultPage>
                     keyword: _searchResultController!.keyword,
                     searchType: i,
                     tag: DateTime.now().millisecondsSinceEpoch.toString(),
-                  )
-                }
+                  ),
+                },
               ],
             ),
           ),

@@ -54,7 +54,7 @@ import 'package:pilipalaz/utils/feed_back.dart';
 //       {bool selectStatus = false}) {
 //     return Material(
 //       color: selectStatus
-//           ? Theme.of(context).highlightColor.withOpacity(0.2)
+//           ? Theme.of(context).highlightColor.withValues(alpha: 0.2)
 //           : Colors.transparent,
 //       borderRadius: const BorderRadius.all(Radius.circular(30)),
 //       clipBehavior: Clip.hardEdge,
@@ -70,7 +70,7 @@ import 'package:pilipalaz/utils/feed_back.dart';
 //             border: Border.all(
 //               color: selectStatus
 //                   ? Colors.transparent
-//                   : Theme.of(context).highlightColor.withOpacity(0.2),
+//                   : Theme.of(context).highlightColor.withValues(alpha: 0.2),
 //             ),
 //           ),
 //           child: Row(
@@ -120,10 +120,7 @@ class ActionRowLineItem extends StatelessWidget {
       borderRadius: const BorderRadius.all(Radius.circular(30)),
       clipBehavior: Clip.hardEdge,
       child: InkWell(
-        onTap: () => {
-          feedBack(),
-          onTap!(),
-        },
+        onTap: () => {feedBack(), onTap!()},
         child: Container(
           padding: const EdgeInsets.fromLTRB(14, 8, 14, 7),
           decoration: BoxDecoration(
@@ -153,10 +150,11 @@ class ActionRowLineItem extends StatelessWidget {
                 child: Text(
                   text!,
                   style: TextStyle(
-                      fontSize: 13,
-                      color: selectStatus
-                          ? Theme.of(context).colorScheme.onSecondaryContainer
-                          : Theme.of(context).colorScheme.outline),
+                    fontSize: 13,
+                    color: selectStatus
+                        ? Theme.of(context).colorScheme.onSecondaryContainer
+                        : Theme.of(context).colorScheme.outline,
+                  ),
                 ),
               ),
             ],

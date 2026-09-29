@@ -272,7 +272,9 @@ class _WhisperPageState extends State<WhisperPage> {
                                         indent: 72,
                                         endIndent: 20,
                                         height: 6,
-                                        color: Colors.grey.withOpacity(0.1),
+                                        color: Colors.grey.withValues(
+                                          alpha: 0.1,
+                                        ),
                                       );
                                     },
                               ),

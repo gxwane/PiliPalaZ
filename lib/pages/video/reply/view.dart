@@ -208,7 +208,7 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                         bottom: BorderSide(
                           color: Theme.of(
                             context,
-                          ).colorScheme.outline.withOpacity(0.1),
+                          ).colorScheme.outline.withValues(alpha: 0.1),
                         ),
                       ),
                     ),

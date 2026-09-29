@@ -76,7 +76,7 @@ class ReplyItem extends StatelessWidget {
               height: 0.3,
               color: Theme.of(
                 context,
-              ).colorScheme.onInverseSurface.withOpacity(0.5),
+              ).colorScheme.onInverseSurface.withValues(alpha: 0.5),
             ),
           ],
         ),
@@ -418,7 +418,9 @@ class ReplyItem extends StatelessWidget {
                 Icon(
                   Icons.reply,
                   size: 18,
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.8),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.8),
                 ),
                 const SizedBox(width: 3),
                 Text(
@@ -486,7 +488,7 @@ class ReplyItemRow extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(left: 42, right: 4, top: 0),
       child: Material(
-        color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+        color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
         clipBehavior: Clip.hardEdge,
         animationDuration: Duration.zero,
@@ -528,7 +530,7 @@ class ReplyItemRow extends StatelessWidget {
                           ).textTheme.bodyMedium!.fontSize,
                           color: Theme.of(
                             context,
-                          ).colorScheme.onSurface.withOpacity(0.85),
+                          ).colorScheme.onSurface.withValues(alpha: 0.85),
                           height: 1.6,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -540,7 +542,7 @@ class ReplyItemRow extends StatelessWidget {
                               style: TextStyle(
                                 color: Theme.of(
                                   context,
-                                ).colorScheme.primary.withOpacity(0.85),
+                                ).colorScheme.primary.withValues(alpha: 0.85),
                               ),
                               recognizer: TapGestureRecognizer()
                                 ..onTap = () {
@@ -611,7 +613,7 @@ class ReplyItemRow extends StatelessWidget {
                             style: TextStyle(
                               color: Theme.of(
                                 context,
-                              ).colorScheme.onSurface.withOpacity(0.85),
+                              ).colorScheme.onSurface.withValues(alpha: 0.85),
                             ),
                           ),
                         TextSpan(
@@ -619,7 +621,7 @@ class ReplyItemRow extends StatelessWidget {
                           style: TextStyle(
                             color: Theme.of(
                               context,
-                            ).colorScheme.primary.withOpacity(0.85),
+                            ).colorScheme.primary.withValues(alpha: 0.85),
                           ),
                         ),
                       ],

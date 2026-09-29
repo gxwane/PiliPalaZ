@@ -27,19 +27,20 @@ class _AtMePageState extends State<AtMePage> {
   Future _scrollListener() async {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      EasyThrottle.throttle('my-throttler', const Duration(milliseconds: 800),
-          () async {
-        await _atMeController.onLoad();
-      });
+      EasyThrottle.throttle(
+        'my-throttler',
+        const Duration(milliseconds: 800),
+        () async {
+          await _atMeController.onLoad();
+        },
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('@我的'),
-      ),
+      appBar: AppBar(title: const Text('@我的')),
       body: RefreshIndicator(
         displacement: 10.0,
         edgeOffset: 10.0,
@@ -49,13 +50,10 @@ class _AtMePageState extends State<AtMePage> {
         child: SingleChildScrollView(
           controller: _scrollController,
           child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-            return Obx(
-              () {
+            builder: (BuildContext context, BoxConstraints constraints) {
+              return Obx(() {
                 if (_atMeController.msgFeedAtMeList.isEmpty) {
-                  return const Center(
-                    child: CircularProgressIndicator(),
-                  );
+                  return const Center(child: CircularProgressIndicator());
                 }
                 return ListView.separated(
                   itemCount: _atMeController.msgFeedAtMeList.length,
@@ -78,35 +76,34 @@ class _AtMePageState extends State<AtMePage> {
                         src: _atMeController.msgFeedAtMeList[i].user?.avatar,
                       ),
                       title: Text(
-                          "${_atMeController.msgFeedAtMeList[i].user?.nickname}  "
-                          "在${_atMeController.msgFeedAtMeList[i].item?.business}中@了我",
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium!
-                              .copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                              )),
+                        "${_atMeController.msgFeedAtMeList[i].user?.nickname}  "
+                        "在${_atMeController.msgFeedAtMeList[i].item?.business}中@了我",
+                        style: Theme.of(context).textTheme.titleMedium!
+                            .copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                      ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 4),
                           Text(
-                              _atMeController
-                                      .msgFeedAtMeList[i].item?.sourceContent ??
-                                  "",
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium!
-                                  .copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .outline))
+                            _atMeController
+                                    .msgFeedAtMeList[i]
+                                    .item
+                                    ?.sourceContent ??
+                                "",
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium!
+                                .copyWith(
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
+                          ),
                         ],
                       ),
-                      trailing: _atMeController
-                                      .msgFeedAtMeList[i].item?.image !=
+                      trailing:
+                          _atMeController.msgFeedAtMeList[i].item?.image !=
                                   null &&
                               _atMeController.msgFeedAtMeList[i].item?.image !=
                                   ""
@@ -115,7 +112,9 @@ class _AtMePageState extends State<AtMePage> {
                               height: 45,
                               type: 'cover',
                               src: _atMeController
-                                  .msgFeedAtMeList[i].item?.image,
+                                  .msgFeedAtMeList[i]
+                                  .item
+                                  ?.image,
                             )
                           : null,
                     );
@@ -125,13 +124,13 @@ class _AtMePageState extends State<AtMePage> {
                       indent: 72,
                       endIndent: 20,
                       height: 6,
-                      color: Colors.grey.withOpacity(0.1),
+                      color: Colors.grey.withValues(alpha: 0.1),
                     );
                   },
                 );
-              },
-            );
-          }),
+              });
+            },
+          ),
         ),
       ),
     );

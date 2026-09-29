@@ -16,7 +16,9 @@ class SearchText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+      color: Theme.of(
+        context,
+      ).colorScheme.surfaceVariant.withValues(alpha: 0.5),
       borderRadius: BorderRadius.circular(6),
       child: Padding(
         padding: EdgeInsets.zero,
@@ -29,12 +31,17 @@ class SearchText extends StatelessWidget {
           },
           borderRadius: BorderRadius.circular(6),
           child: Padding(
-            padding:
-                const EdgeInsets.only(top: 5, bottom: 5, left: 11, right: 11),
+            padding: const EdgeInsets.only(
+              top: 5,
+              bottom: 5,
+              left: 11,
+              right: 11,
+            ),
             child: Text(
               searchText!,
               style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ),

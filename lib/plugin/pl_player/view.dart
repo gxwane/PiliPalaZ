@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:pilipalaz/pages/video/introduction/detail/controller.dart';
 import 'package:pilipalaz/utils/id_utils.dart';
@@ -1614,10 +1613,10 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                 buffered: Duration(seconds: buffer),
                 total: Duration(seconds: max),
                 progressBarColor: colorTheme,
-                baseBarColor: Colors.white.withOpacity(0.2),
+                baseBarColor: Colors.white.withValues(alpha: 0.2),
                 bufferedBarColor: Theme.of(
                   context,
-                ).colorScheme.primary.withOpacity(0.4),
+                ).colorScheme.primary.withValues(alpha: 0.4),
                 timeLabelLocation: TimeLabelLocation.none,
                 // timeLabelLocation: TimeLabelLocation.sides,
                 thumbColor: colorTheme,

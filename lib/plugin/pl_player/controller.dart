@@ -123,11 +123,11 @@ class PlPlayerController with WidgetsBindingObserver {
   StreamSubscription<PlayerStatus>? _playerListenerForEnterPip;
 
   /// 后台播放
-  Rx<bool> _continuePlayInBackground = false.obs;
+  final Rx<bool> _continuePlayInBackground = false.obs;
 
-  Rx<bool> _onlyPlayAudio = false.obs;
+  final Rx<bool> _onlyPlayAudio = false.obs;
 
-  Rx<bool> _flipX = false.obs;
+  final Rx<bool> _flipX = false.obs;
 
   ///
   // ignore: prefer_final_fields
@@ -1189,16 +1189,14 @@ class PlPlayerController with WidgetsBindingObserver {
       'video_controller_prepare',
       <String, Object?>{'reuse': _videoController != null},
     );
-    if (_videoController == null) {
-      _videoController = VideoController(
-        player,
-        configuration: VideoControllerConfiguration(
-          enableHardwareAcceleration: enableHA,
-          androidAttachSurfaceAfterVideoParameters: false,
-          hwdec: effectiveHwdec,
-        ),
-      );
-    }
+    _videoController ??= VideoController(
+      player,
+      configuration: VideoControllerConfiguration(
+        enableHardwareAcceleration: enableHA,
+        androidAttachSurfaceAfterVideoParameters: false,
+        hwdec: effectiveHwdec,
+      ),
+    );
     await _diagnosticSession?.checkpoint('video_controller_ready');
     final String selectedKernel = setting.get(
       SettingBoxKey.playerKernel,
@@ -2229,7 +2227,7 @@ class PlPlayerController with WidgetsBindingObserver {
   }
 
   /// 调整播放时间
-  onChangedSlider(double v) {
+  void onChangedSlider(double v) {
     _sliderPosition.value = Duration(seconds: v.floor());
     updateSliderPositionSecond();
   }
@@ -2519,7 +2517,7 @@ class PlPlayerController with WidgetsBindingObserver {
             ) {
               return Theme.of(
                 Get.context!,
-              ).colorScheme.surface.withOpacity(0.9);
+              ).colorScheme.surface.withValues(alpha: 0.9);
             }),
             shape: WidgetStateProperty.all(
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(0)),
@@ -2813,7 +2811,7 @@ class PlPlayerController with WidgetsBindingObserver {
     }
   }
 
-  setPlayRepeat(PlayRepeat type) {
+  void setPlayRepeat(PlayRepeat type) {
     playRepeat = type;
     videoStorage.put(VideoBoxKey.playRepeat, type.value);
   }
@@ -3107,7 +3105,7 @@ class PlPlayerController with WidgetsBindingObserver {
   }
 
   // 设定字幕轨道
-  setSubtitle(int index) {
+  void setSubtitle(int index) {
     if (index == 0) {
       _videoPlayerController?.setSubtitleTrack(SubtitleTrack.no());
       _vttSubtitlesIndex.value = 0;

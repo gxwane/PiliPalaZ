@@ -98,13 +98,7 @@ class SearchVideoItemModel {
 }
 
 class Stat {
-  Stat({
-    this.view,
-    this.danmu,
-    this.favorite,
-    this.reply,
-    this.like,
-  });
+  Stat({this.view, this.danmu, this.favorite, this.reply, this.like});
 
   // 播放量
   int? view;
@@ -127,11 +121,7 @@ class Stat {
 }
 
 class Owner {
-  Owner({
-    this.mid,
-    this.name,
-    this.face,
-  });
+  Owner({this.mid, this.name, this.face});
   int? mid;
   String? name;
   String? face;
@@ -280,7 +270,7 @@ class SearchLiveItemModel {
     rankScore = json['rank_score'];
     roomid = json['roomid'];
     attentions = json['attentions'];
-    cateName = Em.regCate(json['cate_name']) ?? '';
+    cateName = Em.regCate(json['cate_name']);
   }
 }
 
@@ -290,9 +280,10 @@ class SearchMBangumiModel {
   SearchMBangumiModel.fromJson(Map<String, dynamic> json) {
     list = json['result'] != null
         ? json['result']
-            .map<SearchMBangumiItemModel>(
-                (e) => SearchMBangumiItemModel.fromJson(e))
-            .toList()
+              .map<SearchMBangumiItemModel>(
+                (e) => SearchMBangumiItemModel.fromJson(e),
+              )
+              .toList()
         : [];
   }
 }
@@ -389,9 +380,10 @@ class SearchArticleModel {
   SearchArticleModel.fromJson(Map<String, dynamic> json) {
     list = json['result'] != null
         ? json['result']
-            .map<SearchArticleItemModel>(
-                (e) => SearchArticleItemModel.fromJson(e))
-            .toList()
+              .map<SearchArticleItemModel>(
+                (e) => SearchArticleItemModel.fromJson(e),
+              )
+              .toList()
         : [];
   }
 }

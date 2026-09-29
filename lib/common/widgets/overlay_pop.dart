@@ -48,9 +48,9 @@ class OverlayPop extends StatelessWidget {
                   width: 30,
                   height: 30,
                   decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.3),
-                      borderRadius:
-                          const BorderRadius.all(Radius.circular(20))),
+                    color: Colors.black.withValues(alpha: 0.3),
+                    borderRadius: const BorderRadius.all(Radius.circular(20)),
+                  ),
                   child: IconButton(
                     tooltip: '关闭',
                     style: ButtonStyle(
@@ -77,8 +77,9 @@ class OverlayPop extends StatelessWidget {
                       videoItem.title ?? '',
                       style: TextStyle(
                         fontWeight: FontWeight.w500,
-                        fontSize:
-                            Theme.of(context).textTheme.bodyMedium!.fontSize,
+                        fontSize: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium!.fontSize,
                         height: 1.42,
                         letterSpacing: 0.3,
                       ),
@@ -97,17 +98,16 @@ class OverlayPop extends StatelessWidget {
                               text: i['text'] as String,
                               style: TextStyle(
                                 fontWeight: FontWeight.w500,
-                                fontSize: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium!
-                                    .fontSize,
+                                fontSize: Theme.of(
+                                  context,
+                                ).textTheme.bodyMedium!.fontSize,
                                 letterSpacing: 0.3,
                                 color: i['type'] == 'em'
                                     ? Theme.of(context).colorScheme.primary
                                     : Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
-                          ]
+                          ],
                         ],
                       ),
                     ),
@@ -120,7 +120,8 @@ class OverlayPop extends StatelessWidget {
                       icon: Icon(MdiIcons.clockTimeEightOutline, size: 20),
                       onPressed: () async {
                         var res = await UserHttp.toViewLater(
-                            bvid: videoItem.bvid as String);
+                          bvid: videoItem.bvid as String,
+                        );
                         SmartDialog.showToast(
                           res is ApiSuccess<void>
                               ? 'yeah！稍后再看'
@@ -131,18 +132,19 @@ class OverlayPop extends StatelessWidget {
                   ),
                 const SizedBox(width: 4),
                 SizedBox(
-                    width: 30,
-                    child: IconButton(
-                      tooltip: '保存封面图',
-                      onPressed: () async {
-                        await DownloadUtils.downloadImg(
-                          context,
-                          videoItem.pic ?? videoItem.cover ?? '',
-                        );
-                        // closeFn!();
-                      },
-                      icon: const Icon(Icons.download_outlined, size: 20),
-                    ))
+                  width: 30,
+                  child: IconButton(
+                    tooltip: '保存封面图',
+                    onPressed: () async {
+                      await DownloadUtils.downloadImg(
+                        context,
+                        videoItem.pic ?? videoItem.cover ?? '',
+                      );
+                      // closeFn!();
+                    },
+                    icon: const Icon(Icons.download_outlined, size: 20),
+                  ),
+                ),
               ],
             ),
           ),

@@ -23,8 +23,10 @@ class _FontSizeSelectPageState extends State<FontSizeSelectPage> {
     super.initState();
     minSize = list.first;
     maxSize = list.last;
-    currentSize =
-        setting.get(SettingBoxKey.defaultTextScale, defaultValue: 1.0);
+    currentSize = setting.get(
+      SettingBoxKey.defaultTextScale,
+      defaultValue: 1.0,
+    );
   }
 
   setFontSize() {
@@ -39,7 +41,7 @@ class _FontSizeSelectPageState extends State<FontSizeSelectPage> {
       appBar: AppBar(
         actions: [
           TextButton(onPressed: () => setFontSize(), child: const Text('确定')),
-          const SizedBox(width: 12)
+          const SizedBox(width: 12),
         ],
       ),
       body: Column(
@@ -62,11 +64,12 @@ class _FontSizeSelectPageState extends State<FontSizeSelectPage> {
             ),
             decoration: BoxDecoration(
               border: Border(
-                  top: BorderSide(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .primary
-                          .withOpacity(0.3))),
+                top: BorderSide(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.3),
+                ),
+              ),
               color: Theme.of(context).colorScheme.background,
             ),
             child: Row(
@@ -86,13 +89,10 @@ class _FontSizeSelectPageState extends State<FontSizeSelectPage> {
                   ),
                 ),
                 const SizedBox(width: 5),
-                const Text(
-                  '大',
-                  style: TextStyle(fontSize: 20),
-                ),
+                const Text('大', style: TextStyle(fontSize: 20)),
               ],
             ),
-          )
+          ),
         ],
       ),
     );

@@ -264,7 +264,7 @@ Widget forWard(item, context, ctr, source, {floor = 1, String? heroTag}) {
           right: 10,
           bottom: 10,
         ),
-        color: Theme.of(context).dividerColor.withOpacity(0.08),
+        color: Theme.of(context).dividerColor.withValues(alpha: 0.08),
         child: articlePanel(item, context, floor: floor),
       );
     // 转发
@@ -281,7 +281,7 @@ Widget forWard(item, context, ctr, source, {floor = 1, String? heroTag}) {
                 right: 15,
                 bottom: 8,
               ),
-              color: Theme.of(context).dividerColor.withOpacity(0.08),
+              color: Theme.of(context).dividerColor.withValues(alpha: 0.08),
               child: forWard(
                 item.orig,
                 context,

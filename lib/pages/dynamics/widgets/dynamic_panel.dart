@@ -23,14 +23,14 @@ class DynamicPanel extends StatelessWidget {
       //   border: Border(
       //     bottom: BorderSide(
       //       width: 8,
-      //       color: Theme.of(context).dividerColor.withOpacity(0.05),
+      //       color: Theme.of(context).dividerColor.withValues(alpha: 0.05),
       //     ),
       //   ),
       // ),
       child: Material(
         elevation: 0,
         clipBehavior: Clip.hardEdge,
-        color: Theme.of(context).cardColor.withOpacity(0.5),
+        color: Theme.of(context).cardColor.withValues(alpha: 0.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
         child: HeroTagGenerator(
           builder: (context, heroTag) {

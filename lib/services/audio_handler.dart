@@ -39,7 +39,7 @@ class VideoPlayerServiceHandler extends BaseAudioHandler
     revalidateSetting();
   }
 
-  revalidateSetting() {
+  void revalidateSetting() {
     enableBackgroundPlay = setting.get(
       SettingBoxKey.enableBackgroundPlay,
       defaultValue: true,
@@ -147,7 +147,7 @@ class VideoPlayerServiceHandler extends BaseAudioHandler
     );
   }
 
-  onStatusChange(PlayerStatus status, bool isBuffering) {
+  void onStatusChange(PlayerStatus status, bool isBuffering) {
     if (!enableBackgroundPlay) return;
     // print("此时调用栈为：");
     // debugPrint(StackTrace.current.toString());
@@ -157,7 +157,7 @@ class VideoPlayerServiceHandler extends BaseAudioHandler
     setPlaybackState(status, isBuffering);
   }
 
-  onVideoDetailChange(
+  void onVideoDetailChange(
     String? title,
     String? artist,
     Duration? duration,
@@ -271,7 +271,7 @@ class VideoPlayerServiceHandler extends BaseAudioHandler
     return top.startsWith('/video') || top.startsWith('/live');
   }
 
-  clear() {
+  void clear() {
     if (!enableBackgroundPlay) return;
     clearImpl();
     Future.delayed(const Duration(milliseconds: 400), () {
@@ -287,7 +287,7 @@ class VideoPlayerServiceHandler extends BaseAudioHandler
     });
   }
 
-  onPositionChange(Duration position) {
+  void onPositionChange(Duration position) {
     if (!enableBackgroundPlay) return;
 
     playbackState.add(playbackState.value.copyWith(updatePosition: position));

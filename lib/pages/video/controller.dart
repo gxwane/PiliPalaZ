@@ -281,8 +281,7 @@ class VideoDetailController extends GetxController
   //   // });
   // }
 
-  /// 更新画质、音质
-  /// TODO 继续进度播放
+  /// 更新画质、音质并保留当前播放进度
   Future<void> updatePlayer({String? preferredCodec}) async {
     if (plPlayerController == null) return;
     final List<VideoItem>? dashVideos = data.dash?.video;

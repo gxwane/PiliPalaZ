@@ -11,17 +11,18 @@ class CustomToast extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double toastOpacity =
-        setting.get(SettingBoxKey.defaultToastOp, defaultValue: 1.0).toDouble();
+    final double toastOpacity = setting
+        .get(SettingBoxKey.defaultToastOp, defaultValue: 1.0)
+        .toDouble();
     return Container(
-      margin:
-          EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 30),
+      margin: EdgeInsets.only(
+        bottom: MediaQuery.of(context).padding.bottom + 30,
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 10),
       decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .primaryContainer
-            .withOpacity(toastOpacity),
+        color: Theme.of(
+          context,
+        ).colorScheme.primaryContainer.withValues(alpha: toastOpacity),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(

@@ -37,8 +37,10 @@ class _SearchPageState extends State<SearchPage> with RouteAware {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    SearchPage.routeObserver
-        .subscribe(this, ModalRoute.of(context) as PageRoute);
+    SearchPage.routeObserver.subscribe(
+      this,
+      ModalRoute.of(context) as PageRoute,
+    );
   }
 
   @override
@@ -48,7 +50,7 @@ class _SearchPageState extends State<SearchPage> with RouteAware {
       appBar: AppBar(
         shape: Border(
           bottom: BorderSide(
-            color: Theme.of(context).dividerColor.withOpacity(0.08),
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.08),
             width: 1,
           ),
         ),
@@ -59,7 +61,7 @@ class _SearchPageState extends State<SearchPage> with RouteAware {
             onPressed: () => _searchController.submit(),
             icon: const Icon(CupertinoIcons.search, size: 22),
           ),
-          const SizedBox(width: 10)
+          const SizedBox(width: 10),
         ],
         title: Obx(
           () => TextField(
@@ -110,7 +112,8 @@ class _SearchPageState extends State<SearchPage> with RouteAware {
   Widget _searchSuggest() {
     SSearchController ssCtr = _searchController;
     return Obx(
-      () => ssCtr.searchSuggestList.isNotEmpty &&
+      () =>
+          ssCtr.searchSuggestList.isNotEmpty &&
               ssCtr.searchSuggestList.first.term != null &&
               ssCtr.controller.value.text != ''
           ? ListView.builder(
@@ -122,8 +125,9 @@ class _SearchPageState extends State<SearchPage> with RouteAware {
                   customBorder: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  onTap: () => ssCtr
-                      .onClickKeyword(ssCtr.searchSuggestList[index].term!),
+                  onTap: () => ssCtr.onClickKeyword(
+                    ssCtr.searchSuggestList[index].term!,
+                  ),
                   child: Padding(
                     padding: const EdgeInsets.only(left: 20, top: 9, bottom: 9),
                     child: ssCtr.searchSuggestList[index].textRich,
@@ -148,17 +152,22 @@ class _SearchPageState extends State<SearchPage> with RouteAware {
               children: [
                 Text(
                   '大家都在搜',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium!
-                      .copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 SizedBox(
                   height: 34,
                   child: TextButton.icon(
                     style: ButtonStyle(
-                      padding: WidgetStateProperty.all(const EdgeInsets.only(
-                          left: 10, top: 6, bottom: 6, right: 10)),
+                      padding: WidgetStateProperty.all(
+                        const EdgeInsets.only(
+                          left: 10,
+                          top: 6,
+                          bottom: 6,
+                          right: 10,
+                        ),
+                      ),
                     ),
                     onPressed: () => ctr.queryHotSearchList(),
                     icon: const Icon(Icons.refresh_outlined, size: 18),
@@ -188,7 +197,8 @@ class _SearchPageState extends State<SearchPage> with RouteAware {
                           onClick: (keyword) async {
                             _searchController.searchFocusNode.unfocus();
                             await Future.delayed(
-                                const Duration(milliseconds: 150));
+                              const Duration(milliseconds: 150),
+                            );
                             _searchController.onClickKeyword(keyword);
                           },
                         ),
@@ -201,8 +211,8 @@ class _SearchPageState extends State<SearchPage> with RouteAware {
                             errMsg:
                                 (result as ApiFailure<HotSearchModel>).message,
                             fn: () => setState(() {
-                              _futureBuilderFuture =
-                                  _searchController.queryHotSearchList();
+                              _futureBuilderFuture = _searchController
+                                  .queryHotSearchList();
                             }),
                           ),
                         ],
@@ -244,15 +254,14 @@ class _SearchPageState extends State<SearchPage> with RouteAware {
                   children: [
                     Text(
                       '搜索历史',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium!
-                          .copyWith(fontWeight: FontWeight.bold),
+                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     TextButton(
                       onPressed: () => _searchController.onClearHis(),
                       child: const Text('清空'),
-                    )
+                    ),
                   ],
                 ),
               ),
@@ -270,7 +279,7 @@ class _SearchPageState extends State<SearchPage> with RouteAware {
                       onSelect: (value) => _searchController.onSelect(value),
                       onLongSelect: (value) =>
                           _searchController.onLongSelect(value),
-                    )
+                    ),
                 ],
               ),
             ),

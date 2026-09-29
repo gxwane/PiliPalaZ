@@ -28,15 +28,16 @@ class ListSheet {
 
   void buildShowBottomSheet() {
     MyDialog.showCorner(
-        context,
-        ListSheetContent(
-          episodes: episodes,
-          bvid: bvid,
-          aid: aid,
-          currentCid: currentCid,
-          changeFucCall: changeFucCall,
-          // onClose: SmartDialog.dismiss,
-        ));
+      context,
+      ListSheetContent(
+        episodes: episodes,
+        bvid: bvid,
+        aid: aid,
+        currentCid: currentCid,
+        changeFucCall: changeFucCall,
+        // onClose: SmartDialog.dismiss,
+      ),
+    );
   }
 }
 
@@ -66,7 +67,7 @@ class _ListSheetContentState extends State<ListSheetContent> {
   final ItemScrollController itemScrollController = ItemScrollController();
   late final int currentIndex =
       widget.episodes!.indexWhere((dynamic e) => e.cid == widget.currentCid) ??
-          0;
+      0;
   bool reverse = false;
 
   @override
@@ -77,11 +78,7 @@ class _ListSheetContentState extends State<ListSheetContent> {
     });
   }
 
-  Widget buildEpisodeListItem(
-    dynamic episode,
-    int index,
-    bool isCurrentIndex,
-  ) {
+  Widget buildEpisodeListItem(dynamic episode, int index, bool isCurrentIndex) {
     Color primary = Theme.of(context).colorScheme.primary;
     late String title;
     if (episode.runtimeType.toString() == "EpisodeItem") {
@@ -132,16 +129,17 @@ class _ListSheetContentState extends State<ListSheetContent> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Expanded(
-              child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 14,
-              color: isCurrentIndex
-                  ? primary
-                  : Theme.of(context).colorScheme.onSurface,
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 14,
+                color: isCurrentIndex
+                    ? primary
+                    : Theme.of(context).colorScheme.onSurface,
+              ),
+              semanticsLabel: isCurrentIndex ? "正在播放：$title" : title,
             ),
-            semanticsLabel: isCurrentIndex ? "正在播放：$title" : title,
-          )),
+          ),
           if (episode.badge != null) ...[
             const SizedBox(width: 10),
             if (episode.badge == '会员')
@@ -160,7 +158,7 @@ class _ListSheetContentState extends State<ListSheetContent> {
               '${index + 1}/${widget.episodes!.length}',
               style: const TextStyle(fontSize: 13),
             ),
-          ]
+          ],
         ],
       ),
     );
@@ -212,9 +210,9 @@ class _ListSheetContentState extends State<ListSheetContent> {
                 const Spacer(),
                 IconButton(
                   tooltip: '反序',
-                  icon: Icon(!reverse
-                      ? MdiIcons.sortAscending
-                      : MdiIcons.sortDescending),
+                  icon: Icon(
+                    !reverse ? MdiIcons.sortAscending : MdiIcons.sortDescending,
+                  ),
                   onPressed: () {
                     setState(() {
                       reverse = !reverse;
@@ -233,14 +231,15 @@ class _ListSheetContentState extends State<ListSheetContent> {
             height: 1,
             indent: 10,
             endIndent: 20,
-            color: Theme.of(context).dividerColor.withOpacity(0.1),
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
           ),
           const SizedBox(height: 1),
           Expanded(
             child: Material(
               child: ScrollablePositionedList.separated(
                 padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).padding.bottom + 20),
+                  bottom: MediaQuery.of(context).padding.bottom + 20,
+                ),
                 reverse: reverse,
                 itemCount: widget.episodes!.length,
                 itemBuilder: (BuildContext context, int index) {
@@ -255,7 +254,7 @@ class _ListSheetContentState extends State<ListSheetContent> {
                   indent: 18,
                   endIndent: 25,
                   height: 1,
-                  color: Theme.of(context).dividerColor.withOpacity(0.1),
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
                 ),
               ),
             ),

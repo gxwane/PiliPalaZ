@@ -762,7 +762,7 @@ class _VideoDetailPageState extends State<VideoDetailPage>
           child: Divider(
             indent: 12,
             endIndent: 12,
-            color: Theme.of(context).dividerColor.withOpacity(0.06),
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.06),
           ),
         );
 
@@ -770,7 +770,7 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     onRefresh: () => plPlayerController!.triggerFullScreen(status: true),
     indicatorBuilder: (BuildContext context, IndicatorController controller) {
       double progress = min(controller.value, 1.0);
-      Color color = Theme.of(context).primaryColor.withOpacity(progress);
+      Color color = Theme.of(context).primaryColor.withValues(alpha: progress);
       return Padding(
         padding: const EdgeInsets.all(2.0),
         child: Stack(

@@ -167,7 +167,7 @@ class _LoginPageState extends State<LoginPage> {
                 style: Theme.of(context).textTheme.labelSmall!.copyWith(
                   color: Theme.of(
                     context,
-                  ).colorScheme.onSurface.withOpacity(0.4),
+                  ).colorScheme.onSurface.withValues(alpha: 0.4),
                 ),
               ),
             ),
@@ -178,7 +178,9 @@ class _LoginPageState extends State<LoginPage> {
           child: Text(
             '请务必在 PiliPalaZ 开源仓库等可信渠道下载安装。',
             style: Theme.of(context).textTheme.labelSmall!.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.4),
             ),
           ),
         ),
@@ -326,7 +328,9 @@ class _LoginPageState extends State<LoginPage> {
             '请务必在 PiliPalaZ 开源仓库等可信渠道下载安装。',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelSmall!.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.4),
             ),
           ),
         ),
@@ -345,7 +349,9 @@ class _LoginPageState extends State<LoginPage> {
           child: Container(
             decoration: UnderlineTabIndicator(
               borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.4),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.4),
               ),
             ),
             child: Row(
@@ -392,7 +398,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: VerticalDivider(
                     color: Theme.of(
                       context,
-                    ).colorScheme.outline.withOpacity(0.5),
+                    ).colorScheme.outline.withValues(alpha: 0.5),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -422,7 +428,9 @@ class _LoginPageState extends State<LoginPage> {
           child: Container(
             decoration: UnderlineTabIndicator(
               borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.4),
+                color: Theme.of(
+                  context,
+                ).colorScheme.outline.withValues(alpha: 0.4),
               ),
             ),
             child: Row(
@@ -473,7 +481,9 @@ class _LoginPageState extends State<LoginPage> {
             '请务必在 PiliPalaZ 开源仓库等可信渠道下载安装。',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelSmall!.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.4),
             ),
           ),
         ),

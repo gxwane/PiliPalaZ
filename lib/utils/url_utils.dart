@@ -36,7 +36,7 @@ class UrlUtils {
   }
 
   // 匹配url路由跳转
-  static matchUrlPush(
+  static Future<void> matchUrlPush(
     String pathSegment,
     String title,
     String redirectUrl,
@@ -53,19 +53,12 @@ class UrlUtils {
       final String heroTag = Utils.makeHeroTag(bv);
       await Get.toNamed(
         '/video?bvid=$bv&cid=$cid',
-        arguments: <String, String?>{
-          'pic': '',
-          'heroTag': heroTag,
-        },
+        arguments: <String, String?>{'pic': '', 'heroTag': heroTag},
       );
     } else {
       await Get.toNamed(
         '/webview',
-        parameters: {
-          'url': redirectUrl,
-          'type': 'url',
-          'pageTitle': title,
-        },
+        parameters: {'url': redirectUrl, 'type': 'url', 'pageTitle': title},
       );
     }
   }

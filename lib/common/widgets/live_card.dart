@@ -7,10 +7,7 @@ class LiveCard extends StatelessWidget {
   // ignore: prefer_typing_uninitialized_variables
   final dynamic liveItem;
 
-  const LiveCard({
-    super.key,
-    required this.liveItem,
-  });
+  const LiveCard({super.key, required this.liveItem});
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +19,7 @@ class LiveCard extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(0),
         side: BorderSide(
-          color: Theme.of(context).dividerColor.withOpacity(0.08),
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.08),
         ),
       ),
       margin: EdgeInsets.zero,
@@ -32,41 +29,42 @@ class LiveCard extends StatelessWidget {
           children: [
             AspectRatio(
               aspectRatio: StyleString.aspectRatio,
-              child: LayoutBuilder(builder:
-                  (BuildContext context, BoxConstraints boxConstraints) {
-                final double maxWidth = boxConstraints.maxWidth;
-                final double maxHeight = boxConstraints.maxHeight;
-                return Stack(
-                  children: [
-                    Hero(
-                      tag: heroTag,
-                      child: NetworkImgLayer(
-                        src: liveItem.cover as String,
-                        type: 'emote',
-                        width: maxWidth,
-                        height: maxHeight,
-                      ),
-                    ),
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: AnimatedOpacity(
-                        opacity: 1,
-                        duration: const Duration(milliseconds: 200),
-                        child: LiveStat(
-                          // view: liveItem.stat.view,
-                          // danmaku: liveItem.stat.danmaku,
-                          // duration: liveItem.duration,
-                          online: liveItem.online as int,
+              child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints boxConstraints) {
+                  final double maxWidth = boxConstraints.maxWidth;
+                  final double maxHeight = boxConstraints.maxHeight;
+                  return Stack(
+                    children: [
+                      Hero(
+                        tag: heroTag,
+                        child: NetworkImgLayer(
+                          src: liveItem.cover as String,
+                          type: 'emote',
+                          width: maxWidth,
+                          height: maxHeight,
                         ),
                       ),
-                    ),
-                  ],
-                );
-              }),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: AnimatedOpacity(
+                          opacity: 1,
+                          duration: const Duration(milliseconds: 200),
+                          child: LiveStat(
+                            // view: liveItem.stat.view,
+                            // danmaku: liveItem.stat.danmaku,
+                            // duration: liveItem.duration,
+                            online: liveItem.online as int,
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
-            LiveContent(liveItem: liveItem)
+            LiveContent(liveItem: liveItem),
           ],
         ),
       ),
@@ -127,10 +125,7 @@ class LiveStat extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: <Color>[
-            Colors.transparent,
-            Colors.black54,
-          ],
+          colors: <Color>[Colors.transparent, Colors.black54],
           tileMode: TileMode.mirror,
         ),
       ),
@@ -153,7 +148,7 @@ class LiveStat extends StatelessWidget {
           Text(
             online.toString(),
             style: const TextStyle(fontSize: 11, color: Colors.white),
-          )
+          ),
         ],
       ),
     );

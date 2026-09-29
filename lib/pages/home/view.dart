@@ -54,8 +54,8 @@ class _HomePageState extends State<HomePage>
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarIconBrightness:
               Theme.of(context).brightness == Brightness.dark
-                  ? Brightness.light
-                  : Brightness.dark,
+              ? Brightness.light
+              : Brightness.dark,
         ),
       ),
       body: Column(
@@ -85,7 +85,7 @@ class _HomePageState extends State<HomePage>
                   child: TabBar(
                     controller: _homeController.tabController,
                     tabs: [
-                      for (var i in _homeController.tabs) Tab(text: i['label'])
+                      for (var i in _homeController.tabs) Tab(text: i['label']),
                     ],
                     isScrollable: true,
                     dividerColor: Colors.transparent,
@@ -148,9 +148,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             duration: const Duration(milliseconds: 500),
             height: snapshot.data ? 56 : 0,
             padding: const EdgeInsets.fromLTRB(14, 4, 14, 4),
-            child: SearchBarAndUser(
-              ctr: ctr,
-            ),
+            child: SearchBarAndUser(ctr: ctr),
           ),
         );
       },
@@ -159,10 +157,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 }
 
 class SearchBarAndUser extends StatelessWidget {
-  const SearchBarAndUser({
-    super.key,
-    required this.ctr,
-  });
+  const SearchBarAndUser({super.key, required this.ctr});
 
   final HomeController ctr;
 
@@ -172,65 +167,63 @@ class SearchBarAndUser extends StatelessWidget {
       children: [
         SearchBar(ctr: ctr),
         const SizedBox(width: 4),
-        Obx(() => ctr.userLogin.value
-            ? IconButton(
-                tooltip: '消息',
-                onPressed: () => Get.toNamed('/whisper'),
-                icon: const Icon(
-                  Icons.notifications_none,
-                ),
-              )
-            : const SizedBox.shrink()),
+        Obx(
+          () => ctr.userLogin.value
+              ? IconButton(
+                  tooltip: '消息',
+                  onPressed: () => Get.toNamed('/whisper'),
+                  icon: const Icon(Icons.notifications_none),
+                )
+              : const SizedBox.shrink(),
+        ),
         const SizedBox(width: 4),
         Semantics(
-            button: true,
-            label: ctr.userLogin.value ? "个人中心" : "点击登录",
-            child: Obx(
-              () => ConstrainedBox(
-                constraints:
-                    const BoxConstraints(minWidth: 48, minHeight: 48),
-                child: Center(
-                  child: ctr.userLogin.value
-                      ? Stack(
-                          children: [
-                            NetworkImgLayer(
-                              type: 'avatar',
-                              width: 34,
-                              height: 34,
-                              src: ctr.userFace.value,
-                            ),
-                            Positioned.fill(
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () => ctr.showUserInfoDialog(context),
-                                  splashColor: Theme.of(context)
-                                      .colorScheme
-                                      .primaryContainer
-                                      .withValues(alpha: 0.3),
-                                  borderRadius: const BorderRadius.all(
-                                    Radius.circular(50),
-                                  ),
+          button: true,
+          label: ctr.userLogin.value ? "个人中心" : "点击登录",
+          child: Obx(
+            () => ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              child: Center(
+                child: ctr.userLogin.value
+                    ? Stack(
+                        children: [
+                          NetworkImgLayer(
+                            type: 'avatar',
+                            width: 34,
+                            height: 34,
+                            src: ctr.userFace.value,
+                          ),
+                          Positioned.fill(
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => ctr.showUserInfoDialog(context),
+                                splashColor: Theme.of(context)
+                                    .colorScheme
+                                    .primaryContainer
+                                    .withValues(alpha: 0.3),
+                                borderRadius: const BorderRadius.all(
+                                  Radius.circular(50),
                                 ),
                               ),
-                            )
-                          ],
-                        )
-                      : DefaultUser(
-                          callback: () => ctr.showUserInfoDialog(context)),
-                ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : DefaultUser(
+                        callback: () => ctr.showUserInfoDialog(context),
+                      ),
               ),
-            )),
+            ),
+          ),
+        ),
       ],
     );
   }
 }
 
 class UserAndSearchVertical extends StatelessWidget {
-  const UserAndSearchVertical({
-    super.key,
-    required this.ctr,
-  });
+  const UserAndSearchVertical({super.key, required this.ctr});
 
   final HomeController ctr;
 
@@ -239,60 +232,58 @@ class UserAndSearchVertical extends StatelessWidget {
     return Column(
       children: [
         Semantics(
-            button: true,
-            label: ctr.userLogin.value ? "个人中心" : "点击登录",
-            child: Obx(
-              () => ConstrainedBox(
-                constraints:
-                    const BoxConstraints(minWidth: 48, minHeight: 48),
-                child: Center(
-                  child: ctr.userLogin.value
-                      ? Stack(
-                          children: [
-                            NetworkImgLayer(
-                              type: 'avatar',
-                              width: 34,
-                              height: 34,
-                              src: ctr.userFace.value,
-                            ),
-                            Positioned.fill(
-                              child: Material(
-                                color: Colors.transparent,
-                                child: InkWell(
-                                  onTap: () => ctr.showUserInfoDialog(context),
-                                  splashColor: Theme.of(context)
-                                      .colorScheme
-                                      .primaryContainer
-                                      .withValues(alpha: 0.3),
-                                  borderRadius: const BorderRadius.all(
-                                    Radius.circular(50),
-                                  ),
+          button: true,
+          label: ctr.userLogin.value ? "个人中心" : "点击登录",
+          child: Obx(
+            () => ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              child: Center(
+                child: ctr.userLogin.value
+                    ? Stack(
+                        children: [
+                          NetworkImgLayer(
+                            type: 'avatar',
+                            width: 34,
+                            height: 34,
+                            src: ctr.userFace.value,
+                          ),
+                          Positioned.fill(
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => ctr.showUserInfoDialog(context),
+                                splashColor: Theme.of(context)
+                                    .colorScheme
+                                    .primaryContainer
+                                    .withValues(alpha: 0.3),
+                                borderRadius: const BorderRadius.all(
+                                  Radius.circular(50),
                                 ),
                               ),
-                            )
-                          ],
-                        )
-                      : DefaultUser(
-                          callback: () => ctr.showUserInfoDialog(context)),
-                ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : DefaultUser(
+                        callback: () => ctr.showUserInfoDialog(context),
+                      ),
               ),
-            )),
+            ),
+          ),
+        ),
         const SizedBox(height: 8),
-        Obx(() => ctr.userLogin.value
-            ? IconButton(
-                tooltip: '消息',
-                onPressed: () => Get.toNamed('/whisper'),
-                icon: const Icon(
-                  Icons.notifications_none,
-                ),
-              )
-            : const SizedBox.shrink()),
+        Obx(
+          () => ctr.userLogin.value
+              ? IconButton(
+                  tooltip: '消息',
+                  onPressed: () => Get.toNamed('/whisper'),
+                  icon: const Icon(Icons.notifications_none),
+                )
+              : const SizedBox.shrink(),
+        ),
         IconButton(
           tooltip: '搜索',
-          icon: const Icon(
-            Icons.search_outlined,
-            semanticLabel: '搜索',
-          ),
+          icon: const Icon(Icons.search_outlined, semanticLabel: '搜索'),
           onPressed: () => Get.toNamed('/search'),
         ),
       ],
@@ -401,19 +392,21 @@ class CustomChip extends StatelessWidget {
         ? const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)
         : const TextStyle(fontSize: 13);
     final ColorScheme colorScheme = Theme.of(context).colorScheme;
-    const VisualDensity visualDensity =
-        VisualDensity(horizontal: -4.0, vertical: -2.0);
+    const VisualDensity visualDensity = VisualDensity(
+      horizontal: -4.0,
+      vertical: -2.0,
+    );
     return InputChip(
       side: selected
           ? BorderSide(
-              color: colorScheme.secondary.withOpacity(0.2),
+              color: colorScheme.secondary.withValues(alpha: 0.2),
               width: 2,
             )
           : BorderSide.none,
-      // backgroundColor: colorTheme.primaryContainer.withOpacity(0.1),
-      // selectedColor: colorTheme.secondaryContainer.withOpacity(0.8),
+      // backgroundColor: colorTheme.primaryContainer.withValues(alpha: 0.1),
+      // selectedColor: colorTheme.secondaryContainer.withValues(alpha: 0.8),
       color: WidgetStateProperty.resolveWith<Color>((Set<WidgetState> states) {
-        return colorTheme.secondaryContainer.withOpacity(0.6);
+        return colorTheme.secondaryContainer.withValues(alpha: 0.6);
       }),
       padding: const EdgeInsets.fromLTRB(6, 1, 6, 1),
       label: Text(label, style: chipTextStyle),
@@ -426,10 +419,7 @@ class CustomChip extends StatelessWidget {
 }
 
 class SearchBar extends StatelessWidget {
-  const SearchBar({
-    super.key,
-    required this.ctr,
-  });
+  const SearchBar({super.key, required this.ctr});
 
   final HomeController? ctr;
 
@@ -441,13 +431,11 @@ class SearchBar extends StatelessWidget {
         width: 250,
         height: 44,
         clipBehavior: Clip.hardEdge,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(25),
-        ),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(25)),
         child: Material(
-          color: colorScheme.onSecondaryContainer.withOpacity(0.05),
+          color: colorScheme.onSecondaryContainer.withValues(alpha: 0.05),
           child: InkWell(
-            splashColor: colorScheme.primaryContainer.withOpacity(0.3),
+            splashColor: colorScheme.primaryContainer.withValues(alpha: 0.3),
             onTap: () => Get.toNamed(
               '/search',
               parameters: {'hintText': ctr!.defaultSearch.value},
