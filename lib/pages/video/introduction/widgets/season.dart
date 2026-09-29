@@ -1,6 +1,8 @@
-import 'package:pilipalaz/common/widgets/list_sheet.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:pilipalaz/common/widgets/list_sheet.dart';
 import 'package:pilipalaz/models/video_detail_res.dart';
 import 'package:pilipalaz/pages/video/index.dart';
 
@@ -22,108 +24,99 @@ class SeasonPanel extends StatefulWidget {
 }
 
 class _SeasonPanelState extends State<SeasonPanel> {
-  List<EpisodeItem>? episodes;
   late int cid;
-  int currentIndex = 0;
-  // final String heroTag = Get.arguments['heroTag'];
-  late final String heroTag;
-  late VideoDetailController _videoDetailController;
-  final ScrollController _scrollController = ScrollController();
+  StreamSubscription<int>? _cidSub;
 
   @override
   void initState() {
     super.initState();
-    cid = widget.cid!;
-    heroTag = widget.heroTag;
-    _videoDetailController = Get.find<VideoDetailController>(tag: heroTag);
-
-    /// 根据 cid 找到对应集，找到对应 episodes
-    /// 有多个episodes时，只显示其中一个
-    /// TODO 同时显示多个合集
-    final List<SectionItem> sections = widget.ugcSeason.sections!;
-    for (int i = 0; i < sections.length; i++) {
-      final List<EpisodeItem> episodesList = sections[i].episodes!;
-      for (int j = 0; j < episodesList.length; j++) {
-        if (episodesList[j].cid == cid) {
-          episodes = episodesList;
-          continue;
-        }
-      }
+    cid = widget.cid ?? 0;
+    if (Get.isRegistered<VideoDetailController>(tag: widget.heroTag)) {
+      final videoDetailController = Get.find<VideoDetailController>(
+        tag: widget.heroTag,
+      );
+      _cidSub = videoDetailController.cid.listen((int p0) {
+        if (!mounted) return;
+        setState(() {
+          cid = p0;
+        });
+      });
     }
-    if (episodes == null) {
-      return;
-    }
-
-    /// 取对应 season_id 的 episodes
-    // episodes = widget.ugcSeason.sections!
-    //     .firstWhere((e) => e.seasonId == widget.ugcSeason.id)
-    //     .episodes!;
-    currentIndex = episodes!.indexWhere((EpisodeItem e) => e.cid == cid);
-    _videoDetailController.cid.listen((int p0) {
-      cid = p0;
-      currentIndex = episodes!.indexWhere((EpisodeItem e) => e.cid == cid);
-      if (!mounted) return;
-      setState(() {});
-    });
   }
 
-  // void changeFucCall(item, int i) async {
-  //   await widget.changeFuc!(
-  //     IdUtils.av2bv(item.aid),
-  //     item.cid,
-  //     item.aid,
-  //   );
-  //   currentIndex = i;
-  //   Get.back();
-  //   setState(() {});
-  // }
+  @override
+  void didUpdateWidget(SeasonPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.cid != null &&
+        widget.cid != oldWidget.cid &&
+        widget.cid != cid) {
+      cid = widget.cid!;
+    }
+  }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _cidSub?.cancel();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (episodes == null) {
-      return const SizedBox();
+  Widget _buildSectionCard(
+    BuildContext context,
+    SectionItem section,
+    int index,
+    bool isMultiSection,
+  ) {
+    final List<EpisodeItem> episodesList = section.episodes ?? <EpisodeItem>[];
+    final int currentIdx = episodesList.indexWhere(
+      (EpisodeItem e) => e.cid == cid,
+    );
+    final bool isPlayingHere = currentIdx != -1;
+
+    String title;
+    if (!isMultiSection) {
+      title = '合集：${widget.ugcSeason.title ?? section.title ?? ''}';
+    } else {
+      final seasonTitle = widget.ugcSeason.title ?? '';
+      final secTitle = section.title?.trim() ?? '';
+      if (secTitle.isEmpty) {
+        title = seasonTitle.isNotEmpty
+            ? '合集：$seasonTitle (${index + 1})'
+            : '合集 (${index + 1})';
+      } else if (seasonTitle.isEmpty || secTitle.contains(seasonTitle)) {
+        title = '合集：$secTitle';
+      } else {
+        title = '合集：$seasonTitle · $secTitle';
+      }
     }
-    return Builder(builder: (BuildContext context) {
-      return Container(
-        margin: const EdgeInsets.only(
-          top: 8,
-          left: 2,
-          right: 2,
-          bottom: 2,
-        ),
-        child: Material(
-          color: Theme.of(context).colorScheme.onInverseSurface,
-          borderRadius: BorderRadius.circular(6),
-          clipBehavior: Clip.hardEdge,
-          child: InkWell(
-            onTap: () {
-              ListSheet(
-                      episodes: episodes,
-                      // bvid: IdUtils.av2bv(episodes!.first.aid!),
-                      // aid: episodes!.first.aid!,
-                      currentCid: cid,
-                      changeFucCall: widget.changeFuc,
-                      context: context)
-                  .buildShowBottomSheet();
-            },
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      '合集：${widget.ugcSeason.title!}',
-                      style: Theme.of(context).textTheme.labelMedium,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8, left: 2, right: 2, bottom: 2),
+      child: Material(
+        color: Theme.of(context).colorScheme.onInverseSurface,
+        borderRadius: BorderRadius.circular(6),
+        clipBehavior: Clip.hardEdge,
+        child: InkWell(
+          onTap: () {
+            ListSheet(
+              episodes: episodesList,
+              currentCid: cid,
+              changeFucCall: widget.changeFuc,
+              context: context,
+            ).buildShowBottomSheet();
+          },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+            child: Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.labelMedium,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(width: 15),
+                ),
+                const SizedBox(width: 15),
+                if (isPlayingHere) ...[
                   Image.asset(
                     'assets/images/live.png',
                     color: Theme.of(context).colorScheme.primary,
@@ -132,23 +125,52 @@ class _SeasonPanelState extends State<SeasonPanel> {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    '${currentIndex + 1}/${episodes!.length}',
+                    '${currentIdx + 1}/${episodesList.length}',
                     style: Theme.of(context).textTheme.labelMedium,
                     semanticsLabel:
-                        '第${currentIndex + 1}集，共${episodes!.length}集',
+                        '第${currentIdx + 1}集，共${episodesList.length}集',
                   ),
-                  const SizedBox(width: 6),
-                  const Icon(
-                    Icons.arrow_forward_ios_outlined,
-                    size: 13,
-                    semanticLabel: '查看',
-                  )
+                ] else ...[
+                  Text(
+                    '共${episodesList.length}集',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
+                    ),
+                    semanticsLabel: '共${episodesList.length}集',
+                  ),
                 ],
-              ),
+                const SizedBox(width: 6),
+                const Icon(
+                  Icons.arrow_forward_ios_outlined,
+                  size: 13,
+                  semanticLabel: '查看',
+                ),
+              ],
             ),
           ),
         ),
-      );
-    });
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<SectionItem> sections =
+        widget.ugcSeason.sections ?? <SectionItem>[];
+    if (sections.isEmpty) {
+      return const SizedBox();
+    }
+
+    if (sections.length == 1) {
+      return _buildSectionCard(context, sections.first, 0, false);
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (int i = 0; i < sections.length; i++)
+          _buildSectionCard(context, sections[i], i, true),
+      ],
+    );
   }
 }
