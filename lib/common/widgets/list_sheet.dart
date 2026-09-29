@@ -65,16 +65,27 @@ class ListSheetContent extends StatefulWidget {
 
 class _ListSheetContentState extends State<ListSheetContent> {
   final ItemScrollController itemScrollController = ItemScrollController();
-  late final int currentIndex =
-      widget.episodes!.indexWhere((dynamic e) => e.cid == widget.currentCid) ??
-      0;
+  late final int currentIndex = _calculateInitialIndex();
   bool reverse = false;
+
+  int _calculateInitialIndex() {
+    if (widget.episodes == null || widget.episodes.isEmpty) {
+      return -1;
+    }
+    return widget.episodes!.indexWhere(
+      (dynamic e) => e.cid == widget.currentCid,
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      itemScrollController.jumpTo(index: currentIndex);
+      if (currentIndex >= 0 &&
+          widget.episodes != null &&
+          currentIndex < widget.episodes!.length) {
+        itemScrollController.jumpTo(index: currentIndex);
+      }
     });
   }
 
@@ -191,6 +202,9 @@ class _ListSheetContentState extends State<ListSheetContent> {
                   tooltip: '跳至顶部',
                   icon: const Icon(Icons.vertical_align_top),
                   onPressed: () {
+                    if (widget.episodes == null || widget.episodes!.isEmpty) {
+                      return;
+                    }
                     itemScrollController.scrollTo(
                       index: !reverse ? 0 : widget.episodes!.length - 1,
                       duration: const Duration(milliseconds: 200),
@@ -201,6 +215,9 @@ class _ListSheetContentState extends State<ListSheetContent> {
                   tooltip: '跳至底部',
                   icon: const Icon(Icons.vertical_align_bottom),
                   onPressed: () {
+                    if (widget.episodes == null || widget.episodes!.isEmpty) {
+                      return;
+                    }
                     itemScrollController.scrollTo(
                       index: !reverse ? widget.episodes!.length - 1 : 0,
                       duration: const Duration(milliseconds: 200),
@@ -246,7 +263,7 @@ class _ListSheetContentState extends State<ListSheetContent> {
                   return buildEpisodeListItem(
                     widget.episodes![index],
                     index,
-                    currentIndex == index,
+                    currentIndex >= 0 && currentIndex == index,
                   );
                 },
                 itemScrollController: itemScrollController,
