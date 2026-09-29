@@ -644,6 +644,7 @@ class VideoDetailController extends GetxController
           timeLength: offlineTask!.duration * 1000,
           quality: offlineTask!.videoQuality,
           videoCodecid: 7,
+          volume: offlineTask!.parsedVolumeMetadata,
         );
         currentVideoQa =
             VideoQualityCode.fromCode(offlineTask!.videoQuality) ??

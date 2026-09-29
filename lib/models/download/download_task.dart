@@ -4,6 +4,8 @@
 /// 通过 [toMap] / [DownloadTask.fromMap] 序列化到 Hive Box<Map>。
 library;
 
+import 'package:pilipalaz/models/video/play/url.dart';
+
 /// 下载任务状态枚举。
 enum DownloadTaskStatus {
   /// 排队等待中。
@@ -58,6 +60,7 @@ class DownloadTask {
     this.errorMessage,
     DateTime? createdAt,
     this.completedAt,
+    this.volumeMetadata,
   }) : createdAt = createdAt ?? DateTime.now();
 
   /// 工厂构造：从视频元数据快速创建待下载任务。
@@ -171,6 +174,14 @@ class DownloadTask {
   /// 完成时间。
   DateTime? completedAt;
 
+  /// 离线音频响度元数据字典（与 Hive 兼容），未获取或不存在时为 null。
+  Map<String, dynamic>? volumeMetadata;
+
+  /// 还原后的强类型响度元数据，用于播放器响度均衡。
+  AudioVolumeMetadata? get parsedVolumeMetadata => volumeMetadata != null
+      ? AudioVolumeMetadata.fromJson(volumeMetadata)
+      : null;
+
   // ── 派生属性 ──
 
   /// 下载进度 0.0 ~ 1.0。
@@ -218,6 +229,7 @@ class DownloadTask {
       'errorMessage': errorMessage,
       'createdAt': createdAt.toIso8601String(),
       'completedAt': completedAt?.toIso8601String(),
+      'volumeMetadata': volumeMetadata,
     };
   }
 
@@ -250,6 +262,9 @@ class DownloadTask {
       completedAt: map['completedAt'] != null
           ? DateTime.tryParse(map['completedAt'] as String)
           : null,
+      volumeMetadata: map['volumeMetadata'] != null
+          ? Map<String, dynamic>.from(map['volumeMetadata'] as Map)
+          : null,
     );
   }
 
@@ -266,6 +281,7 @@ class DownloadTask {
     int? downloadSpeed,
     String? errorMessage,
     DateTime? completedAt,
+    Map<String, dynamic>? volumeMetadata,
   }) {
     return DownloadTask(
       id: id,
@@ -294,6 +310,7 @@ class DownloadTask {
       errorMessage: errorMessage,
       createdAt: createdAt,
       completedAt: completedAt ?? this.completedAt,
+      volumeMetadata: volumeMetadata ?? this.volumeMetadata,
     );
   }
 

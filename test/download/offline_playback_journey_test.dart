@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/models/danmaku/dm.pb.dart';
 import 'package:pilipalaz/models/download/download_task.dart';
+import 'package:pilipalaz/models/video/play/url.dart';
 import 'package:pilipalaz/pages/danmaku/controller.dart';
 import 'package:pilipalaz/plugin/pl_player/models/data_source.dart';
 import 'package:pilipalaz/services/download/download_storage_manager.dart';
@@ -166,6 +167,48 @@ void main() {
         task.videoRelativePath!,
       );
       expect(File(absVideo).existsSync(), isFalse);
+    });
+
+    test('离线任务携带响度元数据时，构建的 DataSource 包含该响度元数据', () async {
+      final task = DownloadTask(
+        id: 'BVoffline_loudness_1',
+        bvid: 'BVoffline_loudness',
+        cid: 1,
+        title: '离线响度视频',
+        partTitle: 'P1',
+        cover: '',
+        ownerName: 'UP',
+        duration: 120,
+        videoQuality: 80,
+        videoQualityDesc: '1080P',
+        videoCodec: 'avc1',
+        audioQuality: 30280,
+        status: DownloadTaskStatus.completed,
+        volumeMetadata: {
+          'target_offset': -5.2,
+          'target_tp': -1.0,
+          'measured_tp': -1.5,
+        },
+      );
+
+      final playUrlModel = PlayUrlModel(
+        timeLength: task.duration * 1000,
+        quality: task.videoQuality,
+        videoCodecid: 7,
+        volume: task.parsedVolumeMetadata,
+      );
+
+      final dataSource = DataSource(
+        videoSource: '/dummy/path/video.m4s',
+        audioSource: '/dummy/path/audio.m4s',
+        type: DataSourceType.file,
+        volumeMetadata: playUrlModel.volume,
+      );
+
+      expect(dataSource.volumeMetadata, isNotNull);
+      expect(dataSource.volumeMetadata!.targetOffset, equals(-5.2));
+      expect(dataSource.volumeMetadata!.targetTp, equals(-1.0));
+      expect(dataSource.volumeMetadata!.measuredTp, equals(-1.5));
     });
   });
 }

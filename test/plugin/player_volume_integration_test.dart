@@ -101,4 +101,27 @@ void main() {
       expect(controller.volume.value, closeTo(5 / 15.0, 0.001));
     },
   );
+
+  test(
+    'PlPlayerController resets ducking when setting new DataSource',
+    () async {
+      // 1. Duck the current playback
+      PlPlayerController.setAudioDuckingIfExists(true);
+      expect(controller.volumeCoordinator.duckFactor, 0.3);
+
+      // 2. Load new DataSource
+      final newSource = DataSource(
+        videoSource: 'https://example.com/test2.mp4',
+        type: DataSourceType.network,
+      );
+      await controller.setDataSource(
+        newSource,
+        owner: PlayerResourceOwner(),
+        autoplay: false,
+      );
+
+      // 3. Ducking must be reset
+      expect(controller.volumeCoordinator.duckFactor, 1.0);
+    },
+  );
 }

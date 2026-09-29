@@ -164,7 +164,7 @@ class PlaybackVolumeCoordinator {
   }
 
   bool updateLoudnessMetadata(AudioVolumeMetadata? meta) {
-    if (meta == null || meta.targetOffset == null) {
+    if (meta == null) {
       if ((_loudnessFactor - 1.0).abs() < 0.001) {
         return false;
       }
@@ -172,20 +172,45 @@ class PlaybackVolumeCoordinator {
       return true;
     }
 
-    final double offset = meta.targetOffset!;
+    double? offset;
+    if (meta.targetOffset != null && meta.targetOffset!.isFinite) {
+      offset = meta.targetOffset;
+    } else if (meta.targetI != null &&
+        meta.measuredI != null &&
+        meta.targetI!.isFinite &&
+        meta.measuredI!.isFinite) {
+      offset = meta.targetI! - meta.measuredI!;
+    }
+
+    if (offset == null || !offset.isFinite) {
+      if ((_loudnessFactor - 1.0).abs() < 0.001) {
+        return false;
+      }
+      _loudnessFactor = 1.0;
+      return true;
+    }
+
     final double rawGain = math.pow(10.0, offset / 20.0).toDouble();
 
     // 防削波保护（Anti-clipping guard）
     double maxSafeGain = 1.0;
-    if (meta.targetTp != null && meta.measuredTp != null) {
-      maxSafeGain = math
+    if (meta.targetTp != null &&
+        meta.measuredTp != null &&
+        meta.targetTp!.isFinite &&
+        meta.measuredTp!.isFinite) {
+      final double tpGain = math
           .pow(10.0, (meta.targetTp! - meta.measuredTp!) / 20.0)
           .toDouble();
+      if (tpGain.isFinite) {
+        maxSafeGain = tpGain;
+      }
     }
 
     final double safeGain = math.min(rawGain, maxSafeGain);
-    // 衰减优先（Attenuate-only），超出 1.0 不放大，规避 ExoPlayer 上限截断死区
-    final double nextLoudness = math.min(1.0, math.max(0.0, safeGain));
+    // 衰减优先（Attenuate-only），超出 1.0 不放大，非有限值安全兜底为 1.0
+    final double nextLoudness = safeGain.isFinite
+        ? math.min(1.0, math.max(0.0, safeGain))
+        : 1.0;
 
     if ((_loudnessFactor - nextLoudness).abs() < 0.001) {
       return false;

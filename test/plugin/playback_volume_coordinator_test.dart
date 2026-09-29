@@ -279,5 +279,67 @@ void main() {
         expect(coordinator.masterVolume, 1.0);
       },
     );
+
+    test(
+      'defensive guardrail: NaN or Infinite targetOffset falls back to 1.0',
+      () {
+        coordinator.updateLoudnessMetadata(
+          const AudioVolumeMetadata(targetOffset: -6.0),
+        );
+        expect(coordinator.loudnessFactor, closeTo(0.501, 0.005));
+
+        // NaN offset
+        expect(
+          coordinator.updateLoudnessMetadata(
+            const AudioVolumeMetadata(targetOffset: double.nan),
+          ),
+          isTrue,
+        );
+        expect(coordinator.loudnessFactor, 1.0);
+        expect(coordinator.effectiveVolume.isFinite, isTrue);
+
+        // Infinity offset
+        coordinator.updateLoudnessMetadata(
+          const AudioVolumeMetadata(targetOffset: -6.0),
+        );
+        expect(
+          coordinator.updateLoudnessMetadata(
+            const AudioVolumeMetadata(targetOffset: double.infinity),
+          ),
+          isTrue,
+        );
+        expect(coordinator.loudnessFactor, 1.0);
+        expect(coordinator.effectiveVolume.isFinite, isTrue);
+      },
+    );
+
+    test(
+      'fallback derivation: derives offset from targetI - measuredI when targetOffset is absent',
+      () {
+        const meta = AudioVolumeMetadata(targetI: -14.0, measuredI: -10.0);
+
+        // Expected offset = -14.0 - (-10.0) = -4.0 dB
+        // 10^(-4.0/20.0) ≈ 0.630957
+        expect(coordinator.updateLoudnessMetadata(meta), isTrue);
+        expect(coordinator.loudnessFactor, closeTo(0.631, 0.005));
+        expect(coordinator.effectiveVolume, closeTo(0.631, 0.005));
+      },
+    );
+
+    test(
+      'defensive guardrail: non-finite TP falls back safely without corrupting offset',
+      () {
+        const meta = AudioVolumeMetadata(
+          targetOffset: -6.0,
+          targetTp: double.nan,
+          measuredTp: 0.0,
+        );
+
+        // TP is invalid, so maxSafeGain calculation is skipped, using rawGain = 0.501
+        expect(coordinator.updateLoudnessMetadata(meta), isTrue);
+        expect(coordinator.loudnessFactor, closeTo(0.501, 0.005));
+        expect(coordinator.effectiveVolume.isFinite, isTrue);
+      },
+    );
   });
 }

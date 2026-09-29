@@ -161,6 +161,52 @@ void main() {
       );
     });
 
+    test('toMap 与 fromMap 正确序列化与反序列化 volumeMetadata 并解析', () {
+      final original = _createTask()
+        ..volumeMetadata = {
+          'measured_i': -14.2,
+          'measured_lra': 8.5,
+          'measured_tp': -1.2,
+          'measured_threshold': -24.5,
+          'target_offset': -3.8,
+          'target_i': -18.0,
+          'target_tp': -1.0,
+        };
+
+      final map = original.toMap();
+      expect(map['volumeMetadata'], isNotNull);
+      expect(map['volumeMetadata']['target_offset'], equals(-3.8));
+
+      final restored = DownloadTask.fromMap(map);
+      expect(restored.volumeMetadata, isNotNull);
+      expect(restored.parsedVolumeMetadata, isNotNull);
+      expect(restored.parsedVolumeMetadata!.targetOffset, equals(-3.8));
+      expect(restored.parsedVolumeMetadata!.targetI, equals(-18.0));
+      expect(restored.parsedVolumeMetadata!.measuredTp, equals(-1.2));
+    });
+
+    test('fromMap 缺失 volumeMetadata 时安全为 null', () {
+      final task = DownloadTask.fromMap({
+        'id': 'BV1no_vol_1',
+        'bvid': 'BV1no_vol',
+        'cid': 1,
+        'videoQuality': 80,
+        'audioQuality': 30280,
+      });
+      expect(task.volumeMetadata, isNull);
+      expect(task.parsedVolumeMetadata, isNull);
+    });
+
+    test('copyWith 支持更新 volumeMetadata', () {
+      final task = _createTask();
+      expect(task.volumeMetadata, isNull);
+
+      final withMeta = task.copyWith(volumeMetadata: {'target_offset': -5.0});
+      expect(withMeta.volumeMetadata, equals({'target_offset': -5.0}));
+      expect(withMeta.parsedVolumeMetadata?.targetOffset, equals(-5.0));
+      expect(task.volumeMetadata, isNull);
+    });
+
     test('fromMap 对缺失的可选字段提供安全默认值', () {
       final minimalMap = <String, dynamic>{
         'id': 'BV1min_1',

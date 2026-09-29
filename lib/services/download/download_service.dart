@@ -332,6 +332,11 @@ class DownloadService {
         final audioItem = _findAudio(dash, task);
         if (audioItem == null) return null;
 
+        // 提取并持久化响度均衡元数据
+        if (data.volume != null) {
+          task.volumeMetadata = data.volume!.toJson();
+        }
+
         return _ResolvedUrls(
           videoUrl: VideoUtils.getCdnUrl(videoItem),
           audioUrl: VideoUtils.getCdnUrl(audioItem),

@@ -874,6 +874,7 @@ class PlPlayerController with WidgetsBindingObserver {
       // if (playerStatus.status.value == PlayerStatus.disabled) return;
 
       this.dataSource = dataSource;
+      _volumeCoordinator.setDucking(false);
       _volumeCoordinator.updateLoudnessMetadata(dataSource.volumeMetadata);
       _autoPlay = autoplay;
       _looping = looping;
