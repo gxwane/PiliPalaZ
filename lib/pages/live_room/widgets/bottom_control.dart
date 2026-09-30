@@ -2,7 +2,8 @@ import 'dart:io';
 
 import 'package:fl_pip/fl_pip.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
+import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/models/video/play/url.dart';
 import 'package:pilipalaz/pages/live_room/index.dart';
@@ -47,15 +48,42 @@ class _BottomControlState extends State<BottomControl> {
       titleSpacing: 14,
       title: Row(
         children: [
-          // ComBtn(
-          //   icon: const Icon(
-          //     Icons.subtitles_outlined,
-          //     size: 18,
-          //     color: Colors.white,
-          //   ),
-          //   fuc: () => Get.back(),
-          // ),
           const Spacer(),
+          if (widget.controller != null) ...[
+            Obx(() {
+              final bool isOpen = widget.controller!.isOpenDanmu.value;
+              return SizedBox(
+                width: 34,
+                height: 34,
+                child: IconButton(
+                  tooltip: '${isOpen ? "关闭" : "开启"}弹幕',
+                  style: ButtonStyle(
+                    padding: WidgetStateProperty.all(EdgeInsets.zero),
+                  ),
+                  onPressed: () {
+                    final newValue = !isOpen;
+                    widget.controller!.isOpenDanmu.value = newValue;
+                    GStorage.setting.put(
+                      SettingBoxKey.enableShowDanmaku,
+                      newValue,
+                    );
+                    SmartDialog.showToast(
+                      '已${newValue ? "开启" : "关闭"}弹幕',
+                      displayTime: const Duration(seconds: 1),
+                    );
+                  },
+                  icon: Icon(
+                    isOpen
+                        ? Icons.subtitles_outlined
+                        : Icons.subtitles_off_outlined,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(width: 4),
+          ],
           // ComBtn(
           //   icon: const Icon(
           //     Icons.hd_outlined,

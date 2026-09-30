@@ -1,3 +1,4 @@
+import '../models/live/danmaku_conf.dart';
 import '../models/live/item.dart';
 import '../models/live/room_info.dart';
 import '../models/live/room_info_h5.dart';
@@ -74,6 +75,26 @@ class LiveHttp {
       decode: (json) => BiliApiDecoder.data<RoomInfoH5Model>(
         json,
         decode: (value) => RoomInfoH5Model.fromJson(
+          BiliApiDecoder.object(value, field: 'data'),
+        ),
+      ),
+    );
+  }
+
+  static Future<ApiResult<LiveDanmakuConfModel>> liveDanmakuConf({
+    required int roomId,
+  }) {
+    return HttpRuntime.instance.client.getJson<LiveDanmakuConfModel>(
+      Api.liveDanmakuConf,
+      endpoint: 'live.danmuConf',
+      queryParameters: <String, dynamic>{
+        'room_id': roomId,
+        'platform': 'pc',
+        'player': 'web',
+      },
+      decode: (json) => BiliApiDecoder.data<LiveDanmakuConfModel>(
+        json,
+        decode: (value) => LiveDanmakuConfModel.fromJson(
           BiliApiDecoder.object(value, field: 'data'),
         ),
       ),

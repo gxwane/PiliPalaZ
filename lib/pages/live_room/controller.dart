@@ -1,11 +1,18 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/constants.dart';
 import 'package:pilipalaz/http/live.dart';
 import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/live/room_info.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
+import '../../http/login.dart';
 import '../../models/live/room_info_h5.dart';
+import '../../services/live/live_danmaku_client.dart';
+import '../../services/live/live_message.dart';
+import '../../utils/danmaku.dart';
+import '../../utils/storage.dart';
 import '../../utils/video_utils.dart';
 
 class LiveRoomController extends GetxController {
@@ -18,6 +25,10 @@ class LiveRoomController extends GetxController {
   final RxBool volumeOff = false.obs;
   final RxBool isLive = false.obs;
   final RxBool hasStream = false.obs;
+  final RxInt popularity = 0.obs;
+  LiveDanmakuClient? danmakuClient;
+  StreamSubscription<LiveDanmakuItem>? _danmakuSub;
+  StreamSubscription<int>? _popularitySub;
   bool _isDisposed = false;
   bool get isDisposed => _isDisposed || isClosed;
 
@@ -153,13 +164,81 @@ class LiveRoomController extends GetxController {
       if (status != null) {
         isLive.value = status == 1;
       }
+      final realRoomId = data.roomInfo?.roomId ?? roomId;
+      if (realRoomId > 0 && danmakuClient == null) {
+        unawaited(initDanmakuClient(realRoomId));
+      }
     }
     return res;
+  }
+
+  Future<void> initDanmakuClient(int targetRoomId) async {
+    if (isDisposed || targetRoomId <= 0) return;
+    debugPrint('[LiveDanmaku] initDanmakuClient for roomId=$targetRoomId');
+
+    _danmakuSub?.cancel();
+    _danmakuSub = null;
+    _popularitySub?.cancel();
+    _popularitySub = null;
+    danmakuClient?.dispose();
+
+    final dynamic userInfo = GStorage.userInfo.get('userInfoCache');
+    final int uid = userInfo?.mid ?? 0;
+    final client = LiveDanmakuClient(
+      roomId: targetRoomId,
+      uid: uid,
+      buvid: LoginHttp.buvid,
+    );
+    danmakuClient = client;
+
+    _danmakuSub = client.onDanmaku.listen((LiveDanmakuItem item) {
+      if (isDisposed) return;
+      debugPrint(
+        '[LiveDanmaku] onDanmaku: "${item.text}", isOpen=${plPlayerController.isOpenDanmu.value}, hasCtr=${plPlayerController.danmakuController != null}',
+      );
+      if (!plPlayerController.isOpenDanmu.value) return;
+
+      final danmakuCtr = plPlayerController.danmakuController;
+      if (danmakuCtr == null) return;
+
+      if (plPlayerController.blockTypes.contains(item.mode)) return;
+
+      danmakuCtr.addDanmaku(
+        DanmakuContentItem(
+          item.text,
+          color: item.color,
+          type: DmUtils.getPosition(item.mode),
+        ),
+      );
+    });
+
+    _popularitySub = client.onPopularity.listen((pop) {
+      if (!isDisposed) {
+        popularity.value = pop;
+      }
+    });
+
+    final confRes = await LiveHttp.liveDanmakuConf(roomId: targetRoomId);
+    debugPrint('[LiveDanmaku] confRes: ${confRes.runtimeType}');
+    if (isDisposed || danmakuClient != client) {
+      client.dispose();
+      return;
+    }
+
+    if (confRes case ApiSuccess(:final data)) {
+      await client.connect(data);
+    }
   }
 
   @override
   void onClose() {
     _isDisposed = true;
+    _danmakuSub?.cancel();
+    _danmakuSub = null;
+    _popularitySub?.cancel();
+    _popularitySub = null;
+    danmakuClient?.dispose();
+    danmakuClient = null;
     unawaited(plPlayerController.releaseNativeResources(playerResourceOwner));
     super.onClose();
   }

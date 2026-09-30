@@ -10,12 +10,12 @@ import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/live/room_info.dart';
 import 'package:pilipalaz/models/live/room_info_h5.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
-import 'package:pilipalaz/plugin/pl_player/utils/fullscreen.dart';
 import 'package:pilipalaz/services/service_locator.dart';
 import 'package:pilipalaz/utils/screen_utils.dart';
 
 import 'controller.dart';
 import 'widgets/bottom_control.dart';
+import 'widgets/live_danmaku.dart';
 
 class LiveRoomPage extends StatefulWidget {
   const LiveRoomPage({super.key});
@@ -88,6 +88,10 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
                 bottomControl: BottomControl(
                   controller: plPlayerController,
                   liveRoomCtr: _liveRoomController,
+                ),
+                danmuWidget: LiveDanmaku(
+                  liveRoomCtr: _liveRoomController,
+                  playerController: plPlayerController!,
                 ),
               );
             }
