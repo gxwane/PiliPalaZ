@@ -29,6 +29,9 @@ class _LivePageState extends State<LivePage>
   late Future<ApiResult<List<LiveItemModel>>> _futureBuilderFuture;
   late ScrollController scrollController;
 
+  late final StreamController<bool> _mainStream;
+  late final StreamController<bool> _searchBarStream;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -37,36 +40,34 @@ class _LivePageState extends State<LivePage>
     super.initState();
     _futureBuilderFuture = _liveController.queryLiveList('init');
     scrollController = _liveController.scrollController;
-    StreamController<bool> mainStream =
-        Get.find<MainController>().bottomBarStream;
-    StreamController<bool> searchBarStream =
-        Get.find<HomeController>().searchBarStream;
-    scrollController.addListener(
-      () {
-        if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 200) {
-          EasyThrottle.throttle('liveList', const Duration(milliseconds: 200),
-              () {
-            _liveController.onLoad();
-          });
-        }
+    _mainStream = Get.find<MainController>().bottomBarStream;
+    _searchBarStream = Get.find<HomeController>().searchBarStream;
+    scrollController.addListener(_onScroll);
+  }
 
-        final ScrollDirection direction =
-            scrollController.position.userScrollDirection;
-        if (direction == ScrollDirection.forward) {
-          mainStream.add(true);
-          searchBarStream.add(true);
-        } else if (direction == ScrollDirection.reverse) {
-          mainStream.add(false);
-          searchBarStream.add(false);
-        }
-      },
-    );
+  void _onScroll() {
+    if (!scrollController.hasClients) return;
+    if (scrollController.position.pixels >=
+        scrollController.position.maxScrollExtent - 200) {
+      EasyThrottle.throttle('liveList', const Duration(milliseconds: 200), () {
+        _liveController.onLoad();
+      });
+    }
+
+    final ScrollDirection direction =
+        scrollController.position.userScrollDirection;
+    if (direction == ScrollDirection.forward) {
+      _mainStream.add(true);
+      _searchBarStream.add(true);
+    } else if (direction == ScrollDirection.reverse) {
+      _mainStream.add(false);
+      _searchBarStream.add(false);
+    }
   }
 
   @override
   void dispose() {
-    scrollController.removeListener(() {});
+    scrollController.removeListener(_onScroll);
     super.dispose();
   }
 
@@ -76,7 +77,9 @@ class _LivePageState extends State<LivePage>
     return Container(
       clipBehavior: Clip.hardEdge,
       margin: const EdgeInsets.only(
-          left: StyleString.cardSpace, right: StyleString.cardSpace),
+        left: StyleString.cardSpace,
+        right: StyleString.cardSpace,
+      ),
       decoration: const BoxDecoration(
         borderRadius: BorderRadius.all(StyleString.imgRadius),
       ),
@@ -93,8 +96,12 @@ class _LivePageState extends State<LivePage>
           slivers: [
             SliverPadding(
               // 单列布局 EdgeInsets.zero
-              padding:
-                  const EdgeInsets.fromLTRB(0, StyleString.cardSpace, 0, 0),
+              padding: const EdgeInsets.fromLTRB(
+                0,
+                StyleString.cardSpace,
+                0,
+                0,
+              ),
               sliver: FutureBuilder<ApiResult<List<LiveItemModel>>>(
                 future: _futureBuilderFuture,
                 builder: (context, snapshot) {
@@ -105,18 +112,23 @@ class _LivePageState extends State<LivePage>
                     final result = snapshot.data;
                     if (result is ApiSuccess<List<LiveItemModel>>) {
                       return SliverLayoutBuilder(
-                          builder: (context, boxConstraints) {
-                        return Obx(() => contentGrid(
-                            _liveController, _liveController.liveList));
-                      });
+                        builder: (context, boxConstraints) {
+                          return Obx(
+                            () => contentGrid(
+                              _liveController,
+                              _liveController.liveList,
+                            ),
+                          );
+                        },
+                      );
                     } else {
                       return HttpError(
                         errMsg:
                             (result as ApiFailure<List<LiveItemModel>>).message,
                         fn: () {
                           setState(() {
-                            _futureBuilderFuture =
-                                _liveController.queryLiveList('init');
+                            _futureBuilderFuture = _liveController
+                                .queryLiveList('init');
                           });
                         },
                       );
@@ -142,14 +154,11 @@ class _LivePageState extends State<LivePage>
         childAspectRatio: StyleString.aspectRatio,
         mainAxisExtent: MediaQuery.textScalerOf(context).scale(80),
       ),
-      delegate: SliverChildBuilderDelegate(
-        (BuildContext context, int index) {
-          return liveList!.isNotEmpty
-              ? LiveCardV(liveItem: liveList[index])
-              : const VideoCardVSkeleton();
-        },
-        childCount: liveList!.isNotEmpty ? liveList!.length : 10,
-      ),
+      delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
+        return liveList!.isNotEmpty
+            ? LiveCardV(liveItem: liveList[index])
+            : const VideoCardVSkeleton();
+      }, childCount: liveList!.isNotEmpty ? liveList!.length : 10),
     );
   }
 }

@@ -14,34 +14,53 @@ class VideoUtils {
   static String getCdnUrl(dynamic item) {
     String? backupUrl;
     String? videoUrl;
-    String defaultCDNService = GStorage.setting
-        .get(SettingBoxKey.CDNService, defaultValue: CDNService.backupUrl.code);
-    if (item is AudioItem) {
-      if (GStorage.setting
-          .get(SettingBoxKey.disableAudioCDN, defaultValue: true)) {
-        return item.backupUrl?.isNotEmpty == true
-            ? item.backupUrl!
-            : item.baseUrl ?? "";
-      }
-    }
-    if (defaultCDNService == CDNService.baseUrl.code) {
-      return item.baseUrl?.isNotEmpty == true
-          ? item.baseUrl
-          : item.backupUrl ?? "";
-    }
+    String defaultCDNService = GStorage.setting.get(
+      SettingBoxKey.CDNService,
+      defaultValue: CDNService.backupUrl.code,
+    );
     if (item is CodecItem) {
-      backupUrl = (item.urlInfo?.first.host)! +
-          item.baseUrl! +
-          item.urlInfo!.first.extra!;
+      final urlInfo = item.urlInfo;
+      if (urlInfo == null || urlInfo.isEmpty || item.baseUrl == null) {
+        return "";
+      }
+      final firstInfo = urlInfo.first;
+      final host = firstInfo.host ?? "";
+      final extra = firstInfo.extra ?? "";
+      final baseUrl = item.baseUrl ?? "";
+      if (host.isEmpty && baseUrl.isEmpty) {
+        return "";
+      }
+      final fullLiveUrl = host + baseUrl + extra;
+      if (defaultCDNService == CDNService.backupUrl.code ||
+          defaultCDNService == CDNService.baseUrl.code) {
+        return fullLiveUrl;
+      }
+      backupUrl = fullLiveUrl;
+      videoUrl = fullLiveUrl;
     } else {
+      if (item is AudioItem) {
+        if (GStorage.setting.get(
+          SettingBoxKey.disableAudioCDN,
+          defaultValue: true,
+        )) {
+          return item.backupUrl?.isNotEmpty == true
+              ? item.backupUrl!
+              : item.baseUrl ?? "";
+        }
+      }
+      if (defaultCDNService == CDNService.baseUrl.code) {
+        return item.baseUrl?.isNotEmpty == true
+            ? item.baseUrl
+            : item.backupUrl ?? "";
+      }
       backupUrl = item.backupUrl;
+      if (defaultCDNService == CDNService.backupUrl.code) {
+        return backupUrl?.isNotEmpty == true ? backupUrl : item.baseUrl ?? "";
+      }
+      videoUrl = (backupUrl?.isEmpty != false || isMCDNorPCDN(backupUrl!))
+          ? item.baseUrl
+          : backupUrl;
     }
-    if (defaultCDNService == CDNService.backupUrl.code) {
-      return backupUrl?.isNotEmpty == true ? backupUrl : item.baseUrl ?? "";
-    }
-    videoUrl = (backupUrl?.isEmpty != false || isMCDNorPCDN(backupUrl!))
-        ? item.baseUrl
-        : backupUrl;
 
     if (videoUrl?.isEmpty != false) {
       return "";
@@ -53,18 +72,19 @@ class VideoUtils {
     if (videoUrl!.contains("szbdyd.com")) {
       String hostname =
           Uri.parse(videoUrl).queryParameters['xy_usource'] ?? defaultCDNHost;
-      videoUrl =
-          Uri.parse(videoUrl).replace(host: hostname, port: 443).toString();
+      videoUrl = Uri.parse(
+        videoUrl,
+      ).replace(host: hostname, port: 443).toString();
     } else if (videoUrl.contains(".mcdn.bilivideo")) {
-      videoUrl = Uri.parse(videoUrl)
-          .replace(host: defaultCDNHost, port: 443)
-          .toString();
+      videoUrl = Uri.parse(
+        videoUrl,
+      ).replace(host: defaultCDNHost, port: 443).toString();
       // videoUrl =
       //     'https://proxy-tf-all-ws.bilivideo.com/?url=${Uri.encodeComponent(videoUrl)}';
     } else if (videoUrl.contains("/upgcxcode/")) {
-      videoUrl = Uri.parse(videoUrl)
-          .replace(host: defaultCDNHost, port: 443)
-          .toString();
+      videoUrl = Uri.parse(
+        videoUrl,
+      ).replace(host: defaultCDNHost, port: 443).toString();
     }
     print("videoUrl:$videoUrl");
 

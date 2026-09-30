@@ -16,11 +16,17 @@ class RoomInfoH5Model {
   Map? blockInfo;
 
   RoomInfoH5Model.fromJson(Map<String, dynamic> json) {
-    roomInfo = RoomInfo.fromJson(json['room_info']);
-    anchorInfo = AnchorInfo.fromJson(json['anchor_info']);
+    roomInfo = json['room_info'] != null
+        ? RoomInfo.fromJson(json['room_info'])
+        : null;
+    anchorInfo = json['anchor_info'] != null
+        ? AnchorInfo.fromJson(json['anchor_info'])
+        : null;
     isRoomFeed = json['is_room_feed'];
     watchedShow = json['watched_show'];
-    likeInfoV3 = LikeInfoV3.fromJson(json['like_info_v3']);
+    likeInfoV3 = json['like_info_v3'] != null
+        ? LikeInfoV3.fromJson(json['like_info_v3'])
+        : null;
     blockInfo = json['block_info'];
   }
 }
@@ -66,7 +72,7 @@ class RoomInfo {
     title = json['title'];
     cover = json['cover'];
     description = json['description'];
-    liveStatus = json['liveS_satus'];
+    liveStatus = json['live_status'] ?? json['liveS_satus'];
     liveStartTime = json['live_start_time'];
     areaId = json['area_id'];
     areaName = json['area_name'];
@@ -80,25 +86,23 @@ class RoomInfo {
 }
 
 class AnchorInfo {
-  AnchorInfo({
-    this.baseInfo,
-    this.relationInfo,
-  });
+  AnchorInfo({this.baseInfo, this.relationInfo});
 
   BaseInfo? baseInfo;
   RelationInfo? relationInfo;
 
   AnchorInfo.fromJson(Map<String, dynamic> json) {
-    baseInfo = BaseInfo.fromJson(json['base_info']);
-    relationInfo = RelationInfo.fromJson(json['relation_info']);
+    baseInfo = json['base_info'] != null
+        ? BaseInfo.fromJson(json['base_info'])
+        : null;
+    relationInfo = json['relation_info'] != null
+        ? RelationInfo.fromJson(json['relation_info'])
+        : null;
   }
 }
 
 class BaseInfo {
-  BaseInfo({
-    this.uname,
-    this.face,
-  });
+  BaseInfo({this.uname, this.face});
 
   String? uname;
   String? face;
