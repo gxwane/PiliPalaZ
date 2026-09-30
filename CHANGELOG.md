@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.5.0-beta.4] - 2026-09-30
+
 ### 优化
 
 - 离线下载支持音量均衡：
@@ -762,7 +764,11 @@
 - 首次公开版本，包含直播、推荐、动态、投稿、番剧和视频播放。
 - 支持播放器手势、画质/音质/解码格式选择、点赞/投币/收藏、关注与用户主页、评论、历史记录和稍后再看。
 
-[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.3.2-beta.2...HEAD
+[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.4...HEAD
+[1.5.0-beta.4]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.3...v1.5.0-beta.4
+[1.5.0-beta.3]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.2...v1.5.0-beta.3
+[1.5.0-beta.2]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.1...v1.5.0-beta.2
+[1.5.0-beta.1]: https://github.com/gxwane/PiliPalaZ/compare/v1.4.0-beta.5...v1.5.0-beta.1
 [1.3.2-beta.2]: https://github.com/gxwane/PiliPalaZ/compare/v1.3.2-beta.1...v1.3.2-beta.2
 [1.3.2-beta.1]: https://github.com/gxwane/PiliPalaZ/compare/v1.3.1...v1.3.2-beta.1
 [1.3.1]: https://github.com/gxwane/PiliPalaZ/compare/v1.3.0...v1.3.1
