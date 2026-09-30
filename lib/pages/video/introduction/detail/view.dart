@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -329,6 +328,7 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
                       cid: videoIntroController.lastPlayCid.value != 0
                           ? videoIntroController.lastPlayCid.value
                           : widget.videoDetail!.pages!.first.cid,
+                      bvid: videoIntroController.bvid,
                       changeFuc: videoIntroController.changeSeasonOrbangu,
                     ),
                   ),

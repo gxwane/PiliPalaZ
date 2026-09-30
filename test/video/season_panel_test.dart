@@ -82,7 +82,7 @@ void main() {
   );
 
   testWidgets(
-    'SeasonPanel renders multiple section cards with playing state and total counts',
+    'SeasonPanel collapses multi-section seasons into a single adaptive card',
     (WidgetTester tester) async {
       final ugcSeason = UgcSeason.fromJson(<String, dynamic>{
         'id': 2,
@@ -150,16 +150,15 @@ void main() {
         ),
       );
 
-      // Should find 2 section cards
-      expect(find.byType(InkWell), findsNWidgets(2));
+      // Must collapse to EXACTLY 1 card on the main page (no vertical card stacking)
+      expect(find.byType(InkWell), findsOneWidget);
 
-      // Section 1: Front-end (playing 2/3)
+      // Displays the currently active section: Front-end (playing 2/3)
       expect(find.text('合集：全栈开发教程 · 前端篇'), findsOneWidget);
       expect(find.text('2/3'), findsOneWidget);
 
-      // Section 2: Back-end (not currently playing, showing total count: 共2集)
-      expect(find.text('合集：全栈开发教程 · 后端篇'), findsOneWidget);
-      expect(find.text('共2集'), findsOneWidget);
+      // Other sections are NOT stacked on the main page
+      expect(find.text('合集：全栈开发教程 · 后端篇'), findsNothing);
     },
   );
 }

@@ -570,7 +570,7 @@ class UgcSeason {
               .map<SectionItem>((e) => SectionItem.fromJson(e))
               .toList()
         : [];
-    stat = Stat.fromJson(json['stat']);
+    stat = json['stat'] != null ? Stat.fromJson(json['stat']) : null;
     epCount = json['ep_count'];
     seasonType = json['season_type'];
     isPaySeason = json['is_pay_count'];
@@ -632,7 +632,7 @@ class EpisodeItem {
     title = json['title'];
     longTitle = json['long_title'];
     attribute = json['attribute'];
-    page = Part.fromJson(json['page']);
+    page = json['page'] != null ? Part.fromJson(json['page']) : null;
     bvid = json['bvid'];
     badge = json['badge'];
   }
