@@ -11,56 +11,109 @@ class VideoUtils {
         RegExp(r'^https?://\d{1,3}\.\d{1,3}').hasMatch(url);
   }
 
+  static String getLiveCdnUrl(CodecItem? item, {int lineIndex = 0}) {
+    if (item == null) return "";
+    final urlInfo = item.urlInfo;
+    final baseUrl = item.baseUrl ?? "";
+    if (urlInfo == null || urlInfo.isEmpty || baseUrl.isEmpty) {
+      return "";
+    }
+    final int safeIndex = (lineIndex >= 0 && lineIndex < urlInfo.length)
+        ? lineIndex
+        : 0;
+    final info = urlInfo[safeIndex];
+    final host = info.host ?? "";
+    final extra = info.extra ?? "";
+    if (host.isEmpty) {
+      return "";
+    }
+    return host + baseUrl + extra;
+  }
+
+  static Set<int> parseAcceptQn(dynamic acceptQn) {
+    if (acceptQn is! Iterable) return <int>{};
+    final result = <int>{};
+    for (final item in acceptQn) {
+      if (item is int && item > 0) {
+        result.add(item);
+      } else if (item is num && item > 0) {
+        result.add(item.toInt());
+      } else if (item is String) {
+        final parsed = int.tryParse(item);
+        if (parsed != null && parsed > 0) {
+          result.add(parsed);
+        }
+      }
+    }
+    return result;
+  }
+
+  static List<GQnDesc> filterAndSortQualities({
+    required List<GQnDesc>? allQualities,
+    required dynamic acceptQn,
+  }) {
+    if (allQualities == null || allQualities.isEmpty) return <GQnDesc>[];
+    final validQns = parseAcceptQn(acceptQn);
+    if (validQns.isEmpty) {
+      return List<GQnDesc>.from(allQualities)
+        ..sort((a, b) => (b.qn ?? 0).compareTo(a.qn ?? 0));
+    }
+    final filtered = allQualities.where((q) {
+      return q.qn != null && validQns.contains(q.qn!);
+    }).toList();
+    if (filtered.isEmpty) {
+      return List<GQnDesc>.from(allQualities)
+        ..sort((a, b) => (b.qn ?? 0).compareTo(a.qn ?? 0));
+    }
+    filtered.sort((a, b) => (b.qn ?? 0).compareTo(a.qn ?? 0));
+    return filtered;
+  }
+
+  static int resolveSupportedQn({
+    required dynamic acceptQn,
+    required int currentQn,
+    int fallbackDefault = 10000,
+  }) {
+    final validQns = parseAcceptQn(acceptQn);
+    if (validQns.isEmpty || validQns.contains(currentQn)) {
+      return currentQn;
+    }
+    final sorted = validQns.toList()..sort((a, b) => b.compareTo(a));
+    return sorted.isNotEmpty ? sorted.first : fallbackDefault;
+  }
+
   static String getCdnUrl(dynamic item) {
+    if (item is CodecItem) {
+      return getLiveCdnUrl(item);
+    }
     String? backupUrl;
     String? videoUrl;
     String defaultCDNService = GStorage.setting.get(
       SettingBoxKey.CDNService,
       defaultValue: CDNService.backupUrl.code,
     );
-    if (item is CodecItem) {
-      final urlInfo = item.urlInfo;
-      if (urlInfo == null || urlInfo.isEmpty || item.baseUrl == null) {
-        return "";
+    if (item is AudioItem) {
+      if (GStorage.setting.get(
+        SettingBoxKey.disableAudioCDN,
+        defaultValue: true,
+      )) {
+        return item.backupUrl?.isNotEmpty == true
+            ? item.backupUrl!
+            : item.baseUrl ?? "";
       }
-      final firstInfo = urlInfo.first;
-      final host = firstInfo.host ?? "";
-      final extra = firstInfo.extra ?? "";
-      final baseUrl = item.baseUrl ?? "";
-      if (host.isEmpty && baseUrl.isEmpty) {
-        return "";
-      }
-      final fullLiveUrl = host + baseUrl + extra;
-      if (defaultCDNService == CDNService.backupUrl.code ||
-          defaultCDNService == CDNService.baseUrl.code) {
-        return fullLiveUrl;
-      }
-      backupUrl = fullLiveUrl;
-      videoUrl = fullLiveUrl;
-    } else {
-      if (item is AudioItem) {
-        if (GStorage.setting.get(
-          SettingBoxKey.disableAudioCDN,
-          defaultValue: true,
-        )) {
-          return item.backupUrl?.isNotEmpty == true
-              ? item.backupUrl!
-              : item.baseUrl ?? "";
-        }
-      }
-      if (defaultCDNService == CDNService.baseUrl.code) {
-        return item.baseUrl?.isNotEmpty == true
-            ? item.baseUrl
-            : item.backupUrl ?? "";
-      }
-      backupUrl = item.backupUrl;
-      if (defaultCDNService == CDNService.backupUrl.code) {
-        return backupUrl?.isNotEmpty == true ? backupUrl : item.baseUrl ?? "";
-      }
-      videoUrl = (backupUrl?.isEmpty != false || isMCDNorPCDN(backupUrl!))
-          ? item.baseUrl
-          : backupUrl;
     }
+    if (defaultCDNService == CDNService.baseUrl.code) {
+      return item.baseUrl?.isNotEmpty == true
+          ? item.baseUrl
+          : item.backupUrl ?? "";
+    }
+    backupUrl = item.backupUrl;
+    if (defaultCDNService == CDNService.backupUrl.code) {
+      return backupUrl?.isNotEmpty == true ? backupUrl : item.baseUrl ?? "";
+    }
+    videoUrl = (backupUrl?.isEmpty != false || isMCDNorPCDN(backupUrl!))
+        ? item.baseUrl
+        : backupUrl;
 
     if (videoUrl?.isEmpty != false) {
       return "";

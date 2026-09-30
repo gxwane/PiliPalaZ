@@ -6,6 +6,15 @@
 
 ### 新增
 
+- 直播多清晰度/画质与多 CDN 线路平滑切换支持（Phase 3）：
+  - 新增 `SettingBoxKey.defaultLiveQa` 设置项，支持直播默认画质本地持久化偏好；
+  - 实现 `VideoUtils.getLiveCdnUrl` 安全多线路流地址拼接，增加线路索引越界 Clamp 保护与非空防御；
+  - 建立基于流编解码实际支持能力（`accept_qn`）的画质交集过滤与降序算法（`VideoUtils.filterAndSortQualities`），彻底剔除 B 站全局字典中直播间不支持的 4K/杜比等伪选项；
+  - 支持编码切换时的画质联动与平滑降级（`VideoUtils.resolveSupportedQn`），并在发生画质降级时精准重发权威网络拉流，杜绝空流与 403 播放失败；
+  - `LiveRoomController` 支持多清晰度（原画/蓝光/超清/高清/流畅）、多 CDN 线路（主线/备线）与编解码器（AVC/HEVC）状态管理与无缝切换；
+  - 引入 `isSwitchingStream` 双层并发防重机制与异常降级恢复策略，保障切流过程无死锁、无黑屏崩溃；
+  - 底栏集成实时画质胶囊按钮，提供加载状态指示与自适应横竖屏、全屏与非全屏的 `LiveQualitySheet` 选择抽屉面板；
+  - 新增 `test/live/live_quality_selection_test.dart` 单元测试套件（含 6 大 BDD 真实画质能力过滤与降级用例），全面覆盖画质与线路切流逻辑。
 - 直播弹幕长连 WebSocket 引擎与基础飘屏（Phase 2）：
   - 接入 B 站官方直播弹幕网关配置 API（`/room/v1/Danmu/getConf`），动态获取 Comet 节点与认证 Token；
   - 基于 `dart:io` 标准库原生实现 16 字节头部编解码器（`LivePacketCodec`）与 `zlib.decode` 原生解压引擎，零额外三方 FFI 依赖；

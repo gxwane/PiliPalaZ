@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/constants.dart';
@@ -31,6 +32,17 @@ class LiveRoomController extends GetxController {
   StreamSubscription<int>? _popularitySub;
   bool _isDisposed = false;
   bool get isDisposed => _isDisposed || isClosed;
+
+  RoomInfoModel? currentRoomInfo;
+  CodecItem? _currentCodecItem;
+  final RxInt currentQn = 10000.obs;
+  final RxString currentQnDesc = '原画'.obs;
+  final RxInt currentLineIndex = 0.obs;
+  final RxString currentCodec = 'avc'.obs;
+  final RxList<GQnDesc> availableQualities = <GQnDesc>[].obs;
+  final RxList<String> availableLines = <String>[].obs;
+  final RxList<String> availableCodecs = <String>[].obs;
+  final RxBool isSwitchingStream = false.obs;
 
   PlPlayerController plPlayerController = PlPlayerController.getInstance(
     videoType: 'live',
@@ -100,36 +112,144 @@ class LiveRoomController extends GetxController {
     );
   }
 
-  Future<ApiResult<RoomInfoModel>> queryLiveInfo() async {
+  FormatItem? _extractFormat(List<Streams> streams) {
+    if (streams.isEmpty) return null;
+    final stream = streams.firstWhere(
+      (s) => s.protocolName?.toLowerCase() == 'http_stream',
+      orElse: () => streams.first,
+    );
+    final formats = stream.format ?? <FormatItem>[];
+    if (formats.isEmpty) return null;
+    return formats.firstWhere(
+      (f) => f.formatName?.toLowerCase() == 'flv',
+      orElse: () => formats.first,
+    );
+  }
+
+  void _selectCodecAndLine(
+    List<CodecItem> codecs,
+    String? targetCodec,
+    int? targetLine,
+  ) {
+    final codecNames = codecs
+        .map((c) => c.codecName?.toLowerCase() ?? '')
+        .where((name) => name.isNotEmpty)
+        .toSet()
+        .toList();
+    availableCodecs.assignAll(codecNames);
+
+    final preferredCodec =
+        targetCodec?.toLowerCase() ?? currentCodec.value.toLowerCase();
+    _currentCodecItem = codecs.firstWhere(
+      (c) => c.codecName?.toLowerCase() == preferredCodec,
+      orElse: () => codecs.first,
+    );
+    currentCodec.value = _currentCodecItem?.codecName?.toLowerCase() ?? 'avc';
+
+    final urlInfoList = _currentCodecItem?.urlInfo ?? <UrlInfoItem>[];
+    availableLines.assignAll(
+      List.generate(urlInfoList.length, (i) => '线路 ${i + 1}'),
+    );
+    final maxLine = urlInfoList.isEmpty ? 0 : urlInfoList.length - 1;
+    currentLineIndex.value = (targetLine ?? currentLineIndex.value).clamp(
+      0,
+      maxLine,
+    );
+  }
+
+  void _resolveQualityDesc(List<GQnDesc> gQnDescList, int? targetQn) {
+    final qn = _currentCodecItem?.currentQn ?? targetQn ?? 10000;
+    currentQn.value = qn;
+    final matchDesc = gQnDescList.firstWhereOrNull((q) => q.qn == qn)?.desc;
+    currentQnDesc.value = matchDesc ?? _fallbackQnDesc(qn);
+  }
+
+  void _updateStreamMetadata(
+    RoomInfoModel data, {
+    int? targetQn,
+    int? targetLine,
+    String? targetCodec,
+  }) {
+    currentRoomInfo = data;
+    final playurl = data.playurlInfo?.playurl;
+    final format = _extractFormat(playurl?.stream ?? <Streams>[]);
+    final codecs = format?.codec ?? <CodecItem>[];
+    if (codecs.isEmpty) {
+      _currentCodecItem = null;
+      availableLines.clear();
+      availableCodecs.clear();
+      availableQualities.clear();
+      return;
+    }
+    _selectCodecAndLine(codecs, targetCodec, targetLine);
+    final rawQualities = playurl?.gQnDesc ?? <GQnDesc>[];
+    final filtered = VideoUtils.filterAndSortQualities(
+      allQualities: rawQualities,
+      acceptQn: _currentCodecItem?.acceptQn,
+    );
+    availableQualities.assignAll(filtered);
+    _resolveQualityDesc(filtered, targetQn);
+  }
+
+  static String _fallbackQnDesc(int qn) {
+    if (qn >= 10000) return '原画';
+    if (qn >= 400) return '蓝光';
+    if (qn >= 250) return '超清';
+    if (qn >= 150) return '高清';
+    return '流畅';
+  }
+
+  Future<bool> _applyLiveStream({required String successToast}) async {
+    if (_currentCodecItem == null) return false;
+    final videoUrl = VideoUtils.getLiveCdnUrl(
+      _currentCodecItem,
+      lineIndex: currentLineIndex.value,
+    );
+    if (videoUrl.isEmpty) return false;
+    await playerInit(videoUrl);
+    SmartDialog.showToast(successToast);
+    return true;
+  }
+
+  Future<ApiResult<RoomInfoModel>> queryLiveInfo({
+    int? qn,
+    int? lineIndex,
+    String? codec,
+  }) async {
     if (isDisposed) {
       return const ApiFailure(
         kind: ApiFailureKind.cancelled,
         message: 'Controller disposed',
       );
     }
-    final res = await LiveHttp.liveRoomInfo(roomId: roomId, qn: 10000);
+    final int preferredQn =
+        qn ??
+        GStorage.setting.get(SettingBoxKey.defaultLiveQa, defaultValue: 10000);
+    final res = await LiveHttp.liveRoomInfo(roomId: roomId, qn: preferredQn);
     if (isDisposed) return res;
 
     if (res case ApiSuccess<RoomInfoModel>(:final data)) {
       final status = data.liveStatus ?? 0;
       isLive.value = status == 1;
 
-      final streams = data.playurlInfo?.playurl?.stream;
-      if (streams != null && streams.isNotEmpty) {
-        final formats = streams.first.format;
-        if (formats != null && formats.isNotEmpty) {
-          final codecs = formats.first.codec;
-          if (codecs != null && codecs.isNotEmpty) {
-            final item = codecs.first;
-            final videoUrl = VideoUtils.getCdnUrl(item);
-            if (videoUrl.isNotEmpty) {
-              hasStream.value = true;
-              if (!isClosed) {
-                await playerInit(videoUrl);
-              }
-              return res;
-            }
+      _updateStreamMetadata(
+        data,
+        targetQn: preferredQn,
+        targetLine: lineIndex,
+        targetCodec: codec,
+      );
+
+      if (_currentCodecItem != null) {
+        final videoUrl = VideoUtils.getLiveCdnUrl(
+          _currentCodecItem,
+          lineIndex: currentLineIndex.value,
+        );
+        if (videoUrl.isNotEmpty) {
+          hasStream.value = true;
+          if (!isClosed) {
+            await playerInit(videoUrl);
           }
+          return res;
         }
       }
       hasStream.value = false;
@@ -138,6 +258,140 @@ class LiveRoomController extends GetxController {
       hasStream.value = false;
     }
     return res;
+  }
+
+  Future<bool> changeQuality(int targetQn) async {
+    if (isDisposed || isSwitchingStream.value) return false;
+    if (targetQn == currentQn.value && hasStream.value) return true;
+
+    isSwitchingStream.value = true;
+    try {
+      final res = await LiveHttp.liveRoomInfo(roomId: roomId, qn: targetQn);
+      if (isDisposed) return false;
+      if (res case ApiSuccess<RoomInfoModel>(:final data)) {
+        _updateStreamMetadata(
+          data,
+          targetQn: targetQn,
+          targetLine: currentLineIndex.value,
+          targetCodec: currentCodec.value,
+        );
+        final success = await _applyLiveStream(
+          successToast: '已切换至：${currentQnDesc.value}',
+        );
+        if (success) {
+          GStorage.setting.put(SettingBoxKey.defaultLiveQa, targetQn);
+          return true;
+        }
+      }
+      SmartDialog.showToast('切换画质失败，请重试');
+      return false;
+    } catch (_) {
+      SmartDialog.showToast('切换画质失败');
+      return false;
+    } finally {
+      if (!isDisposed) {
+        isSwitchingStream.value = false;
+      }
+    }
+  }
+
+  Future<bool> changeCdnLine(int targetIndex) async {
+    if (isDisposed || isSwitchingStream.value || _currentCodecItem == null) {
+      return false;
+    }
+    if (targetIndex == currentLineIndex.value) return true;
+    final urlInfoList = _currentCodecItem?.urlInfo ?? <UrlInfoItem>[];
+    if (targetIndex < 0 || targetIndex >= urlInfoList.length) return false;
+
+    isSwitchingStream.value = true;
+    try {
+      currentLineIndex.value = targetIndex;
+      final success = await _applyLiveStream(
+        successToast: '已切换至：线路 ${targetIndex + 1}',
+      );
+      return success;
+    } catch (_) {
+      SmartDialog.showToast('切换线路失败');
+      return false;
+    } finally {
+      if (!isDisposed) {
+        isSwitchingStream.value = false;
+      }
+    }
+  }
+
+  int _resolveTargetCodecQn(List<CodecItem> codecs, String targetCodec) {
+    final item = codecs.firstWhere(
+      (c) => (c.codecName ?? '').toLowerCase() == targetCodec.toLowerCase(),
+      orElse: () => codecs.first,
+    );
+    return VideoUtils.resolveSupportedQn(
+      acceptQn: item.acceptQn,
+      currentQn: currentQn.value,
+    );
+  }
+
+  Future<bool> _switchCodecWithNetwork({
+    required String targetCodec,
+    required int supportedQn,
+  }) async {
+    final res = await LiveHttp.liveRoomInfo(roomId: roomId, qn: supportedQn);
+    if (isDisposed) return false;
+    if (res case ApiSuccess<RoomInfoModel>(:final data)) {
+      _updateStreamMetadata(
+        data,
+        targetQn: supportedQn,
+        targetLine: currentLineIndex.value,
+        targetCodec: targetCodec,
+      );
+      final ok = await _applyLiveStream(
+        successToast: '已切换编码：${targetCodec.toUpperCase()}',
+      );
+      if (ok) GStorage.setting.put(SettingBoxKey.defaultLiveQa, supportedQn);
+      return ok;
+    }
+    return false;
+  }
+
+  Future<bool> changeCodec(String targetCodec) async {
+    if (isDisposed || isSwitchingStream.value || currentRoomInfo == null) {
+      return false;
+    }
+    if (targetCodec.toLowerCase() == currentCodec.value.toLowerCase()) {
+      return true;
+    }
+
+    isSwitchingStream.value = true;
+    try {
+      final playurl = currentRoomInfo?.playurlInfo?.playurl;
+      final format = _extractFormat(playurl?.stream ?? <Streams>[]);
+      final codecs = format?.codec ?? <CodecItem>[];
+      final targetQn = _resolveTargetCodecQn(codecs, targetCodec);
+      if (targetQn != currentQn.value) {
+        final ok = await _switchCodecWithNetwork(
+          targetCodec: targetCodec,
+          supportedQn: targetQn,
+        );
+        if (!ok) SmartDialog.showToast('切换编码失败');
+        return ok;
+      }
+      _updateStreamMetadata(
+        currentRoomInfo!,
+        targetQn: currentQn.value,
+        targetLine: currentLineIndex.value,
+        targetCodec: targetCodec,
+      );
+      return await _applyLiveStream(
+        successToast: '已切换编码：${targetCodec.toUpperCase()}',
+      );
+    } catch (_) {
+      SmartDialog.showToast('切换编码失败');
+      return false;
+    } finally {
+      if (!isDisposed) {
+        isSwitchingStream.value = false;
+      }
+    }
   }
 
   void setVolume(double value) {

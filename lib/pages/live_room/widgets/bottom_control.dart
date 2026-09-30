@@ -9,6 +9,7 @@ import 'package:pilipalaz/models/video/play/url.dart';
 import 'package:pilipalaz/pages/live_room/index.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/utils/storage.dart';
+import 'live_quality_sheet.dart';
 
 class BottomControl extends StatefulWidget implements PreferredSizeWidget {
   final PlPlayerController? controller;
@@ -84,15 +85,53 @@ class _BottomControlState extends State<BottomControl> {
             }),
             const SizedBox(width: 4),
           ],
-          // ComBtn(
-          //   icon: const Icon(
-          //     Icons.hd_outlined,
-          //     size: 18,
-          //     color: Colors.white,
-          //   ),
-          //   fuc: () => {},
-          // ),
-          // const SizedBox(width: 4),
+          if (widget.liveRoomCtr != null) ...[
+            Obx(() {
+              final String qnDesc =
+                  widget.liveRoomCtr!.currentQnDesc.value.isNotEmpty
+                  ? widget.liveRoomCtr!.currentQnDesc.value
+                  : '画质';
+              final bool isSwitching =
+                  widget.liveRoomCtr!.isSwitchingStream.value;
+              return Container(
+                height: 30,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    backgroundColor: Colors.white.withValues(alpha: 0.18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    minimumSize: Size.zero,
+                  ),
+                  onPressed: isSwitching
+                      ? null
+                      : () {
+                          LiveQualitySheet.show(context, widget.liveRoomCtr!);
+                        },
+                  child: isSwitching
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          qnDesc,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                ),
+              );
+            }),
+            const SizedBox(width: 4),
+          ],
           // Obx(
           //   () => ComBtn(
           //     icon: Icon(
