@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import 'package:pilipalaz/http/constants.dart';
 import 'package:pilipalaz/http/live.dart';
 import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/http/video.dart';
 import 'package:pilipalaz/models/live/room_info.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import '../../http/login.dart';
@@ -15,6 +16,7 @@ import '../../services/live/live_message.dart';
 import '../../utils/danmaku.dart';
 import '../../utils/storage.dart';
 import '../../utils/video_utils.dart';
+import 'widgets/live_chat_controller.dart';
 
 class LiveRoomController extends GetxController {
   String cover = '';
@@ -28,6 +30,7 @@ class LiveRoomController extends GetxController {
   final RxBool hasStream = false.obs;
   final RxInt popularity = 0.obs;
   LiveDanmakuClient? danmakuClient;
+  final LiveChatController chatController = LiveChatController();
   StreamSubscription<LiveDanmakuItem>? _danmakuSub;
   StreamSubscription<int>? _popularitySub;
   bool _isDisposed = false;
@@ -49,6 +52,8 @@ class LiveRoomController extends GetxController {
   );
   final PlayerResourceOwner playerResourceOwner = PlayerResourceOwner();
   final Rx<RoomInfoH5Model> roomInfoH5 = RoomInfoH5Model().obs;
+  final RxBool isFollowed = false.obs;
+  final RxBool isFollowUpdating = false.obs;
 
   @override
   void onInit() {
@@ -422,8 +427,45 @@ class LiveRoomController extends GetxController {
       if (realRoomId > 0 && danmakuClient == null) {
         unawaited(initDanmakuClient(realRoomId));
       }
+      final anchorUid = data.roomInfo?.uid ?? 0;
+      if (anchorUid > 0 && GStorage.userInfo.get('userInfoCache') != null) {
+        unawaited(queryFollowStatus(anchorUid));
+      }
     }
     return res;
+  }
+
+  Future<void> queryFollowStatus(int uid) async {
+    if (isDisposed || uid <= 0) return;
+    final res = await VideoHttp.hasFollow(mid: uid);
+    if (isDisposed) return;
+    if (res case ApiSuccess<VideoFollowState>(:final data)) {
+      isFollowed.value = data.attribute != 0;
+    }
+  }
+
+  Future<void> toggleFollow(int uid) async {
+    if (isDisposed || uid <= 0 || isFollowUpdating.value) return;
+    if (GStorage.userInfo.get('userInfoCache') == null) {
+      SmartDialog.showToast('请先登录');
+      return;
+    }
+    isFollowUpdating.value = true;
+    final bool nextFollow = !isFollowed.value;
+    final res = await VideoHttp.relationMod(
+      mid: uid,
+      act: nextFollow ? 1 : 2,
+      reSrc: 11,
+    );
+    if (!isDisposed) {
+      if (res is ApiSuccess) {
+        isFollowed.value = nextFollow;
+        SmartDialog.showToast(nextFollow ? '关注成功' : '已取消关注');
+      } else if (res is ApiFailure) {
+        SmartDialog.showToast(res.message);
+      }
+      isFollowUpdating.value = false;
+    }
   }
 
   Future<void> initDanmakuClient(int targetRoomId) async {
@@ -444,6 +486,7 @@ class LiveRoomController extends GetxController {
       buvid: LoginHttp.buvid,
     );
     danmakuClient = client;
+    chatController.bindDanmakuClient(client);
 
     _danmakuSub = client.onDanmaku.listen((LiveDanmakuItem item) {
       if (isDisposed) return;
@@ -487,6 +530,7 @@ class LiveRoomController extends GetxController {
   @override
   void onClose() {
     _isDisposed = true;
+    chatController.onClose();
     _danmakuSub?.cancel();
     _danmakuSub = null;
     _popularitySub?.cancel();

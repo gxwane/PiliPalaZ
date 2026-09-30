@@ -6,6 +6,19 @@
 
 ### 新增
 
+- 直播间互动聊天室与信息架构重构（Phase 4A · 标杆模式）：
+  - 彻底废除低效的三 Tab 布局，将下半屏完整提升为全高沉浸式公屏互动流，竖屏视高增加 25%；
+  - 引入播放器正下方常驻紧凑主播栏（`LiveAnchorStrip`），聚合主播头像、昵称、分区标签、一键关注与公告入口；
+  - 补齐主播空间跳转触点闭环（`LiveNavHelper`），支持 AppBar 与主播栏头像/昵称点击平滑进入个人主页（`/member`），并透传 `face` 与 `heroTag`；
+  - 引入公屏顶部动态置顶 SC 横幅（`LiveScTicker`）与全量醒目留言抽屉（`LiveScSheet`），无 SC 时零像素占用，有 SC 时尊贵高亮展示；
+  - 引入半屏主播公告抽屉（`LiveNoticeSheet`），支持一键展开直播间标题、分区与完整公告详情；
+  - 公屏聊天流精准识别主播 UID，发言时渲染粉红 `[UP主播]` 专属尊贵徽标与高亮字体；
+  - 控制器支持原地关注状态切换（`isFollowed`）与防抖鉴权；
+  - 采用 120ms 时间窗口消息合批（Batch Flush）机制与 200 条最大容量 FIFO 队列截断，杜绝高频刷屏卡顿与挂机 OOM；
+  - 互动聊天流重构为 `ListView.builder(reverse: true)` 倒序贴底渲染，配合双向迟滞（>30/<=10）未读计数与悬浮气泡；
+  - 实现直播弹幕发送栏（`LiveInputBar`），支持 CSRF 校验、3 秒冷却倒计时防刷屏与软键盘呼起自适应；
+  - 新增 `test/live/live_anchor_strip_test.dart` 与 `test/live/live_chat_room_test.dart` 自动化测试套件（通过全部 10 项 Tier 3 质量门禁）。
+
 - 直播多清晰度/画质与多 CDN 线路平滑切换支持（Phase 3）：
   - 新增 `SettingBoxKey.defaultLiveQa` 设置项，支持直播默认画质本地持久化偏好；
   - 实现 `VideoUtils.getLiveCdnUrl` 安全多线路流地址拼接，增加线路索引越界 Clamp 保护与非空防御；

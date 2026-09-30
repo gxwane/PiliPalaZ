@@ -278,6 +278,9 @@ class Api {
   static const String liveDanmakuConf =
       '${HttpString.liveBaseUrl}/room/v1/Danmu/getConf';
 
+  // 发送直播弹幕
+  static const String sendLiveDanmaku = '${HttpString.liveBaseUrl}/msg/send';
+
   // 用户信息 需要Wbi签名
   // https://api.bilibili.com/x/space/wbi/acc/info?mid=503427686&token=&platform=web&web_location=1550101&w_rid=d709892496ce93e3d94d6d37c95bde91&wts=1689301482
   static const String memberInfo = '${HttpString.appBaseUrl}/x/v2/space';

@@ -15,7 +15,12 @@ import 'package:pilipalaz/utils/screen_utils.dart';
 
 import 'controller.dart';
 import 'widgets/bottom_control.dart';
+import 'widgets/live_anchor_strip.dart';
+import 'widgets/live_chat_panel.dart';
 import 'widgets/live_danmaku.dart';
+import 'widgets/live_input_bar.dart';
+import 'widgets/live_nav_helper.dart';
+import 'widgets/live_sc_ticker.dart';
 
 class LiveRoomPage extends StatefulWidget {
   const LiveRoomPage({super.key});
@@ -138,6 +143,7 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
 
     final Widget childWhenDisabled = Scaffold(
       primary: true,
+      resizeToAvoidBottomInset: true,
       backgroundColor: Colors.black,
       body: Stack(
         children: [
@@ -213,29 +219,55 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
                             .roomInfoH5
                             .value
                             .watchedShow?['text_large'];
+                        final mid =
+                            _liveRoomController
+                                .roomInfoH5
+                                .value
+                                .roomInfo
+                                ?.uid ??
+                            0;
                         return Row(
                           children: [
-                            NetworkImgLayer(
-                              width: 34,
-                              height: 34,
-                              type: 'avatar',
-                              src: face,
-                            ),
-                            const SizedBox(width: 10),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  uname.isNotEmpty ? uname : '直播间',
-                                  style: const TextStyle(fontSize: 14),
-                                ),
-                                const SizedBox(height: 1),
-                                if (watchedText != null)
-                                  Text(
-                                    watchedText.toString(),
-                                    style: const TextStyle(fontSize: 12),
+                            InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => LiveNavHelper.navigateToAnchorMember(
+                                context,
+                                mid,
+                                face,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ClipOval(
+                                    child: NetworkImgLayer(
+                                      width: 34,
+                                      height: 34,
+                                      type: 'avatar',
+                                      src: face,
+                                    ),
                                   ),
-                              ],
+                                  const SizedBox(width: 10),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        uname.isNotEmpty ? uname : '直播间',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 1),
+                                      if (watchedText != null)
+                                        Text(
+                                          watchedText.toString(),
+                                          style: const TextStyle(fontSize: 12),
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                             const Spacer(),
                             // 刷新
@@ -298,6 +330,8 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
                   child: videoPlayerPanel,
                 ),
               ),
+              if (MediaQuery.of(context).orientation != Orientation.landscape)
+                Expanded(child: _buildPortraitContent(context)),
             ],
           ),
         ],
@@ -318,6 +352,25 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
             return childWhenDisabled;
         }
       },
+    );
+  }
+
+  Widget _buildPortraitContent(BuildContext context) {
+    return Column(
+      children: [
+        LiveAnchorStrip(liveRoomCtr: _liveRoomController),
+        LiveScTicker(chatController: _liveRoomController.chatController),
+        Expanded(
+          child: Obx(
+            () => LiveChatPanel(
+              chatController: _liveRoomController.chatController,
+              anchorUid:
+                  _liveRoomController.roomInfoH5.value.roomInfo?.uid ?? 0,
+            ),
+          ),
+        ),
+        LiveInputBar(roomId: _liveRoomController.roomId),
+      ],
     );
   }
 }

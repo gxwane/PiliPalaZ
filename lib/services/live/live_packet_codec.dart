@@ -147,6 +147,7 @@ class LivePacketCodec {
                 uid: data['uid'] as int? ?? 0,
                 price: (data['price'] as num?)?.toDouble() ?? 0.0,
                 message: data['message']?.toString() ?? '',
+                face: data['user_info']?['face']?.toString() ?? '',
                 timestamp:
                     data['start_time'] as int? ??
                     DateTime.now().millisecondsSinceEpoch,

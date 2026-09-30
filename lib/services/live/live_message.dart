@@ -87,12 +87,14 @@ class LiveSuperChatMessage extends LiveMessage {
   final int uid;
   final double price;
   final String message;
+  final String face;
 
   const LiveSuperChatMessage({
     required this.uname,
     required this.uid,
     required this.price,
     required this.message,
+    this.face = '',
     required super.timestamp,
   }) : super(type: LiveMessageType.superChat);
 }

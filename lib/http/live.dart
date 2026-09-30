@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../models/live/danmaku_conf.dart';
 import '../models/live/item.dart';
 import '../models/live/room_info.dart';
@@ -98,6 +100,35 @@ class LiveHttp {
           BiliApiDecoder.object(value, field: 'data'),
         ),
       ),
+    );
+  }
+
+  static Future<ApiResult<void>> sendDanmaku({
+    required int roomId,
+    required String msg,
+    int color = 16777215,
+    int fontSize = 25,
+    int mode = 1,
+  }) async {
+    final csrf = await HttpRuntime.instance.getCsrf();
+    final rnd = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final data = <String, dynamic>{
+      'bubble': 0,
+      'msg': msg,
+      'color': color,
+      'mode': mode,
+      'fontsize': fontSize,
+      'rnd': rnd,
+      'roomid': roomId,
+      'csrf': csrf,
+      'csrf_token': csrf,
+    };
+    return HttpRuntime.instance.client.postJson<void>(
+      Api.sendLiveDanmaku,
+      endpoint: 'live.sendDanmaku',
+      data: data,
+      options: Options(contentType: Headers.formUrlEncodedContentType),
+      decode: BiliApiDecoder.success,
     );
   }
 }
