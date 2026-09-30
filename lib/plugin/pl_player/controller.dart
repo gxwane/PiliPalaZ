@@ -1202,6 +1202,16 @@ class PlPlayerController with WidgetsBindingObserver {
       SettingBoxKey.playerKernel,
       defaultValue: 'media3',
     );
+    final oldEngine = _engine;
+    _engine = null;
+    if (oldEngine != null) {
+      try {
+        await oldEngine.dispose();
+      } catch (err) {
+        debugPrint('Error disposing old player engine: $err');
+      }
+    }
+
     if (!forceMpv && selectedKernel == 'media3' && Platform.isAndroid) {
       try {
         final media3Engine = Media3PlayerEngine();

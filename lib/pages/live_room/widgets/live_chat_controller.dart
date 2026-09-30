@@ -98,6 +98,20 @@ class LiveChatController extends GetxController {
     unreadCount.value = 0;
   }
 
+  void reset() {
+    if (_isDisposed) return;
+    _messageSubscription?.cancel();
+    _messageSubscription = null;
+    _pendingMessages.clear();
+    chatMessages.clear();
+    activeSuperChats.clear();
+    isScrolledUp.value = false;
+    unreadCount.value = 0;
+    if (scrollController.hasClients) {
+      scrollController.jumpTo(0.0);
+    }
+  }
+
   @override
   void onClose() {
     if (_isDisposed) return;

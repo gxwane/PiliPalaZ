@@ -44,10 +44,12 @@ class LiveHttp {
   static Future<ApiResult<RoomInfoModel>> liveRoomInfo({
     required int roomId,
     int? qn,
+    CancelToken? cancelToken,
   }) {
     return HttpRuntime.instance.client.getJson<RoomInfoModel>(
       Api.liveRoomInfo,
       endpoint: 'live.roomPlayInfo',
+      cancelToken: cancelToken,
       queryParameters: <String, dynamic>{
         'room_id': roomId,
         'protocol': '0, 1',
@@ -69,10 +71,12 @@ class LiveHttp {
 
   static Future<ApiResult<RoomInfoH5Model>> liveRoomInfoH5({
     required int roomId,
+    CancelToken? cancelToken,
   }) {
     return HttpRuntime.instance.client.getJson<RoomInfoH5Model>(
       Api.liveRoomInfoH5,
       endpoint: 'live.roomInfo',
+      cancelToken: cancelToken,
       queryParameters: <String, dynamic>{'room_id': roomId},
       decode: (json) => BiliApiDecoder.data<RoomInfoH5Model>(
         json,

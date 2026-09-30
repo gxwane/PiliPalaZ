@@ -11,12 +11,16 @@ import '../../../common/widgets/overlay_pop.dart';
 // 视频卡片 - 垂直布局
 class LiveCardV extends StatelessWidget {
   final LiveItemModel liveItem;
+  final List<LiveItemModel>? liveList;
+  final int? index;
   final Function()? longPress;
   final Function()? longPressEnd;
 
   const LiveCardV({
     super.key,
     required this.liveItem,
+    this.liveList,
+    this.index,
     this.longPress,
     this.longPressEnd,
   });
@@ -35,8 +39,15 @@ class LiveCardV extends StatelessWidget {
           }
         },
         onTap: () async {
-          Get.toNamed('/liveRoom?roomid=${liveItem.roomId}',
-              arguments: {'liveItem': liveItem, 'heroTag': heroTag});
+          Get.toNamed(
+            '/liveRoom?roomid=${liveItem.roomId}',
+            arguments: {
+              'liveItem': liveItem,
+              'heroTag': heroTag,
+              'liveList': liveList,
+              'initialIndex': index ?? 0,
+            },
+          );
         },
         // onLongPressEnd: (details) {
         //   if (longPressEnd != null) {
@@ -49,45 +60,47 @@ class LiveCardV extends StatelessWidget {
               borderRadius: const BorderRadius.all(StyleString.imgRadius),
               child: AspectRatio(
                 aspectRatio: StyleString.aspectRatio,
-                child: LayoutBuilder(builder: (context, boxConstraints) {
-                  double maxWidth = boxConstraints.maxWidth;
-                  double maxHeight = boxConstraints.maxHeight;
-                  return Stack(
-                    children: [
-                      GestureDetector(
-                        behavior: HitTestBehavior.translucent,
-                        onLongPress: () {
-                          // 弹窗显示封面
-                          MyDialog.show(
-                              context, OverlayPop(videoItem: liveItem));
-                        },
-                        child: Hero(
-                          tag: heroTag,
-                          child: NetworkImgLayer(
-                            src: liveItem.cover!,
-                            width: maxWidth,
-                            height: maxHeight,
+                child: LayoutBuilder(
+                  builder: (context, boxConstraints) {
+                    double maxWidth = boxConstraints.maxWidth;
+                    double maxHeight = boxConstraints.maxHeight;
+                    return Stack(
+                      children: [
+                        GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onLongPress: () {
+                            // 弹窗显示封面
+                            MyDialog.show(
+                              context,
+                              OverlayPop(videoItem: liveItem),
+                            );
+                          },
+                          child: Hero(
+                            tag: heroTag,
+                            child: NetworkImgLayer(
+                              src: liveItem.cover!,
+                              width: maxWidth,
+                              height: maxHeight,
+                            ),
                           ),
                         ),
-                      ),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: AnimatedOpacity(
-                          opacity: 1,
-                          duration: const Duration(milliseconds: 200),
-                          child: VideoStat(
-                            liveItem: liveItem,
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          child: AnimatedOpacity(
+                            opacity: 1,
+                            duration: const Duration(milliseconds: 200),
+                            child: VideoStat(liveItem: liveItem),
                           ),
                         ),
-                      ),
-                    ],
-                  );
-                }),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
-            LiveContent(liveItem: liveItem)
+            LiveContent(liveItem: liveItem),
           ],
         ),
       ),
@@ -125,8 +138,9 @@ class LiveContent extends StatelessWidget {
                     liveItem.uname,
                     textAlign: TextAlign.start,
                     style: TextStyle(
-                      fontSize:
-                          Theme.of(context).textTheme.labelMedium!.fontSize,
+                      fontSize: Theme.of(
+                        context,
+                      ).textTheme.labelMedium!.fontSize,
                       color: Theme.of(context).colorScheme.outline,
                     ),
                     maxLines: 1,
@@ -145,10 +159,7 @@ class LiveContent extends StatelessWidget {
 class VideoStat extends StatelessWidget {
   final LiveItemModel? liveItem;
 
-  const VideoStat({
-    super.key,
-    required this.liveItem,
-  });
+  const VideoStat({super.key, required this.liveItem});
 
   @override
   Widget build(BuildContext context) {
@@ -159,10 +170,7 @@ class VideoStat extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: <Color>[
-            Colors.transparent,
-            Colors.black54,
-          ],
+          colors: <Color>[Colors.transparent, Colors.black54],
           tileMode: TileMode.mirror,
         ),
       ),

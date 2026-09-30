@@ -7,6 +7,7 @@ import 'package:flutter_floating/floating/manager/floating_manager.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/http/api_result.dart';
+import 'package:pilipalaz/models/live/item.dart';
 import 'package:pilipalaz/models/live/room_info.dart';
 import 'package:pilipalaz/models/live/room_info_h5.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
@@ -20,6 +21,8 @@ import 'widgets/live_chat_panel.dart';
 import 'widgets/live_danmaku.dart';
 import 'widgets/live_input_bar.dart';
 import 'widgets/live_nav_helper.dart';
+import 'widgets/live_room_paging_controller.dart';
+import 'widgets/live_room_preview_card.dart';
 import 'widgets/live_sc_ticker.dart';
 
 class LiveRoomPage extends StatefulWidget {
@@ -32,6 +35,7 @@ class LiveRoomPage extends StatefulWidget {
 class _LiveRoomPageState extends State<LiveRoomPage> {
   late final String _tag;
   late final LiveRoomController _liveRoomController;
+  late final LiveRoomPlaylistManager _playlistManager;
   PlPlayerController? plPlayerController;
   late Future<ApiResult<RoomInfoH5Model>>? _futureBuilder;
   late Future<ApiResult<RoomInfoModel>>? _futureBuilderFuture;
@@ -42,11 +46,9 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
   @override
   void initState() {
     super.initState();
-    final argRoomId = Get.arguments is Map
-        ? (Get.arguments['roomId'] ??
-              Get.arguments['roomid'] ??
-              Get.arguments['heroTag'])
-        : null;
+    final argMap = Get.arguments is Map ? (Get.arguments as Map) : null;
+    final argRoomId =
+        argMap?['roomId'] ?? argMap?['roomid'] ?? argMap?['heroTag'];
     final paramRoomId =
         Get.parameters['roomid'] ??
         Get.parameters['roomId'] ??
@@ -59,6 +61,19 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
     if (_liveRoomController.roomId == 0) {
       _liveRoomController.roomId = int.tryParse(roomId) ?? 0;
     }
+
+    final liveList = argMap?['liveList'] as List<LiveItemModel>?;
+    final initialIndex = argMap?['initialIndex'] as int? ?? 0;
+    final liveItem = argMap?['liveItem'] as LiveItemModel?;
+
+    _playlistManager = LiveRoomPlaylistManager(initialIndex: initialIndex);
+    _playlistManager.initDualEntry(
+      initialList: liveList,
+      initialIndex: initialIndex,
+      initialRoomId: _liveRoomController.roomId,
+      initialItem: liveItem,
+    );
+
     videoSourceInit();
     _futureBuilderFuture = _liveRoomController.queryLiveInfo();
     plPlayerController?.autoEnterFullScreen();
@@ -72,6 +87,7 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
 
   @override
   void dispose() {
+    _playlistManager.dispose();
     Get.delete<LiveRoomController>(tag: _tag);
     if (!ScreenUtils.isTabletDevice()) {
       unawaited(verticalScreen());
@@ -89,7 +105,10 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
             if (_liveRoomController.hasStream.value &&
                 plPlayerController != null) {
               return PLVideoPlayer(
+                key: const ValueKey('single_active_live_player'),
                 controller: plPlayerController!,
+                enableVerticalGesture:
+                    plPlayerController?.isFullScreen.value == true,
                 bottomControl: BottomControl(
                   controller: plPlayerController,
                   liveRoomCtr: _liveRoomController,
@@ -141,201 +160,33 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
       },
     );
 
-    final Widget childWhenDisabled = Scaffold(
-      primary: true,
-      resizeToAvoidBottomInset: true,
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Opacity(
-              opacity: 0.8,
-              child: Image.asset(
-                'assets/images/live/default_bg.webp',
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          Obx(() {
-            final appBg =
-                _liveRoomController.roomInfoH5.value.roomInfo?.appBackground;
-            if (appBg != null && appBg.isNotEmpty) {
-              return Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Opacity(
-                  opacity: 0.8,
-                  child: NetworkImgLayer(
-                    width: Get.width,
-                    height: Get.height,
-                    type: 'bg',
-                    src: appBg,
-                  ),
-                ),
+    final Widget childWhenDisabled = NotificationListener<ScrollNotification>(
+      onNotification: _onScrollNotification,
+      child: Obx(() {
+        final isLandscape =
+            MediaQuery.of(context).orientation == Orientation.landscape;
+        final isFullScreen = plPlayerController?.isFullScreen.value == true;
+        final physics = (isFullScreen || isLandscape)
+            ? const NeverScrollableScrollPhysics()
+            : const PageScrollPhysics();
+
+        return PageView.builder(
+          controller: _playlistManager.pageController,
+          scrollDirection: Axis.vertical,
+          physics: physics,
+          itemCount: _playlistManager.playlist.length,
+          itemBuilder: (context, index) {
+            return Obx(() {
+              if (index == _playlistManager.currentIndex.value) {
+                return _buildActiveRoomView(context, videoPlayerPanel);
+              }
+              return LiveRoomPreviewCard(
+                item: _playlistManager.playlist[index],
               );
-            }
-            return const SizedBox();
-          }),
-          Column(
-            children: [
-              AppBar(
-                centerTitle: false,
-                titleSpacing: 0,
-                backgroundColor: Colors.transparent,
-                foregroundColor: Colors.white,
-                toolbarHeight:
-                    MediaQuery.of(context).orientation == Orientation.portrait
-                    ? 56
-                    : 0,
-                title: FutureBuilder<ApiResult<RoomInfoH5Model>>(
-                  future: _futureBuilder,
-                  builder: (context, snapshot) {
-                    if (snapshot.data == null) {
-                      return const SizedBox();
-                    }
-                    if (snapshot.data is ApiSuccess<RoomInfoH5Model>) {
-                      return Obx(() {
-                        final uname =
-                            _liveRoomController
-                                .roomInfoH5
-                                .value
-                                .anchorInfo
-                                ?.baseInfo
-                                ?.uname ??
-                            '';
-                        final face =
-                            _liveRoomController
-                                .roomInfoH5
-                                .value
-                                .anchorInfo
-                                ?.baseInfo
-                                ?.face ??
-                            '';
-                        final watchedText = _liveRoomController
-                            .roomInfoH5
-                            .value
-                            .watchedShow?['text_large'];
-                        final mid =
-                            _liveRoomController
-                                .roomInfoH5
-                                .value
-                                .roomInfo
-                                ?.uid ??
-                            0;
-                        return Row(
-                          children: [
-                            InkWell(
-                              borderRadius: BorderRadius.circular(20),
-                              onTap: () => LiveNavHelper.navigateToAnchorMember(
-                                context,
-                                mid,
-                                face,
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  ClipOval(
-                                    child: NetworkImgLayer(
-                                      width: 34,
-                                      height: 34,
-                                      type: 'avatar',
-                                      src: face,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        uname.isNotEmpty ? uname : '直播间',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 1),
-                                      if (watchedText != null)
-                                        Text(
-                                          watchedText.toString(),
-                                          style: const TextStyle(fontSize: 12),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Spacer(),
-                            // 刷新
-                            IconButton(
-                              tooltip: '刷新',
-                              onPressed: () {
-                                setState(() {
-                                  _futureBuilderFuture = _liveRoomController
-                                      .queryLiveInfo();
-                                });
-                              },
-                              icon: const Icon(Icons.refresh),
-                            ),
-                            // 内置浏览器打开
-                            IconButton(
-                              tooltip: '内置浏览器打开',
-                              onPressed: () {
-                                Get.offNamed(
-                                  '/webview',
-                                  parameters: {
-                                    'url':
-                                        'https://live.bilibili.com/h5/${_liveRoomController.roomId}',
-                                    'type': 'liveRoom',
-                                    'pageTitle': uname.isNotEmpty
-                                        ? uname
-                                        : '直播间',
-                                  },
-                                );
-                              },
-                              icon: const Icon(Icons.open_in_browser),
-                            ),
-                          ],
-                        );
-                      });
-                    } else {
-                      return const SizedBox();
-                    }
-                  },
-                ),
-              ),
-              PopScope(
-                canPop: plPlayerController?.isFullScreen.value != true,
-                onPopInvokedWithResult: (bool didPop, Object? result) {
-                  if (plPlayerController?.isFullScreen.value == true) {
-                    plPlayerController!.triggerFullScreen(status: false);
-                  }
-                  if (MediaQuery.of(context).orientation ==
-                          Orientation.landscape &&
-                      !ScreenUtils.isTabletDevice()) {
-                    unawaited(verticalScreenForTwoSeconds());
-                  }
-                },
-                child: SizedBox(
-                  width: Get.size.width,
-                  height:
-                      MediaQuery.of(context).orientation ==
-                          Orientation.landscape
-                      ? Get.size.height
-                      : Get.size.width * 9 / 16,
-                  child: videoPlayerPanel,
-                ),
-              ),
-              if (MediaQuery.of(context).orientation != Orientation.landscape)
-                Expanded(child: _buildPortraitContent(context)),
-            ],
-          ),
-        ],
-      ),
+            });
+          },
+        );
+      }),
     );
 
     if (!Platform.isAndroid) {
@@ -355,6 +206,218 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
     );
   }
 
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification is ScrollEndNotification) {
+      final page = _playlistManager.pageController.page;
+      if (page != null && (page - page.round()).abs() < 0.001) {
+        final targetIndex = page.round();
+        if (targetIndex != _playlistManager.currentIndex.value &&
+            targetIndex >= 0 &&
+            targetIndex < _playlistManager.playlist.length) {
+          _commitRoomSwitch(targetIndex);
+        }
+      }
+    }
+    return false;
+  }
+
+  void _commitRoomSwitch(int targetIndex) {
+    _playlistManager.currentIndex.value = targetIndex;
+    final targetItem = _playlistManager.playlist[targetIndex];
+    final targetRoomId = targetItem.roomId ?? 0;
+    if (targetRoomId > 0) {
+      setState(() {
+        _futureBuilderFuture = _liveRoomController.switchRoom(
+          targetRoomId,
+          item: targetItem,
+        );
+        _futureBuilder = _liveRoomController.latestH5Future;
+      });
+      unawaited(_playlistManager.checkAndPreloadMore(targetIndex));
+    }
+  }
+
+  Widget _buildActiveRoomView(BuildContext context, Widget videoPlayerPanel) {
+    return Scaffold(
+      primary: true,
+      resizeToAvoidBottomInset: true,
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          _buildAppBackground(),
+          Column(
+            children: [
+              _buildTopAppBar(context),
+              _buildPlayerContainer(context, videoPlayerPanel),
+              if (MediaQuery.of(context).orientation != Orientation.landscape)
+                Expanded(child: _buildPortraitContent(context)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppBackground() {
+    return Stack(
+      children: [
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: Opacity(
+            opacity: 0.8,
+            child: Image.asset(
+              'assets/images/live/default_bg.webp',
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
+        Obx(() {
+          final appBg =
+              _liveRoomController.roomInfoH5.value.roomInfo?.appBackground;
+          if (appBg != null && appBg.isNotEmpty) {
+            return Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Opacity(
+                opacity: 0.8,
+                child: NetworkImgLayer(
+                  width: Get.width,
+                  height: Get.height,
+                  type: 'bg',
+                  src: appBg,
+                ),
+              ),
+            );
+          }
+          return const SizedBox();
+        }),
+      ],
+    );
+  }
+
+  Widget _buildTopAppBar(BuildContext context) {
+    final isPortrait =
+        MediaQuery.of(context).orientation == Orientation.portrait;
+    return AppBar(
+      centerTitle: false,
+      titleSpacing: 0,
+      backgroundColor: Colors.transparent,
+      foregroundColor: Colors.white,
+      toolbarHeight: isPortrait ? 56 : 0,
+      title: FutureBuilder<ApiResult<RoomInfoH5Model>>(
+        future: _futureBuilder,
+        builder: (context, snapshot) {
+          if (snapshot.data is ApiSuccess<RoomInfoH5Model>) {
+            return _buildAnchorInfoRow(context);
+          }
+          return const SizedBox();
+        },
+      ),
+    );
+  }
+
+  Widget _buildAnchorInfoRow(BuildContext context) {
+    return Obx(() {
+      final h5 = _liveRoomController.roomInfoH5.value;
+      final uname = h5.anchorInfo?.baseInfo?.uname ?? '';
+      final face = h5.anchorInfo?.baseInfo?.face ?? '';
+      final watchedText = h5.watchedShow?['text_large'];
+      final mid = h5.roomInfo?.uid ?? 0;
+
+      return Row(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () =>
+                LiveNavHelper.navigateToAnchorMember(context, mid, face),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ClipOval(
+                  child: NetworkImgLayer(
+                    width: 34,
+                    height: 34,
+                    type: 'avatar',
+                    src: face,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      uname.isNotEmpty ? uname : '直播间',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    if (watchedText != null)
+                      Text(
+                        watchedText.toString(),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            tooltip: '刷新',
+            onPressed: () {
+              setState(() {
+                _futureBuilderFuture = _liveRoomController.queryLiveInfo();
+              });
+            },
+            icon: const Icon(Icons.refresh),
+          ),
+          IconButton(
+            tooltip: '内置浏览器打开',
+            onPressed: () {
+              Get.offNamed(
+                '/webview',
+                parameters: {
+                  'url':
+                      'https://live.bilibili.com/h5/${_liveRoomController.roomId}',
+                  'type': 'liveRoom',
+                  'pageTitle': uname.isNotEmpty ? uname : '直播间',
+                },
+              );
+            },
+            icon: const Icon(Icons.open_in_browser),
+          ),
+        ],
+      );
+    });
+  }
+
+  Widget _buildPlayerContainer(BuildContext context, Widget videoPlayerPanel) {
+    return PopScope(
+      canPop: plPlayerController?.isFullScreen.value != true,
+      onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (plPlayerController?.isFullScreen.value == true) {
+          plPlayerController!.triggerFullScreen(status: false);
+        }
+        if (MediaQuery.of(context).orientation == Orientation.landscape &&
+            !ScreenUtils.isTabletDevice()) {
+          unawaited(verticalScreenForTwoSeconds());
+        }
+      },
+      child: SizedBox(
+        width: Get.size.width,
+        height: MediaQuery.of(context).orientation == Orientation.landscape
+            ? Get.size.height
+            : Get.size.width * 9 / 16,
+        child: videoPlayerPanel,
+      ),
+    );
+  }
+
   Widget _buildPortraitContent(BuildContext context) {
     return Column(
       children: [
@@ -369,7 +432,10 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
             ),
           ),
         ),
-        LiveInputBar(roomId: _liveRoomController.roomId),
+        LiveInputBar(
+          key: ValueKey('live_input_${_liveRoomController.roomId}'),
+          roomId: _liveRoomController.roomId,
+        ),
       ],
     );
   }

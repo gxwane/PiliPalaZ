@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 extension ImageExtension on num {
-  int cacheSize(BuildContext context) {
+  int? cacheSize(BuildContext context) {
+    if (!isFinite) return null;
     return (this * MediaQuery.of(context).devicePixelRatio).round();
   }
 }
@@ -13,8 +14,11 @@ extension ScrollControllerExt on ScrollController {
     if (offset >= MediaQuery.of(Get.context!).size.height * 5) {
       jumpTo(0);
     } else {
-      animateTo(0,
-          duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
+      animateTo(
+        0,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
     }
   }
 }

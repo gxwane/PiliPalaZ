@@ -6,6 +6,16 @@
 
 ### 新增
 
+- 直播间垂直手势上下滑屏快速切房与无缝切流（Phase 4B）：
+  - 建立双模式进入策略（`LiveRoomPlaylistManager`）：推荐流卡片直入携带全量列表上下文与索引，单房/深度链接直入自动后台异步增补推荐候选池；
+  - 创立“单活动播放器槽位架构（Single Active Player Slot）”：严格遵守全局单例播放器约束，仅对激活页挂载底层播放器，非激活项使用轻量预览卡片（`LiveRoomPreviewCard`）与自适应骨架屏，零原生 Texture 冲突与白屏；
+  - 实施“静止停稳提交策略（Commit-on-Settle）”：监听垂直滚动完全停稳并判定 `(page - round).abs() < 0.001` 后才触发切房，手势中途回弹 100% 保持原流不断流；
+  - 建立切房状态机（`LiveRoomController.switchRoom`）：引入 Dio `CancelToken` 与自增代际序列号（`_switchGeneration`），主动掐断在途网络请求，彻底消除并发乱序回包；
+  - 完善手势分层与冲突隔离：横屏与全屏模式下锁闭 `PageView` 滑动手势（`NeverScrollableScrollPhysics`），确保音量/亮度调节无冲突；竖屏下播放器让渡垂直手势；
+  - 完善长短房间号解析与 WebSocket 握手幂等守卫，彻底杜绝重复连接风暴；
+  - 切房时同步清空弹幕、未读消息与流元数据（`_resetConnectionsAndState`），杜绝状态残留与内存泄漏；
+  - 新增 `test/live/live_room_paging_test.dart` 自动化测试套件（9 项端到端及单元测试覆盖）。
+
 - 直播间互动聊天室与信息架构重构（Phase 4A · 标杆模式）：
   - 彻底废除低效的三 Tab 布局，将下半屏完整提升为全高沉浸式公屏互动流，竖屏视高增加 25%；
   - 引入播放器正下方常驻紧凑主播栏（`LiveAnchorStrip`），聚合主播头像、昵称、分区标签、一键关注与公告入口；

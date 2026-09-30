@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:canvas_danmaku/canvas_danmaku.dart';
@@ -7,6 +8,7 @@ import 'package:pilipalaz/http/constants.dart';
 import 'package:pilipalaz/http/live.dart';
 import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/http/video.dart';
+import 'package:pilipalaz/models/live/item.dart';
 import 'package:pilipalaz/models/live/room_info.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import '../../http/login.dart';
@@ -24,6 +26,8 @@ class LiveRoomController extends GetxController {
   dynamic liveItem;
   String heroTag = '';
   double volume = 0.0;
+  CancelToken? _switchCancelToken;
+  int _switchGeneration = 0;
   // 静音状态
   final RxBool volumeOff = false.obs;
   final RxBool isLive = false.obs;
@@ -52,6 +56,7 @@ class LiveRoomController extends GetxController {
   );
   final PlayerResourceOwner playerResourceOwner = PlayerResourceOwner();
   final Rx<RoomInfoH5Model> roomInfoH5 = RoomInfoH5Model().obs;
+  Future<ApiResult<RoomInfoH5Model>>? latestH5Future;
   final RxBool isFollowed = false.obs;
   final RxBool isFollowUpdating = false.obs;
 
@@ -220,6 +225,7 @@ class LiveRoomController extends GetxController {
     int? qn,
     int? lineIndex,
     String? codec,
+    CancelToken? cancelToken,
   }) async {
     if (isDisposed) {
       return const ApiFailure(
@@ -230,7 +236,11 @@ class LiveRoomController extends GetxController {
     final int preferredQn =
         qn ??
         GStorage.setting.get(SettingBoxKey.defaultLiveQa, defaultValue: 10000);
-    final res = await LiveHttp.liveRoomInfo(roomId: roomId, qn: preferredQn);
+    final res = await LiveHttp.liveRoomInfo(
+      roomId: roomId,
+      qn: preferredQn,
+      cancelToken: cancelToken,
+    );
     if (isDisposed) return res;
 
     if (res case ApiSuccess<RoomInfoModel>(:final data)) {
@@ -408,14 +418,27 @@ class LiveRoomController extends GetxController {
     }
   }
 
-  Future<ApiResult<RoomInfoH5Model>> queryLiveInfoH5() async {
+  Future<ApiResult<RoomInfoH5Model>> queryLiveInfoH5({
+    CancelToken? cancelToken,
+  }) {
+    final future = _fetchLiveInfoH5(cancelToken: cancelToken);
+    latestH5Future = future;
+    return future;
+  }
+
+  Future<ApiResult<RoomInfoH5Model>> _fetchLiveInfoH5({
+    CancelToken? cancelToken,
+  }) async {
     if (isDisposed) {
       return const ApiFailure(
         kind: ApiFailureKind.cancelled,
         message: 'Controller disposed',
       );
     }
-    final res = await LiveHttp.liveRoomInfoH5(roomId: roomId);
+    final res = await LiveHttp.liveRoomInfoH5(
+      roomId: roomId,
+      cancelToken: cancelToken,
+    );
     if (isDisposed) return res;
     if (res case ApiSuccess<RoomInfoH5Model>(:final data)) {
       roomInfoH5.value = data;
@@ -470,6 +493,7 @@ class LiveRoomController extends GetxController {
 
   Future<void> initDanmakuClient(int targetRoomId) async {
     if (isDisposed || targetRoomId <= 0) return;
+    if (danmakuClient != null && danmakuClient!.roomId == targetRoomId) return;
     debugPrint('[LiveDanmaku] initDanmakuClient for roomId=$targetRoomId');
 
     _danmakuSub?.cancel();
@@ -527,9 +551,74 @@ class LiveRoomController extends GetxController {
     }
   }
 
+  Future<ApiResult<RoomInfoModel>> switchRoom(
+    int newRoomId, {
+    LiveItemModel? item,
+  }) async {
+    if (newRoomId <= 0 || isDisposed) {
+      return const ApiFailure(
+        kind: ApiFailureKind.cancelled,
+        message: 'Invalid room id or disposed',
+      );
+    }
+    _switchCancelToken?.cancel('room_switched');
+    _switchCancelToken = CancelToken();
+    final currentGen = ++_switchGeneration;
+
+    await plPlayerController.pause(notify: false);
+    hasStream.value = false;
+    _resetConnectionsAndState();
+
+    roomId = newRoomId;
+    if (item != null) liveItem = item;
+    if (item?.cover != null && item!.cover!.isNotEmpty) cover = item.cover!;
+
+    final playFuture = queryLiveInfo(cancelToken: _switchCancelToken);
+    final h5Future = queryLiveInfoH5(cancelToken: _switchCancelToken);
+    final results = await Future.wait([playFuture, h5Future]);
+
+    if (currentGen != _switchGeneration || isDisposed) {
+      return const ApiFailure(
+        kind: ApiFailureKind.cancelled,
+        message: 'Switched away',
+      );
+    }
+
+    final playRes = results[0] as ApiResult<RoomInfoModel>;
+    final h5Res = results[1] as ApiResult<RoomInfoH5Model>;
+    final resolvedRoomId = (h5Res is ApiSuccess<RoomInfoH5Model>)
+        ? (h5Res.data.roomInfo?.roomId ?? newRoomId)
+        : newRoomId;
+    if (danmakuClient == null && playRes is ApiSuccess) {
+      unawaited(initDanmakuClient(resolvedRoomId));
+    }
+    return playRes;
+  }
+
+  void _resetConnectionsAndState() {
+    _danmakuSub?.cancel();
+    _danmakuSub = null;
+    _popularitySub?.cancel();
+    _popularitySub = null;
+    danmakuClient?.dispose();
+    danmakuClient = null;
+    popularity.value = 0;
+    chatController.reset();
+    roomInfoH5.value = RoomInfoH5Model();
+    isFollowed.value = false;
+    currentRoomInfo = null;
+    _currentCodecItem = null;
+    availableQualities.clear();
+    availableCodecs.clear();
+    availableLines.clear();
+    currentQnDesc.value = '';
+  }
+
   @override
   void onClose() {
     _isDisposed = true;
+    _switchCancelToken?.cancel('controller_closed');
+    _switchCancelToken = null;
     chatController.onClose();
     _danmakuSub?.cancel();
     _danmakuSub = null;

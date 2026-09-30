@@ -156,7 +156,11 @@ class _LivePageState extends State<LivePage>
       ),
       delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
         return liveList!.isNotEmpty
-            ? LiveCardV(liveItem: liveList[index])
+            ? LiveCardV(
+                liveItem: liveList[index],
+                liveList: liveList is List<LiveItemModel> ? liveList : null,
+                index: index,
+              )
             : const VideoCardVSkeleton();
       }, childCount: liveList!.isNotEmpty ? liveList!.length : 10),
     );

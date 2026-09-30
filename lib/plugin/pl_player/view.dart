@@ -53,6 +53,7 @@ class PLVideoPlayer extends StatefulWidget {
     this.bottomControl,
     this.danmuWidget,
     this.bottomList,
+    this.enableVerticalGesture = true,
     super.key,
   });
 
@@ -63,6 +64,7 @@ class PLVideoPlayer extends StatefulWidget {
   final PreferredSizeWidget? bottomControl;
   final Widget? danmuWidget;
   final List<BottomControlType>? bottomList;
+  final bool enableVerticalGesture;
 
   @override
   State<PLVideoPlayer> createState() => _PLVideoPlayerState();
@@ -1009,6 +1011,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                   _gestureType = 'horizontal';
                 } else if (cumulativeDelta.dy.abs() >
                     3 * cumulativeDelta.dx.abs()) {
+                  if (!widget.enableVerticalGesture) return;
                   // _gestureType = 'vertical';
 
                   final double totalWidth = renderBox.size.width;
