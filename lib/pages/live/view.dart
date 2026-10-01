@@ -17,6 +17,7 @@ import 'controller.dart';
 import 'widgets/live_area_header.dart';
 import 'widgets/live_follow_bar.dart';
 import 'widgets/live_item.dart';
+import 'widgets/live_sort_bar.dart';
 
 class LivePage extends StatefulWidget {
   const LivePage({super.key});
@@ -103,6 +104,9 @@ class _LivePageState extends State<LivePage>
             SliverToBoxAdapter(
               child: LiveAreaHeader(liveController: _liveController),
             ),
+            SliverToBoxAdapter(
+              child: LiveSortBar(liveController: _liveController),
+            ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(
                 0,
@@ -168,6 +172,7 @@ class _LivePageState extends State<LivePage>
                 liveList: liveList,
                 index: index,
                 parentAreaId: ctr.selectedAreaId.value,
+                sortType: ctr.selectedSortType.value,
               )
             : const VideoCardVSkeleton();
       }, childCount: liveList.isNotEmpty ? liveList.length : 10),

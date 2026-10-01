@@ -212,6 +212,7 @@ class LiveHttp {
     int? areaId,
     int? page,
     int? pageSize,
+    String? sortType,
     CancelToken? cancelToken,
   }) {
     return HttpRuntime.instance.client.getJson<List<LiveItemModel>>(
@@ -221,6 +222,7 @@ class LiveHttp {
       queryParameters: <String, dynamic>{
         'parent_area_id': parentAreaId,
         if (areaId != null && areaId > 0) 'area_id': areaId,
+        if (sortType != null && sortType.isNotEmpty) 'sort_type': sortType,
         'page': page ?? 1,
         'page_size': pageSize ?? 30,
         'platform': 'web',

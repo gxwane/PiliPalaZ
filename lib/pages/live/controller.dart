@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/http/live.dart';
@@ -25,7 +27,21 @@ class LiveController extends GetxController {
 
   final RxList<LiveAreaItemModel> areaList = <LiveAreaItemModel>[].obs;
   final RxInt selectedAreaId = 0.obs;
+  final RxString selectedSortType = 'online'.obs;
   final RxBool isAreaSwitching = false.obs;
+
+  @visibleForTesting
+  void Function(String msg)? toastHandler;
+
+  void _showToast(String msg) {
+    if (toastHandler != null) {
+      toastHandler!(msg);
+      return;
+    }
+    try {
+      SmartDialog.showToast(msg);
+    } catch (_) {}
+  }
 
   CancelToken? _feedCancelToken;
   CancelToken? _areaCancelToken;
@@ -82,7 +98,27 @@ class LiveController extends GetxController {
   Future<void> switchArea(int areaId) async {
     if (selectedAreaId.value == areaId && !isAreaSwitching.value) return;
     selectedAreaId.value = areaId;
+    selectedSortType.value = 'online';
     _feedCancelToken?.cancel('area_switched');
+    _feedCancelToken = CancelToken();
+    final gen = ++_feedGeneration;
+
+    _currentPage = 1;
+    isAreaSwitching.value = true;
+    liveList.clear();
+    try {
+      await _fetchFeedByArea(gen, type: 'init');
+    } finally {
+      if (gen == _feedGeneration) {
+        isAreaSwitching.value = false;
+      }
+    }
+  }
+
+  Future<void> switchSortType(String sortType) async {
+    if (selectedSortType.value == sortType && !isAreaSwitching.value) return;
+    selectedSortType.value = sortType;
+    _feedCancelToken?.cancel('sort_type_switched');
     _feedCancelToken = CancelToken();
     final gen = ++_feedGeneration;
 
@@ -126,6 +162,7 @@ class LiveController extends GetxController {
         ? await LiveHttp.areaLiveList(
             parentAreaId: areaId,
             page: _currentPage,
+            sortType: selectedSortType.value,
             cancelToken: _feedCancelToken,
           )
         : await LiveHttp.liveList(pn: _currentPage);
@@ -149,7 +186,34 @@ class LiveController extends GetxController {
   }
 
   Future<void> onRefresh() async {
-    await Future.wait([fetchFollowingList(), queryLiveList('init')]);
+    final beforeIds = (selectedAreaId.value > 0)
+        ? liveList.take(30).map((e) => e.roomId).toList(growable: false)
+        : null;
+
+    final results = await Future.wait([
+      fetchFollowingList(),
+      queryLiveList('init'),
+    ]);
+
+    final feedRes = results[1] as ApiResult<List<LiveItemModel>>;
+    if (beforeIds != null && feedRes is ApiSuccess) {
+      _notifyRefreshResult(beforeIds);
+    }
+  }
+
+  void _notifyRefreshResult(List<int?> beforeIds) {
+    if (liveList.isEmpty) return;
+    final afterIds = liveList
+        .take(30)
+        .map((e) => e.roomId)
+        .toList(growable: false);
+    final hasChanged = !listEquals(beforeIds, afterIds);
+
+    if (selectedSortType.value == 'live_time') {
+      _showToast(hasChanged ? '已获取最新开播直播' : '当前暂无新主播开播');
+    } else {
+      _showToast(hasChanged ? '已更新直播排行' : '已是最新直播排行');
+    }
   }
 
   Future<void> onLoad() async {

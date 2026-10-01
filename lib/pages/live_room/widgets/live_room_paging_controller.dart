@@ -17,6 +17,7 @@ class LiveRoomPlaylistManager {
   bool _isFetchingMore = false;
   int _recommendPage = 1;
   int? parentAreaId;
+  String? sortType;
   bool _isDisposed = false;
 
   LiveRoomPlaylistManager({int initialIndex = 0})
@@ -31,8 +32,10 @@ class LiveRoomPlaylistManager {
     int? initialRoomId,
     LiveItemModel? initialItem,
     int? parentAreaId,
+    String? sortType,
   }) {
     this.parentAreaId = parentAreaId;
+    this.sortType = sortType;
     if (initialList != null && initialList.isNotEmpty) {
       playlist.assignAll(initialList);
       currentIndex.value = initialIndex.clamp(0, playlist.length - 1);
@@ -49,7 +52,11 @@ class LiveRoomPlaylistManager {
   Future<void> backfillRecommendations() async {
     if (_isDisposed) return;
     final res = (parentAreaId != null && parentAreaId! > 0)
-        ? await LiveHttp.areaLiveList(parentAreaId: parentAreaId!, page: 1)
+        ? await LiveHttp.areaLiveList(
+            parentAreaId: parentAreaId!,
+            page: 1,
+            sortType: sortType,
+          )
         : await LiveHttp.liveList(pn: 1);
     if (_isDisposed) return;
 
@@ -71,6 +78,7 @@ class LiveRoomPlaylistManager {
           ? await LiveHttp.areaLiveList(
               parentAreaId: parentAreaId!,
               page: nextPage,
+              sortType: sortType,
             )
           : await LiveHttp.liveList(pn: nextPage);
       if (_isDisposed) return;
@@ -99,6 +107,8 @@ class LiveRoomPlaylistManager {
 
   void dispose() {
     _isDisposed = true;
+    sortType = null;
+    parentAreaId = null;
     pageController.dispose();
     playlist.clear();
   }

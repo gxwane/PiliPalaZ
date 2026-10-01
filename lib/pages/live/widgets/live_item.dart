@@ -14,6 +14,7 @@ class LiveCardV extends StatelessWidget {
   final List<LiveItemModel>? liveList;
   final int? index;
   final int? parentAreaId;
+  final String? sortType;
   final Function()? longPress;
   final Function()? longPressEnd;
 
@@ -23,6 +24,7 @@ class LiveCardV extends StatelessWidget {
     this.liveList,
     this.index,
     this.parentAreaId,
+    this.sortType,
     this.longPress,
     this.longPressEnd,
   });
@@ -49,6 +51,7 @@ class LiveCardV extends StatelessWidget {
               'liveList': liveList,
               'initialIndex': index ?? 0,
               'parentAreaId': parentAreaId,
+              'sortType': sortType,
             },
           );
         },

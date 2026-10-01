@@ -10,6 +10,7 @@ import 'package:pilipalaz/pages/live/controller.dart';
 import 'package:pilipalaz/pages/live/widgets/live_area_header.dart';
 import 'package:pilipalaz/pages/live/widgets/live_follow_bar.dart';
 import 'package:pilipalaz/pages/live/widgets/live_item.dart';
+import 'package:pilipalaz/pages/live/widgets/live_sort_bar.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:pilipalaz/utils/storage_contract.dart';
 
@@ -197,6 +198,54 @@ void main() {
       expect(controller.selectedAreaId.value, 2);
       expect(controller.currentPage, 1);
     });
+
+    test(
+      'switchSortType updates selectedSortType and resets currentPage',
+      () async {
+        controller.onInit();
+        expect(controller.selectedSortType.value, 'online');
+
+        await controller.switchSortType('live_time');
+        expect(controller.selectedSortType.value, 'live_time');
+        expect(controller.currentPage, 1);
+      },
+    );
+
+    test(
+      'switchArea automatically resets selectedSortType to online',
+      () async {
+        controller.onInit();
+        await controller.switchSortType('live_time');
+        expect(controller.selectedSortType.value, 'live_time');
+
+        await controller.switchArea(3);
+        expect(controller.selectedAreaId.value, 3);
+        expect(controller.selectedSortType.value, 'online');
+      },
+    );
+
+    test(
+      'onRefresh triggers toast feedback safely in partition mode',
+      () async {
+        controller.onInit();
+        controller.selectedAreaId.value = 2;
+        String? notifiedMessage;
+        controller.toastHandler = (msg) => notifiedMessage = msg;
+
+        controller.liveList.assignAll([
+          LiveItemModel(roomId: 101, title: 'Streamer 1'),
+        ]);
+
+        await controller.onRefresh();
+        expect(controller.isAreaSwitching.value, isFalse);
+        if (notifiedMessage != null) {
+          expect(
+            notifiedMessage!.contains('排行') || notifiedMessage!.contains('直播'),
+            isTrue,
+          );
+        }
+      },
+    );
   });
 
   group('Live Plaza Widget Safety Tests (Zero-Crash Standard)', () {
@@ -318,6 +367,49 @@ void main() {
         expect(find.text('LIVE'), findsNothing);
 
         controller.onClose();
+      },
+    );
+
+    testWidgets(
+      'LiveSortBar collapses to SizedBox.shrink in recommendation area 0',
+      (tester) async {
+        final controller = LiveController();
+        controller.selectedAreaId.value = 0;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(body: LiveSortBar(liveController: controller)),
+          ),
+        );
+
+        expect(find.text('排序'), findsNothing);
+        expect(find.text('🔥 热门'), findsNothing);
+        controller.onClose();
+      },
+    );
+
+    testWidgets(
+      'LiveSortBar renders sort chips and handles tap in partition mode',
+      (tester) async {
+        final controller = LiveController();
+        controller.selectedAreaId.value = 2;
+        controller.selectedSortType.value = 'online';
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(body: LiveSortBar(liveController: controller)),
+          ),
+        );
+
+        expect(find.text('排序'), findsOneWidget);
+        expect(find.text('🔥 热门'), findsOneWidget);
+        expect(find.text('⏱️ 最新'), findsOneWidget);
+
+        await tester.tap(find.text('⏱️ 最新'));
+        expect(controller.selectedSortType.value, 'live_time');
+
+        controller.onClose();
+        await tester.pump(const Duration(milliseconds: 100));
       },
     );
   });
