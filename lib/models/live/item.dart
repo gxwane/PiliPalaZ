@@ -1,3 +1,5 @@
+import '../search/result.dart';
+
 class LiveItemModel {
   LiveItemModel({
     this.roomId,
@@ -105,5 +107,101 @@ class LiveItemModel {
     headBox = json['head_box'];
     headBoxType = json['head_box_type'];
     watchedShow = json['watched_show'];
+  }
+
+  /// 多态反序列化防御层：安全解构 LiveItemModel、SearchLiveItemModel、Map 及任意动态种子
+  static LiveItemModel? fromDynamic(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is LiveItemModel) return raw;
+    if (raw is SearchLiveItemModel) {
+      String? parsedTitle;
+      if (raw.title != null) {
+        parsedTitle = raw.title!
+            .map((e) => e is Map ? (e['text']?.toString() ?? '') : e.toString())
+            .join();
+      }
+      return LiveItemModel(
+        roomId: raw.roomid,
+        uid: raw.uid,
+        title: parsedTitle,
+        uname: raw.uname,
+        cover: raw.cover ?? raw.userCover ?? raw.pic,
+        pic: raw.cover ?? raw.userCover ?? raw.pic,
+        face: raw.face ?? raw.uface,
+        areaName: raw.cateName,
+        online: raw.online,
+        liveStatus: 1,
+      );
+    }
+    if (raw is Map<String, dynamic>) {
+      try {
+        return LiveItemModel.fromJson(raw);
+      } catch (_) {}
+    }
+    if (raw is Map) {
+      try {
+        return LiveItemModel.fromJson(Map<String, dynamic>.from(raw));
+      } catch (_) {}
+    }
+    try {
+      final dyn = raw as dynamic;
+      dynamic getProp(dynamic Function() getter) {
+        try {
+          return getter();
+        } catch (_) {
+          return null;
+        }
+      }
+
+      final rawTitle = getProp(() => dyn.title);
+      String? parsedTitle;
+      if (rawTitle is String) {
+        parsedTitle = rawTitle;
+      } else if (rawTitle is List) {
+        parsedTitle = rawTitle
+            .map((e) => e is Map ? (e['text']?.toString() ?? '') : e.toString())
+            .join();
+      }
+      final rawRoomId = getProp(() => dyn.roomId) ?? getProp(() => dyn.roomid);
+      final parsedRoomId = int.tryParse(rawRoomId?.toString() ?? '');
+      final rawUid = getProp(() => dyn.uid) ?? getProp(() => dyn.mid);
+      final parsedUid = int.tryParse(rawUid?.toString() ?? '');
+      final parsedCover =
+          (getProp(() => dyn.cover) ??
+                  getProp(() => dyn.userCover) ??
+                  getProp(() => dyn.pic))
+              ?.toString();
+      final parsedFace =
+          (getProp(() => dyn.face) ??
+                  getProp(() => dyn.uface) ??
+                  getProp(() => dyn.upic))
+              ?.toString();
+      final parsedUname = (getProp(() => dyn.uname) ?? getProp(() => dyn.name))
+          ?.toString();
+      final parsedAreaName =
+          (getProp(() => dyn.cateName) ?? getProp(() => dyn.areaName))
+              ?.toString();
+      final rawOnline = getProp(() => dyn.online);
+      final parsedOnline = int.tryParse(rawOnline?.toString() ?? '');
+      final rawLiveStatus =
+          getProp(() => dyn.liveStatus) ?? getProp(() => dyn.isLive);
+      final parsedLiveStatus = int.tryParse(rawLiveStatus?.toString() ?? '');
+
+      if (parsedRoomId != null && parsedRoomId > 0) {
+        return LiveItemModel(
+          roomId: parsedRoomId,
+          uid: parsedUid,
+          title: parsedTitle,
+          uname: parsedUname,
+          cover: parsedCover,
+          pic: parsedCover,
+          face: parsedFace,
+          areaName: parsedAreaName,
+          online: parsedOnline,
+          liveStatus: parsedLiveStatus ?? 1,
+        );
+      }
+    } catch (_) {}
+    return null;
   }
 }

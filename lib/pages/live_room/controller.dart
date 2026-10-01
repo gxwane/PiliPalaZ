@@ -72,7 +72,9 @@ class LiveRoomController extends GetxController {
     }
     if (Get.arguments != null) {
       if (Get.arguments is Map) {
-        liveItem = Get.arguments['liveItem'];
+        liveItem =
+            LiveItemModel.fromDynamic(Get.arguments['liveItem']) ??
+            Get.arguments['liveItem'];
         heroTag = Get.arguments['heroTag']?.toString() ?? '';
         if (roomId == 0) {
           final argRoomId = Get.arguments['roomId'] ?? Get.arguments['roomid'];

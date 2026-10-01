@@ -62,9 +62,15 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
       _liveRoomController.roomId = int.tryParse(roomId) ?? 0;
     }
 
-    final liveList = argMap?['liveList'] as List<LiveItemModel>?;
+    final rawList = argMap?['liveList'];
+    final List<LiveItemModel>? liveList = (rawList is List)
+        ? rawList
+              .map(LiveItemModel.fromDynamic)
+              .whereType<LiveItemModel>()
+              .toList()
+        : null;
     final initialIndex = argMap?['initialIndex'] as int? ?? 0;
-    final liveItem = argMap?['liveItem'] as LiveItemModel?;
+    final liveItem = LiveItemModel.fromDynamic(argMap?['liveItem']);
     final parentAreaId = argMap?['parentAreaId'] as int?;
     final sortType = argMap?['sortType'] as String?;
 

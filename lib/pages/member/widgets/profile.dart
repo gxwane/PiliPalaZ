@@ -16,67 +16,116 @@ class ProfilePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    MemberInfoModel memberInfo = ctr.memberInfo.value;
+    final MemberInfoModel memberInfo = ctr.memberInfo.value;
+    final card = memberInfo.card;
+    final liveRoom = memberInfo.liveRoom;
+    final bool isLive =
+        !loadingStatus &&
+        liveRoom != null &&
+        liveRoom.liveStatus == 1 &&
+        (liveRoom.roomId ?? 0) > 0;
+
+    void goToLiveRoom() {
+      if (!isLive) return;
+      final liveItem = LiveItemModel.fromJson({
+        'title': liveRoom.title,
+        'uname': card?.name ?? '',
+        'face': card?.face ?? ctr.face.value,
+        'roomid': liveRoom.roomId,
+        'cover': liveRoom.cover,
+        'live_status': liveRoom.liveStatus,
+      });
+      Get.toNamed(
+        '/liveRoom?roomid=${liveRoom.roomId}',
+        arguments: {'liveItem': liveItem, 'heroTag': ctr.heroTag},
+      );
+    }
+
     return Builder(
       builder: ((context) {
         return Row(
           children: [
             Hero(
-              tag: ctr.heroTag!,
-              child: Stack(
-                children: [
-                  NetworkImgLayer(
-                    width: 90,
-                    height: 90,
-                    type: 'avatar',
-                    src:
-                        !loadingStatus ? memberInfo.card!.face : ctr.face.value,
-                  ),
-                  if (!loadingStatus &&
-                      memberInfo.liveRoom != null &&
-                      memberInfo.liveRoom!.liveStatus == 1)
-                    Positioned(
-                      bottom: 0,
-                      left: 14,
-                      child: GestureDetector(
-                        onTap: () {
-                          LiveItemModel liveItem = LiveItemModel.fromJson({
-                            'title': memberInfo.liveRoom!.title,
-                            'uname': memberInfo.card!.name,
-                            'face': memberInfo.card!.face,
-                            'roomid': memberInfo.liveRoom!.roomId,
-                          });
-                          Get.toNamed(
-                            '/liveRoom?roomid=${memberInfo.liveRoom!.roomId}',
-                            arguments: {'liveItem': liveItem},
-                          );
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(6, 2, 6, 2),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            borderRadius:
-                                const BorderRadius.all(Radius.circular(10)),
+              tag: ctr.heroTag ?? '',
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: isLive ? goToLiveRoom : null,
+                child: SizedBox(
+                  width: 90,
+                  height: 90,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 90,
+                        height: 90,
+                        decoration: isLive
+                            ? BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  width: 2.5,
+                                ),
+                              )
+                            : null,
+                        padding: isLive
+                            ? const EdgeInsets.all(2.5)
+                            : EdgeInsets.zero,
+                        child: ClipOval(
+                          child: NetworkImgLayer(
+                            width: isLive ? 80 : 90,
+                            height: isLive ? 80 : 90,
+                            type: 'avatar',
+                            src: !loadingStatus
+                                ? (card?.face ?? ctr.face.value)
+                                : ctr.face.value,
                           ),
-                          child: Row(children: [
-                            Image.asset(
-                              'assets/images/live.gif',
-                              height: 10,
-                            ),
-                            Text(
-                              ' 直播中',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: Theme.of(context)
-                                      .textTheme
-                                      .labelSmall!
-                                      .fontSize),
-                            )
-                          ]),
                         ),
                       ),
-                    )
-                ],
+                      if (isLive)
+                        Positioned(
+                          bottom: -2,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                                borderRadius: const BorderRadius.all(
+                                  Radius.circular(10),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Image.asset(
+                                    'assets/images/live.gif',
+                                    height: 10,
+                                  ),
+                                  Text(
+                                    ' 直播中',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize:
+                                          Theme.of(
+                                            context,
+                                          ).textTheme.labelSmall?.fontSize ??
+                                          10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -85,88 +134,100 @@ class ProfilePanel extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Padding(
-                    padding:
-                        const EdgeInsets.only(top: 10, left: 10, right: 10),
+                    padding: const EdgeInsets.only(
+                      top: 10,
+                      left: 10,
+                      right: 10,
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.max,
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         InkWell(
                           onTap: () {
-                            Get.toNamed(
-                                '/follow?mid=${memberInfo.card!.mid}&name=${memberInfo.card!.name}');
+                            if (card?.mid != null) {
+                              Get.toNamed(
+                                '/follow?mid=${card!.mid}&name=${card.name ?? ''}',
+                              );
+                            }
                           },
                           child: Column(
                             children: [
                               Text(
                                 !loadingStatus
-                                    ? memberInfo.card!.attention.toString()
+                                    ? (card?.attention?.toString() ?? '-')
                                     : '-',
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.bold),
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               Text(
                                 '关注',
                                 style: TextStyle(
-                                    fontSize: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium!
-                                        .fontSize),
-                              )
+                                  fontSize: Theme.of(
+                                    context,
+                                  ).textTheme.labelMedium!.fontSize,
+                                ),
+                              ),
                             ],
                           ),
                         ),
                         InkWell(
                           onTap: () {
-                            Get.toNamed(
-                                '/fan?mid=${memberInfo.card!.mid}&name=${memberInfo.card!.name}');
+                            if (card?.mid != null) {
+                              Get.toNamed(
+                                '/fan?mid=${card!.mid}&name=${card.name ?? ''}',
+                              );
+                            }
                           },
                           child: Column(
                             children: [
                               Text(
-                                  !loadingStatus
-                                      ? memberInfo.card!.fans != null
-                                          ? Utils.numFormat(
-                                              memberInfo.card!.fans,
-                                            )
+                                !loadingStatus
+                                    ? card?.fans != null
+                                          ? Utils.numFormat(card!.fans)
                                           : '-'
-                                      : '-',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold)),
+                                    : '-',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                               Text(
                                 '粉丝',
                                 style: TextStyle(
-                                    fontSize: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium!
-                                        .fontSize),
-                              )
+                                  fontSize: Theme.of(
+                                    context,
+                                  ).textTheme.labelMedium!.fontSize,
+                                ),
+                              ),
                             ],
                           ),
                         ),
                         InkWell(
-                            onTap: null,
-                            child: Column(
-                              children: [
-                                Text(
-                                    !loadingStatus
-                                        ? memberInfo.card!.likes != null
-                                            ? Utils.numFormat(
-                                                memberInfo.card!.likes)
-                                            : '-'
-                                        : '-',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold)),
-                                Text(
-                                  '获赞',
-                                  style: TextStyle(
-                                      fontSize: Theme.of(context)
-                                          .textTheme
-                                          .labelMedium!
-                                          .fontSize),
-                                )
-                              ],
-                            )),
+                          onTap: null,
+                          child: Column(
+                            children: [
+                              Text(
+                                !loadingStatus
+                                    ? card?.likes != null
+                                          ? Utils.numFormat(card!.likes)
+                                          : '-'
+                                    : '-',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '获赞',
+                                style: TextStyle(
+                                  fontSize: Theme.of(
+                                    context,
+                                  ).textTheme.labelMedium!.fontSize,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -182,17 +243,15 @@ class ProfilePanel extends StatelessWidget {
                                 foregroundColor: ctr.attribute.value == -1
                                     ? Colors.transparent
                                     : ctr.attribute.value != 0
-                                        ? Theme.of(context).colorScheme.outline
-                                        : Theme.of(context)
-                                            .colorScheme
-                                            .onPrimary,
+                                    ? Theme.of(context).colorScheme.outline
+                                    : Theme.of(context).colorScheme.onPrimary,
                                 backgroundColor: ctr.attribute.value != 0
-                                    ? Theme.of(context)
-                                        .colorScheme
-                                        .onInverseSurface
-                                    : Theme.of(context)
-                                        .colorScheme
-                                        .primary, // 设置按钮背景色
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.onInverseSurface
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.primary, // 设置按钮背景色
                               ),
                               child: Obx(() => Text(ctr.attributeText.value)),
                             ),
@@ -206,51 +265,56 @@ class ProfilePanel extends StatelessWidget {
                                 '/whisperDetail',
                                 parameters: {
                                   'talkerId': ctr.mid.toString(),
-                                  'name': memberInfo.card!.name!,
-                                  'face': memberInfo.card!.face!,
+                                  'name': card?.name ?? '',
+                                  'face': card?.face ?? ctr.face.value,
                                   'mid': ctr.mid.toString(),
                                 },
                               );
                             },
                             style: TextButton.styleFrom(
-                              backgroundColor: Theme.of(context)
-                                  .colorScheme
-                                  .onInverseSurface,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.onInverseSurface,
                             ),
                             child: const Text('发消息'),
                           ),
-                        )
+                        ),
                       ],
-                    )
+                    ),
                   ],
                   if (ctr.ownerMid == ctr.mid && ctr.ownerMid != -1) ...[
                     TextButton(
                       onPressed: () {
-                        Get.toNamed('/webview', parameters: {
-                          'url': 'https://account.bilibili.com/account/home',
-                          'pageTitle': '个人中心（建议浏览器打开）',
-                          'type': 'url'
-                        });
+                        Get.toNamed(
+                          '/webview',
+                          parameters: {
+                            'url': 'https://account.bilibili.com/account/home',
+                            'pageTitle': '个人中心（建议浏览器打开）',
+                            'type': 'url',
+                          },
+                        );
                       },
                       style: TextButton.styleFrom(
-                        foregroundColor:
-                            Theme.of(context).colorScheme.onPrimary,
+                        foregroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onPrimary,
                         backgroundColor: Theme.of(context).colorScheme.primary,
                       ),
                       child: const Text(' 个人中心(web) '),
-                    )
+                    ),
                   ],
                   if (ctr.ownerMid == -1) ...[
                     TextButton(
                       onPressed: () {},
                       style: TextButton.styleFrom(
                         foregroundColor: Theme.of(context).colorScheme.outline,
-                        backgroundColor:
-                            Theme.of(context).colorScheme.onInverseSurface,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.onInverseSurface,
                       ),
                       child: const Text(' 未登录 '),
-                    )
-                  ]
+                    ),
+                  ],
                 ],
               ),
             ),

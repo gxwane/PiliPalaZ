@@ -74,6 +74,14 @@
 
 ### 修复
 
+- 搜索直播间点击崩溃与多态模型解析加固：
+  - 在 `LiveItemModel` 引入 `LiveItemModel.fromDynamic(dynamic raw)` 领域解构器，平铺 `SearchLiveItemModel` 分词高亮标题为纯净文本，并映射 `roomid`、`cover`、`face`、`areaName`、`online`，支持 Map 与动态对象安全解构；
+  - 修复 `LiveRoomPage` 与 `LiveRoomController` 中由 `argMap?['liveItem'] as LiveItemModel?` 强制类型断言引发的运行时 `TypeError` 崩溃；
+  - 加固进房列表透传 `liveList` 的流式多态过滤（`rawList.map(LiveItemModel.fromDynamic).whereType<LiveItemModel>().toList()`），杜绝异构模型引发崩溃。
+- 用户空间头像开播交互与反序列化容错加固：
+  - 修复用户个人空间（`MemberPage`）开播状态下点击 90×90 主头像无任何响应的交互缺失，将手势检测层包裹至完整头像卡片，主播开播时显示 2.5px 主题色动效外环，并精确居中底部的“直播中”呼吸徽标，点击直达对应直播间；
+  - 加固 `MemberInfoModel.fromJson` 支持 `live`、`live_room`、`liveRoom` 与 `card.live_room` 多路径服务端字段提取；
+  - 加固 `LiveRoom.fromJson` 兼容 `snake_case`（`live_status`、`room_id`）与 `camelCase` 以及字符串数值安全容错，修复个人资料卡 `sign` 与 `vip` 潜在的空安全隐患。
 - 直播广场关注主播开播状态误判修复：
   - 修复 `LiveItemModel` 缺失 `live_status` 字段导致的开播状态误判，扩展支持 `int`、`String`、`bool` 以及驼峰别名（`liveStatus` / `is_live`）的鲁棒解析，并提供 `isLive`、`isRoundRobin`、`isOffline` 语义 Getter；
   - 修复 `LiveHttp.followingLiveList` 仅凭 `roomId > 0` 恒真判断导致的离线主播被全量错误打上 LIVE 徽标的缺陷，在网络层与控制器层实施“严格开播过滤（Strictly Live Guard）”（`item.isLive`），并补充 `ignoreRecord: 1, hit_ab: true` 请求参数；

@@ -1,36 +1,48 @@
 class MemberInfoModel {
-  MemberInfoModel({
-    this.card,
-    this.liveRoom,
-  });
+  MemberInfoModel({this.card, this.liveRoom});
 
   Card? card;
   LiveRoom? liveRoom;
 
   MemberInfoModel.fromJson(Map<String, dynamic> json) {
-    card = json['card'] != null ? Card.fromJson(json['card']) : null;
-    liveRoom = json['live'] != null ? LiveRoom.fromJson(json['live']) : null;
+    card = json['card'] != null && json['card'] is Map<String, dynamic>
+        ? Card.fromJson(json['card'])
+        : (json['card'] is Map
+              ? Card.fromJson(Map<String, dynamic>.from(json['card']))
+              : null);
+    final rawLive =
+        json['live'] ??
+        json['live_room'] ??
+        json['liveRoom'] ??
+        (json['card'] is Map
+            ? (json['card']['live_room'] ?? json['card']['live'])
+            : null);
+    if (rawLive is Map<String, dynamic>) {
+      liveRoom = LiveRoom.fromJson(rawLive);
+    } else if (rawLive is Map) {
+      liveRoom = LiveRoom.fromJson(Map<String, dynamic>.from(rawLive));
+    }
   }
 }
 
 class Card {
-  Card(
-      {this.mid,
-      this.name,
-      this.face,
-      this.sign,
-      this.level,
-      this.isFollow,
-      this.isFollowed,
-      this.relationStatus,
-      this.officialVerify,
-      this.professionVerify,
-      this.vip,
-      this.fans,
-      this.attention,
-      this.likes
-      // this.liveRoom,
-      });
+  Card({
+    this.mid,
+    this.name,
+    this.face,
+    this.sign,
+    this.level,
+    this.isFollow,
+    this.isFollowed,
+    this.relationStatus,
+    this.officialVerify,
+    this.professionVerify,
+    this.vip,
+    this.fans,
+    this.attention,
+    this.likes,
+    // this.liveRoom,
+  });
 
   String? mid;
   String? name;
@@ -52,7 +64,9 @@ class Card {
     mid = json['mid'];
     name = json['name'];
     face = json['face'];
-    sign = json['sign'] == '' ? '该用户还没有签名' : json['sign'].replaceAll('\n', '');
+    sign = (json['sign'] == null || json['sign'] == '')
+        ? '该用户还没有签名'
+        : json['sign'].toString().replaceAll('\n', '');
     level = json['level_info']?['level'] ?? 0;
 
     isFollow = json['relation']?['is_follow'] == 1;
@@ -60,7 +74,11 @@ class Card {
     relationStatus = json['relation']?['status'] ?? 0;
     officialVerify = json['official_verify'];
     professionVerify = json['profession_verify'];
-    vip = Vip.fromJson(json['vip']);
+    vip = json['vip'] != null && json['vip'] is Map<String, dynamic>
+        ? Vip.fromJson(json['vip'])
+        : (json['vip'] is Map
+              ? Vip.fromJson(Map<String, dynamic>.from(json['vip']))
+              : null);
 
     fans = json['fans'];
     attention = json['attention'];
@@ -71,12 +89,7 @@ class Card {
 }
 
 class Vip {
-  Vip({
-    this.type,
-    this.status,
-    this.dueDate,
-    this.label,
-  });
+  Vip({this.type, this.status, this.dueDate, this.label});
 
   int? type;
   int? status;
@@ -111,12 +124,26 @@ class LiveRoom {
   int? roundStatus;
 
   LiveRoom.fromJson(Map<String, dynamic> json) {
-    roomStatus = json['roomStatus'];
-    liveStatus = json['liveStatus'];
-    url = json['url'];
-    title = json['title'];
-    cover = json['cover'];
-    roomId = json['roomid'];
-    roundStatus = json['roundStatus'];
+    roomStatus =
+        int.tryParse(json['roomStatus']?.toString() ?? '') ??
+        int.tryParse(json['room_status']?.toString() ?? '');
+    final rawLiveStatus =
+        json['liveStatus'] ?? json['live_status'] ?? json['live'];
+    if (rawLiveStatus is bool) {
+      liveStatus = rawLiveStatus ? 1 : 0;
+    } else {
+      liveStatus = int.tryParse(rawLiveStatus?.toString() ?? '');
+    }
+    url = json['url']?.toString();
+    title = json['title']?.toString();
+    cover = (json['cover'] ?? json['user_cover'] ?? json['keyframe'])
+        ?.toString();
+    roomId =
+        int.tryParse(json['roomid']?.toString() ?? '') ??
+        int.tryParse(json['room_id']?.toString() ?? '') ??
+        int.tryParse(json['roomId']?.toString() ?? '');
+    roundStatus =
+        int.tryParse(json['roundStatus']?.toString() ?? '') ??
+        int.tryParse(json['round_status']?.toString() ?? '');
   }
 }
