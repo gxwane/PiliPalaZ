@@ -10,7 +10,6 @@ import 'package:pilipalaz/pages/live/controller.dart';
 import 'package:pilipalaz/pages/live/widgets/live_area_header.dart';
 import 'package:pilipalaz/pages/live/widgets/live_follow_bar.dart';
 import 'package:pilipalaz/pages/live/widgets/live_item.dart';
-import 'package:pilipalaz/pages/live/widgets/live_sort_bar.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:pilipalaz/utils/storage_contract.dart';
 
@@ -371,25 +370,24 @@ void main() {
     );
 
     testWidgets(
-      'LiveSortBar collapses to SizedBox.shrink in recommendation area 0',
+      'LiveAreaHeader collapses sort button in recommendation area 0',
       (tester) async {
         final controller = LiveController();
         controller.selectedAreaId.value = 0;
 
         await tester.pumpWidget(
           MaterialApp(
-            home: Scaffold(body: LiveSortBar(liveController: controller)),
+            home: Scaffold(body: LiveAreaHeader(liveController: controller)),
           ),
         );
 
-        expect(find.text('排序'), findsNothing);
-        expect(find.text('🔥 热门'), findsNothing);
+        expect(find.byKey(const Key('live_sort_button')), findsNothing);
         controller.onClose();
       },
     );
 
     testWidgets(
-      'LiveSortBar renders sort chips and handles tap in partition mode',
+      'LiveAreaHeader renders inline sort button and handles menu selection in partition mode',
       (tester) async {
         final controller = LiveController();
         controller.selectedAreaId.value = 2;
@@ -397,15 +395,23 @@ void main() {
 
         await tester.pumpWidget(
           MaterialApp(
-            home: Scaffold(body: LiveSortBar(liveController: controller)),
+            home: Scaffold(body: LiveAreaHeader(liveController: controller)),
           ),
         );
 
-        expect(find.text('排序'), findsOneWidget);
-        expect(find.text('🔥 热门'), findsOneWidget);
-        expect(find.text('⏱️ 最新'), findsOneWidget);
+        expect(find.byKey(const Key('live_sort_button')), findsOneWidget);
+        expect(find.text('热门'), findsOneWidget);
 
-        await tester.tap(find.text('⏱️ 最新'));
+        // Tap the sort button to open the popup menu
+        await tester.tap(find.byKey(const Key('live_sort_button')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('最新开播'), findsOneWidget);
+
+        // Tap '最新开播'
+        await tester.tap(find.text('最新开播'));
+        await tester.pumpAndSettle();
+
         expect(controller.selectedSortType.value, 'live_time');
 
         controller.onClose();

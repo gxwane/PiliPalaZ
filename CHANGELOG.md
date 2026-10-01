@@ -8,7 +8,11 @@
 
 - 直播分区排序增强与刷新交互心智对齐：
   - 接口层扩展（`LiveHttp.areaLiveList`）：支持 `sort_type`（`online` 热门排行 / `live_time` 最新开播）参数；
-  - 引入紧凑微型排序胶囊栏（`LiveSortBar`）：定高 32px，`RepaintBoundary` 隔绝局部重绘，推荐流零像素隐藏（`SizedBox.shrink()`），大分区展示 `🔥 热门` 与 `⏱️ 最新` 双排序切换；
+  - 直播大分区栏右侧内联微型排序入口（方案 A 架构重构）：
+    - 彻底移除废弃的独立占行组件（`LiveSortBar`），消灭主视口无谓的 `SliverToBoxAdapter`，立省 38px 宝贵垂直空间，大幅提升首屏内容曝光率；
+    - 彻底根除从推荐切入分区时下方卡片流突发下推 38px 的累积位移（CLS）跳跃，大分区栏高度恒定锁定为 38px；
+    - 并轨重构 `LiveAreaHeader`：采用 `Row` 架构将横向滚动大分区与右侧微型排序入口（`PopupMenuButton`）一体化整合，辅以 14px 细分割线；
+    - 彻底肃清系统 Emoji 与说明型冗余标签，对齐 Material 3 纯净文字与矢量下三角/勾选图标规范，支持文字等比缩放防溢出；
   - 控制器状态机与并发防竞态治理（`LiveController`）：
     - 实现 `switchSortType` 原子切换，具备当前状态短路守卫与在途网络取消续期，配合自增代际序列号（`_feedGeneration`）彻底消除 ABA 乱序回包；
     - 切换大分区时自动重置排序策略为默认的 `online`（热门），确保符合直觉的用户体验；
@@ -16,7 +20,7 @@
     - 在下拉刷新时比对刷新前后房间 ID 切片序列，非推荐分区下根据变动情况精准派发反馈 Toast（“已是最新直播排行”、“已更新直播排行”、“当前暂无新主播开播”等），彻底消除用户对静态排行榜刷新的困惑；
     - 防御性 Toast 封装（`_showToast`）：集成测试环境无 UI 上下文静默容灾与 `@visibleForTesting toastHandler` 拦截钩子；
   - 切房上下文完整联动（`LiveRoomPlaylistManager` & `LiveCardV`）：在卡片进房与滑动切房边界预拉取时全程透传 `sortType`，确保滑屏切房与当前排序策略严密一致；
-  - 单元与组件测试用例全面扩充（`test/live/live_feed_test.dart`）：覆盖排序切换、大区重置、有序刷新变动判定与 `LiveSortBar` 挂载交互测试。
+  - 单元与组件测试用例全面扩充（`test/live/live_feed_test.dart`）：覆盖排序切换、大区重置、有序刷新变动判定与 `LiveAreaHeader` 内联菜单交互测试。
 
 - 直播广场与发现页重构（Phase 5）：
   - 引入“我的关注正在直播”横向滑动吸顶栏（`LiveFollowBar`），支持红环动效与专属 LIVE 发光徽标，展示主播头像与昵称，点击直达对应直播间；未登录或无开播时自适应收缩为零像素；

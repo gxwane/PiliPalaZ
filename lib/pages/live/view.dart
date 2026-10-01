@@ -17,7 +17,6 @@ import 'controller.dart';
 import 'widgets/live_area_header.dart';
 import 'widgets/live_follow_bar.dart';
 import 'widgets/live_item.dart';
-import 'widgets/live_sort_bar.dart';
 
 class LivePage extends StatefulWidget {
   const LivePage({super.key});
@@ -103,9 +102,6 @@ class _LivePageState extends State<LivePage>
             ),
             SliverToBoxAdapter(
               child: LiveAreaHeader(liveController: _liveController),
-            ),
-            SliverToBoxAdapter(
-              child: LiveSortBar(liveController: _liveController),
             ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(
