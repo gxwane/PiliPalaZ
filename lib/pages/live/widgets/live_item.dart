@@ -13,6 +13,7 @@ class LiveCardV extends StatelessWidget {
   final LiveItemModel liveItem;
   final List<LiveItemModel>? liveList;
   final int? index;
+  final int? parentAreaId;
   final Function()? longPress;
   final Function()? longPressEnd;
 
@@ -21,6 +22,7 @@ class LiveCardV extends StatelessWidget {
     required this.liveItem,
     this.liveList,
     this.index,
+    this.parentAreaId,
     this.longPress,
     this.longPressEnd,
   });
@@ -46,6 +48,7 @@ class LiveCardV extends StatelessWidget {
               'heroTag': heroTag,
               'liveList': liveList,
               'initialIndex': index ?? 0,
+              'parentAreaId': parentAreaId,
             },
           );
         },
@@ -78,7 +81,7 @@ class LiveCardV extends StatelessWidget {
                           child: Hero(
                             tag: heroTag,
                             child: NetworkImgLayer(
-                              src: liveItem.cover!,
+                              src: liveItem.cover ?? '',
                               width: maxWidth,
                               height: maxHeight,
                             ),
@@ -122,7 +125,7 @@ class LiveContent extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              liveItem.title,
+              liveItem.title?.toString() ?? '',
               textAlign: TextAlign.start,
               style: const TextStyle(
                 fontWeight: FontWeight.w500,
@@ -135,12 +138,12 @@ class LiveContent extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                    liveItem.uname,
+                    liveItem.uname?.toString() ?? '',
                     textAlign: TextAlign.start,
                     style: TextStyle(
                       fontSize: Theme.of(
                         context,
-                      ).textTheme.labelMedium!.fontSize,
+                      ).textTheme.labelMedium?.fontSize,
                       color: Theme.of(context).colorScheme.outline,
                     ),
                     maxLines: 1,
@@ -178,14 +181,15 @@ class VideoStat extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            liveItem!.areaName!,
+            liveItem?.areaName ?? '',
             style: const TextStyle(fontSize: 11, color: Colors.white),
-            semanticsLabel: "${liveItem!.areaName!}直播",
+            semanticsLabel: "${liveItem?.areaName ?? ''}直播",
           ),
           Text(
-            liveItem!.watchedShow!['text_small'],
+            liveItem?.watchedShow?['text_small']?.toString() ??
+                (liveItem?.online != null ? '${liveItem!.online}人' : ''),
             style: const TextStyle(fontSize: 11, color: Colors.white),
-            semanticsLabel: "${liveItem!.watchedShow!['text_small']}围观",
+            semanticsLabel: "${liveItem?.watchedShow?['text_small'] ?? ''}围观",
           ),
         ],
       ),

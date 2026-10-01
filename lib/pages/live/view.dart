@@ -7,13 +7,15 @@ import 'package:get/get.dart';
 import 'package:pilipalaz/common/constants.dart';
 import 'package:pilipalaz/common/skeleton/video_card_v.dart';
 import 'package:pilipalaz/common/widgets/http_error.dart';
-import 'package:pilipalaz/pages/home/index.dart';
-import 'package:pilipalaz/pages/main/index.dart';
 import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/live/item.dart';
+import 'package:pilipalaz/pages/home/index.dart';
+import 'package:pilipalaz/pages/main/index.dart';
 
 import '../../utils/grid.dart';
 import 'controller.dart';
+import 'widgets/live_area_header.dart';
+import 'widgets/live_follow_bar.dart';
 import 'widgets/live_item.dart';
 
 class LivePage extends StatefulWidget {
@@ -86,16 +88,22 @@ class _LivePageState extends State<LivePage>
       child: RefreshIndicator(
         displacement: 10.0,
         edgeOffset: 10.0,
+        notificationPredicate: (notification) => notification.depth == 0,
         onRefresh: () async {
           return await _liveController.onRefresh();
         },
         child: CustomScrollView(
-          cacheExtent: 3500,
+          cacheExtent: 1200,
           physics: const AlwaysScrollableScrollPhysics(),
           controller: _liveController.scrollController,
           slivers: [
+            SliverToBoxAdapter(
+              child: LiveFollowBar(liveController: _liveController),
+            ),
+            SliverToBoxAdapter(
+              child: LiveAreaHeader(liveController: _liveController),
+            ),
             SliverPadding(
-              // 单列布局 EdgeInsets.zero
               padding: const EdgeInsets.fromLTRB(
                 0,
                 StyleString.cardSpace,
@@ -111,16 +119,15 @@ class _LivePageState extends State<LivePage>
                     }
                     final result = snapshot.data;
                     if (result is ApiSuccess<List<LiveItemModel>>) {
-                      return SliverLayoutBuilder(
-                        builder: (context, boxConstraints) {
-                          return Obx(
-                            () => contentGrid(
-                              _liveController,
-                              _liveController.liveList,
-                            ),
-                          );
-                        },
-                      );
+                      return Obx(() {
+                        if (_liveController.isAreaSwitching.value) {
+                          return contentGrid(_liveController, []);
+                        }
+                        return contentGrid(
+                          _liveController,
+                          _liveController.liveList,
+                        );
+                      });
                     } else {
                       return HttpError(
                         errMsg:
@@ -145,7 +152,7 @@ class _LivePageState extends State<LivePage>
     );
   }
 
-  Widget contentGrid(ctr, liveList) {
+  Widget contentGrid(LiveController ctr, List<LiveItemModel> liveList) {
     return SliverGrid(
       gridDelegate: SliverGridDelegateWithExtentAndRatio(
         mainAxisSpacing: StyleString.cardSpace,
@@ -155,14 +162,15 @@ class _LivePageState extends State<LivePage>
         mainAxisExtent: MediaQuery.textScalerOf(context).scale(80),
       ),
       delegate: SliverChildBuilderDelegate((BuildContext context, int index) {
-        return liveList!.isNotEmpty
+        return liveList.isNotEmpty
             ? LiveCardV(
                 liveItem: liveList[index],
-                liveList: liveList is List<LiveItemModel> ? liveList : null,
+                liveList: liveList,
                 index: index,
+                parentAreaId: ctr.selectedAreaId.value,
               )
             : const VideoCardVSkeleton();
-      }, childCount: liveList!.isNotEmpty ? liveList!.length : 10),
+      }, childCount: liveList.isNotEmpty ? liveList.length : 10),
     );
   }
 }

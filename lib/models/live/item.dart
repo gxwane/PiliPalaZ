@@ -50,20 +50,30 @@ class LiveItemModel {
   Map? watchedShow;
 
   LiveItemModel.fromJson(Map<String, dynamic> json) {
-    roomId = json['roomid'];
-    uid = json['uid'];
+    roomId = json['roomid'] ?? json['room_id'];
+    uid = json['uid'] ?? json['mid'];
     title = json['title'];
-    uname = json['uname'];
+    uname = json['uname'] ?? json['nickname'];
     online = json['online'];
-    userCover = json['user_cover'];
+    userCover = json['user_cover'] ?? json['keyframe'];
     userCoverFlag = json['user_cover_flag'];
     systemCover = json['system_cover'];
-    cover = json['cover'];
-    pic = json['cover'];
+    cover =
+        json['cover'] ??
+        json['keyframe'] ??
+        json['user_cover'] ??
+        json['system_cover'];
+    pic = cover;
     link = json['link'];
-    face = json['face'];
-    parentId = json['parent_id'] ?? json['area_v2_parent_id'];
-    parentName = json['parent_name'] ?? json['area_v2_parent_name'];
+    face = json['face'] ?? json['user_face'] ?? json['avatar'];
+    parentId =
+        json['parent_id'] ??
+        json['area_v2_parent_id'] ??
+        json['parent_area_id'];
+    parentName =
+        json['parent_name'] ??
+        json['area_v2_parent_name'] ??
+        json['parent_area_name'];
     areaId = json['area_id'] ?? json['area_v2_id'];
     areaName = json['area_name'] ?? json['area_v2_name'];
     sessionId = json['session_id'];

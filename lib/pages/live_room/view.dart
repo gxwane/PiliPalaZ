@@ -65,6 +65,7 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
     final liveList = argMap?['liveList'] as List<LiveItemModel>?;
     final initialIndex = argMap?['initialIndex'] as int? ?? 0;
     final liveItem = argMap?['liveItem'] as LiveItemModel?;
+    final parentAreaId = argMap?['parentAreaId'] as int?;
 
     _playlistManager = LiveRoomPlaylistManager(initialIndex: initialIndex);
     _playlistManager.initDualEntry(
@@ -72,6 +73,7 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
       initialIndex: initialIndex,
       initialRoomId: _liveRoomController.roomId,
       initialItem: liveItem,
+      parentAreaId: parentAreaId,
     );
 
     videoSourceInit();

@@ -6,6 +6,16 @@
 
 ### 新增
 
+- 直播广场与发现页重构（Phase 5）：
+  - 引入“我的关注正在直播”横向滑动吸顶栏（`LiveFollowBar`），支持红环动效与专属 LIVE 发光徽标，展示主播头像与昵称，点击直达对应直播间；未登录或无开播时自适应收缩为零像素；
+  - 引入官方直播大分区吸顶胶囊选择栏（`LiveAreaHeader`），包含推荐、网游、手游、单机游戏、娱乐、电台、虚拟主播、生活等官方分区，支持平滑横向滚动与选中态高亮动效；
+  - 建立分区切换原子状态机（`LiveController.switchArea`）：实施自增代际序列号（`_feedGeneration`）与 Dio 取消令牌（`_feedCancelToken`），彻底防御快速切区时的 ABA 乱序回包与网络请求风暴；
+  - 优化切区过渡体验：切区瞬间进入轻量骨架屏（Shimmer Skeleton）过渡，网络异常静默容灾；
+  - 修正切房上下文契约（`LiveRoomPlaylistManager`）：透传 `parentAreaId` 分区上下文，实现从分区卡片进房后，上下滑屏切房持续在同分区内翻阅，彻底消除“分区模式切房突变全局推荐”的断裂感；
+  - 手势竞争与渲染性能治理：外层 `RefreshIndicator` 配置 `depth == 0`，根除横向滑屏误触纵向下拉刷新的手势冲突；横向栏使用 `RepaintBoundary` 隔绝局部重绘；`CustomScrollView` 优化预加载缓冲区（`cacheExtent: 1200`）；
+  - 数据模型别名鲁棒化（`LiveItemModel.fromJson`）：支持 `room_id`/`roomid`、`avatar`/`face`、`keyframe`/`cover`、`parent_area_id`/`parent_id` 等多接口别名降级，彻底清除 UI 组件中的强制解包断言 `!`（Zero-Crash）；
+  - 新增 `test/live/live_feed_test.dart` 自动化测试套件（10 项单元与 Widget 测试，覆盖模型别名容错、零崩溃渲染、状态机代际切换与手势安全）。
+
 - 直播间垂直手势上下滑屏快速切房与无缝切流（Phase 4B）：
   - 建立双模式进入策略（`LiveRoomPlaylistManager`）：推荐流卡片直入携带全量列表上下文与索引，单房/深度链接直入自动后台异步增补推荐候选池；
   - 创立“单活动播放器槽位架构（Single Active Player Slot）”：严格遵守全局单例播放器约束，仅对激活页挂载底层播放器，非激活项使用轻量预览卡片（`LiveRoomPreviewCard`）与自适应骨架屏，零原生 Texture 冲突与白屏；

@@ -264,6 +264,18 @@ class Api {
   static const String liveList =
       '${HttpString.liveBaseUrl}/xlive/web-interface/v1/webMain/getMoreRecList';
 
+  // 关注主播正在直播列表
+  static const String followingLiveList =
+      '${HttpString.liveBaseUrl}/xlive/web-ucenter/user/following';
+
+  // 直播分区列表
+  static const String liveAreaList =
+      '${HttpString.liveBaseUrl}/room/v1/Area/getList';
+
+  // 分区直播列表
+  static const String liveAreaItemList =
+      '${HttpString.liveBaseUrl}/room/v1/Area/getRoomList';
+
   // 直播间详情
   // cid roomId
   // qn 80:流畅，150:高清，400:蓝光，10000:原画，20000:4K, 30000:杜比

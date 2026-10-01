@@ -16,6 +16,7 @@ class LiveRoomPlaylistManager {
 
   bool _isFetchingMore = false;
   int _recommendPage = 1;
+  int? parentAreaId;
   bool _isDisposed = false;
 
   LiveRoomPlaylistManager({int initialIndex = 0})
@@ -29,7 +30,9 @@ class LiveRoomPlaylistManager {
     int initialIndex = 0,
     int? initialRoomId,
     LiveItemModel? initialItem,
+    int? parentAreaId,
   }) {
+    this.parentAreaId = parentAreaId;
     if (initialList != null && initialList.isNotEmpty) {
       playlist.assignAll(initialList);
       currentIndex.value = initialIndex.clamp(0, playlist.length - 1);
@@ -45,7 +48,9 @@ class LiveRoomPlaylistManager {
   /// 外部/单房直入模式下的推荐池静默回填
   Future<void> backfillRecommendations() async {
     if (_isDisposed) return;
-    final res = await LiveHttp.liveList(pn: 1);
+    final res = (parentAreaId != null && parentAreaId! > 0)
+        ? await LiveHttp.areaLiveList(parentAreaId: parentAreaId!, page: 1)
+        : await LiveHttp.liveList(pn: 1);
     if (_isDisposed) return;
 
     if (res case ApiSuccess(:final data)) {
@@ -61,13 +66,19 @@ class LiveRoomPlaylistManager {
 
     _isFetchingMore = true;
     try {
-      final res = await LiveHttp.liveList(pn: _recommendPage + 1);
+      final nextPage = _recommendPage + 1;
+      final res = (parentAreaId != null && parentAreaId! > 0)
+          ? await LiveHttp.areaLiveList(
+              parentAreaId: parentAreaId!,
+              page: nextPage,
+            )
+          : await LiveHttp.liveList(pn: nextPage);
       if (_isDisposed) return;
 
       if (res case ApiSuccess(:final data)) {
         final added = _appendUniqueItems(data);
         if (added > 0) {
-          _recommendPage++;
+          _recommendPage = nextPage;
         }
       }
     } finally {

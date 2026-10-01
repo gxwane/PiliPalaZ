@@ -1,9 +1,11 @@
 import 'package:dio/dio.dart';
 
+import '../models/live/area.dart';
 import '../models/live/danmaku_conf.dart';
 import '../models/live/item.dart';
 import '../models/live/room_info.dart';
 import '../models/live/room_info_h5.dart';
+import '../utils/storage.dart';
 import 'api.dart';
 import 'api_decoder.dart';
 import 'api_result.dart';
@@ -133,6 +135,106 @@ class LiveHttp {
       data: data,
       options: Options(contentType: Headers.formUrlEncodedContentType),
       decode: BiliApiDecoder.success,
+    );
+  }
+
+  static Future<ApiResult<List<LiveItemModel>>> followingLiveList({
+    int page = 1,
+    int pageSize = 30,
+    CancelToken? cancelToken,
+  }) {
+    dynamic userInfo;
+    try {
+      userInfo = GStorage.userInfo.get('userInfoCache');
+    } catch (_) {
+      userInfo = null;
+    }
+    if (userInfo == null) {
+      return Future.value(const ApiSuccess<List<LiveItemModel>>([]));
+    }
+    return HttpRuntime.instance.client.getJson<List<LiveItemModel>>(
+      Api.followingLiveList,
+      endpoint: 'live.followingList',
+      cancelToken: cancelToken,
+      queryParameters: <String, dynamic>{'page': page, 'page_size': pageSize},
+      decode: (json) => BiliApiDecoder.data<List<LiveItemModel>>(
+        json,
+        decode: (value) {
+          final data = BiliApiDecoder.object(value, field: 'data');
+          final items = data['list'] ?? const [];
+          return BiliApiDecoder.list(items, field: 'data.list')
+              .map(
+                (item) => LiveItemModel.fromJson(
+                  BiliApiDecoder.object(item, field: 'data.list[]'),
+                ),
+              )
+              .where((item) => (item.roomId ?? 0) > 0)
+              .toList(growable: false);
+        },
+      ),
+    );
+  }
+
+  static Future<ApiResult<List<LiveAreaItemModel>>> liveAreaList({
+    CancelToken? cancelToken,
+  }) {
+    return HttpRuntime.instance.client.getJson<List<LiveAreaItemModel>>(
+      Api.liveAreaList,
+      endpoint: 'live.areaList',
+      cancelToken: cancelToken,
+      decode: (json) => BiliApiDecoder.data<List<LiveAreaItemModel>>(
+        json,
+        decode: (value) {
+          final list = BiliApiDecoder.list(value, field: 'data');
+          final areas = <LiveAreaItemModel>[
+            const LiveAreaItemModel(id: 0, name: '推荐'),
+          ];
+          for (final item in list) {
+            final obj = BiliApiDecoder.object(item, field: 'data[]');
+            final area = LiveAreaItemModel.fromJson(obj);
+            if (area.id > 0 && area.name.isNotEmpty) {
+              areas.add(area);
+            }
+          }
+          return areas;
+        },
+      ),
+    );
+  }
+
+  static Future<ApiResult<List<LiveItemModel>>> areaLiveList({
+    required int parentAreaId,
+    int? areaId,
+    int? page,
+    int? pageSize,
+    CancelToken? cancelToken,
+  }) {
+    return HttpRuntime.instance.client.getJson<List<LiveItemModel>>(
+      Api.liveAreaItemList,
+      endpoint: 'live.areaItemList',
+      cancelToken: cancelToken,
+      queryParameters: <String, dynamic>{
+        'parent_area_id': parentAreaId,
+        if (areaId != null && areaId > 0) 'area_id': areaId,
+        'page': page ?? 1,
+        'page_size': pageSize ?? 30,
+        'platform': 'web',
+      },
+      decode: (json) => BiliApiDecoder.data<List<LiveItemModel>>(
+        json,
+        decode: (value) {
+          final dynamic items = (value is List)
+              ? value
+              : (value is Map ? (value['list'] ?? const []) : const []);
+          return BiliApiDecoder.list(items, field: 'data')
+              .map(
+                (item) => LiveItemModel.fromJson(
+                  BiliApiDecoder.object(item, field: 'data[]'),
+                ),
+              )
+              .toList(growable: false);
+        },
+      ),
     );
   }
 }
