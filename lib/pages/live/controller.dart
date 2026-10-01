@@ -54,7 +54,10 @@ class LiveController extends GetxController {
     try {
       final res = await LiveHttp.followingLiveList();
       if (res case ApiSuccess<List<LiveItemModel>>(:final data)) {
-        followingList.assignAll(data);
+        final strictlyLive = data
+            .where((item) => item.isLive)
+            .toList(growable: false);
+        followingList.assignAll(strictlyLive);
       }
     } catch (_) {
       // 关注流静默容灾，不影响主列表

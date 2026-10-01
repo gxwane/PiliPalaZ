@@ -156,7 +156,12 @@ class LiveHttp {
       Api.followingLiveList,
       endpoint: 'live.followingList',
       cancelToken: cancelToken,
-      queryParameters: <String, dynamic>{'page': page, 'page_size': pageSize},
+      queryParameters: <String, dynamic>{
+        'page': page,
+        'page_size': pageSize,
+        'ignoreRecord': 1,
+        'hit_ab': true,
+      },
       decode: (json) => BiliApiDecoder.data<List<LiveItemModel>>(
         json,
         decode: (value) {
@@ -168,7 +173,7 @@ class LiveHttp {
                   BiliApiDecoder.object(item, field: 'data.list[]'),
                 ),
               )
-              .where((item) => (item.roomId ?? 0) > 0)
+              .where((item) => (item.roomId ?? 0) > 0 && item.isLive)
               .toList(growable: false);
         },
       ),

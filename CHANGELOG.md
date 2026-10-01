@@ -58,6 +58,10 @@
 
 ### 修复
 
+- 直播广场关注主播开播状态误判修复：
+  - 修复 `LiveItemModel` 缺失 `live_status` 字段导致的开播状态误判，扩展支持 `int`、`String`、`bool` 以及驼峰别名（`liveStatus` / `is_live`）的鲁棒解析，并提供 `isLive`、`isRoundRobin`、`isOffline` 语义 Getter；
+  - 修复 `LiveHttp.followingLiveList` 仅凭 `roomId > 0` 恒真判断导致的离线主播被全量错误打上 LIVE 徽标的缺陷，在网络层与控制器层实施“严格开播过滤（Strictly Live Guard）”（`item.isLive`），并补充 `ignoreRecord: 1, hit_ab: true` 请求参数；
+  - 视图层 `LiveFollowBar` 与头像外圈高亮仅在 `item.isLive` 时渲染专属 LIVE 徽标与主色外圈，杜绝已关播主播误显。
 - 直播模块稳定性加固与生命周期治理（Phase 1）：
   - 修复 `RoomInfoH5Model` 中 `live_status` 字段键名拼写错误（`liveS_satus`），支持双向兼容反序列化；
   - 加固 `RoomInfoModel` 及其子树反序列化空安全，对未开播、封禁或空流数据进行全面防御，彻底根除强解包导致的 `Bad state: No element` 崩溃；

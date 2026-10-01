@@ -23,6 +23,7 @@ class LiveItemModel {
     this.headBox,
     this.headBoxType,
     this.watchedShow,
+    this.liveStatus,
   });
 
   int? roomId;
@@ -48,6 +49,16 @@ class LiveItemModel {
   Map? headBox;
   int? headBoxType;
   Map? watchedShow;
+  int? liveStatus;
+
+  /// 是否正在真人实时直播
+  bool get isLive => liveStatus == 1;
+
+  /// 是否为录播轮播
+  bool get isRoundRobin => liveStatus == 2;
+
+  /// 是否未开播
+  bool get isOffline => liveStatus == 0 || liveStatus == null;
 
   LiveItemModel.fromJson(Map<String, dynamic> json) {
     roomId = json['roomid'] ?? json['room_id'];
@@ -55,6 +66,17 @@ class LiveItemModel {
     title = json['title'];
     uname = json['uname'] ?? json['nickname'];
     online = json['online'];
+    final rawStatus =
+        json['live_status'] ?? json['liveStatus'] ?? json['is_live'];
+    if (rawStatus is int) {
+      liveStatus = rawStatus;
+    } else if (rawStatus is String) {
+      liveStatus = int.tryParse(rawStatus);
+    } else if (rawStatus is bool) {
+      liveStatus = rawStatus ? 1 : 0;
+    } else {
+      liveStatus = null;
+    }
     userCover = json['user_cover'] ?? json['keyframe'];
     userCoverFlag = json['user_cover_flag'];
     systemCover = json['system_cover'];

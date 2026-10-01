@@ -264,7 +264,7 @@ class Api {
   static const String liveList =
       '${HttpString.liveBaseUrl}/xlive/web-interface/v1/webMain/getMoreRecList';
 
-  // 关注主播正在直播列表
+  // 用户关注的主播列表（需客户端按 item.isLive / live_status == 1 过滤开播中）
   static const String followingLiveList =
       '${HttpString.liveBaseUrl}/xlive/web-ucenter/user/following';
 

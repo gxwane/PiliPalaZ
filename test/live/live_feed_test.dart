@@ -66,6 +66,78 @@ void main() {
       },
     );
 
+    test('LiveItemModel handles live_status aliases and type variations', () {
+      // 1: 直播中 (int)
+      final liveInt = LiveItemModel.fromJson({'roomid': 100, 'live_status': 1});
+      expect(liveInt.liveStatus, 1);
+      expect(liveInt.isLive, isTrue);
+      expect(liveInt.isRoundRobin, isFalse);
+      expect(liveInt.isOffline, isFalse);
+
+      // 0: 未开播 (int)
+      final offline = LiveItemModel.fromJson({'roomid': 101, 'live_status': 0});
+      expect(offline.liveStatus, 0);
+      expect(offline.isLive, isFalse);
+      expect(offline.isRoundRobin, isFalse);
+      expect(offline.isOffline, isTrue);
+
+      // 2: 轮播中 (int)
+      final roundRobin = LiveItemModel.fromJson({
+        'roomid': 102,
+        'live_status': 2,
+      });
+      expect(roundRobin.liveStatus, 2);
+      expect(roundRobin.isLive, isFalse);
+      expect(roundRobin.isRoundRobin, isTrue);
+      expect(roundRobin.isOffline, isFalse);
+
+      // string '1'
+      final liveStr = LiveItemModel.fromJson({
+        'roomid': 103,
+        'live_status': '1',
+      });
+      expect(liveStr.liveStatus, 1);
+      expect(liveStr.isLive, isTrue);
+
+      // bool is_live: true
+      final boolLive = LiveItemModel.fromJson({'roomid': 104, 'is_live': true});
+      expect(boolLive.liveStatus, 1);
+      expect(boolLive.isLive, isTrue);
+
+      // camelCase liveStatus
+      final camelLive = LiveItemModel.fromJson({
+        'roomid': 105,
+        'liveStatus': 1,
+      });
+      expect(camelLive.liveStatus, 1);
+      expect(camelLive.isLive, isTrue);
+    });
+
+    test(
+      'Live follow stream filtering strictly retains only live_status == 1',
+      () {
+        final rawList = [
+          LiveItemModel.fromJson({'roomid': 101, 'live_status': 1}), // 在播
+          LiveItemModel.fromJson({
+            'roomid': 102,
+            'live_status': 0,
+          }), // 关播 (但有永久 roomId)
+          LiveItemModel.fromJson({'roomid': 103, 'live_status': 2}), // 轮播
+          LiveItemModel.fromJson({'roomid': 0, 'live_status': 1}), // 无效 roomid
+          LiveItemModel.fromJson({'roomid': 104, 'live_status': 1}), // 在播
+        ];
+
+        final filtered = rawList
+            .where((item) => (item.roomId ?? 0) > 0 && item.isLive)
+            .toList();
+
+        expect(filtered.length, 2);
+        expect(filtered[0].roomId, 101);
+        expect(filtered[1].roomId, 104);
+        expect(filtered.every((item) => item.isLive), isTrue);
+      },
+    );
+
     test('LiveItemModel.fromJson gracefully handles totally empty JSON', () {
       final item = LiveItemModel.fromJson({});
       expect(item.roomId, isNull);
@@ -73,6 +145,9 @@ void main() {
       expect(item.title, isNull);
       expect(item.cover, isNull);
       expect(item.face, isNull);
+      expect(item.liveStatus, isNull);
+      expect(item.isLive, isFalse);
+      expect(item.isOffline, isTrue);
     });
 
     test('LiveAreaItemModel.defaultAreas provides built-in fallback areas', () {
@@ -195,11 +270,13 @@ void main() {
             'roomid': 1001,
             'uname': '小主播A',
             'face': 'https://example.com/a.jpg',
+            'live_status': 1,
           }),
           LiveItemModel.fromJson({
             'roomid': 1002,
             'uname': '大主播B',
             'face': 'https://example.com/b.jpg',
+            'live_status': 1,
           }),
         ]);
 
@@ -213,6 +290,32 @@ void main() {
         expect(find.text('小主播A'), findsOneWidget);
         expect(find.text('大主播B'), findsOneWidget);
         expect(find.text('LIVE'), findsNWidgets(2));
+
+        controller.onClose();
+      },
+    );
+
+    testWidgets(
+      'LiveFollowBar does not render LIVE badge when item is not live',
+      (tester) async {
+        final controller = LiveController();
+        controller.followingList.assignAll([
+          LiveItemModel.fromJson({
+            'roomid': 1003,
+            'uname': '离线主播C',
+            'face': 'https://example.com/c.jpg',
+            'live_status': 0,
+          }),
+        ]);
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(body: LiveFollowBar(liveController: controller)),
+          ),
+        );
+
+        expect(find.text('离线主播C'), findsOneWidget);
+        expect(find.text('LIVE'), findsNothing);
 
         controller.onClose();
       },
