@@ -6,6 +6,22 @@
 
 ### 新增
 
+- 直播后台播放、锁屏纯音频（听直播）与系统播控：
+  - 系统媒体通知与播控扩展（`VideoPlayerServiceHandler`）：
+    - 引入 `isLiveStream` 状态标识与 `onLiveDetailChange` 元数据注入，将直播房间号、标题、主播名及封面无缝同步至系统通知中心；
+    - 精简直播态播控按钮（`_buildMediaControls`）：彻底剔除快进、快退、进度条拖拽与切集等对直播无效的控制项，仅保留播放/暂停与停止按钮，系统通知紧凑动作锁定为播放/暂停；
+    - 状态机闭环防污染治理：在点播元数据同步（`onVideoDetailChange`）、停止（`stop`）与清理（`clearImpl`）中确定性重置 `isLiveStream = false`，彻底消除直播流污染普通点播视频播控的隐患；
+  - 纯音频（听直播）模式与功耗优化（`LiveRoomController` & `LiveAudioOnlyCard`）：
+    - 控制器新增 `isAudioOnly` 响应式状态与 `toggleAudioOnly` 原子切换方法，联动 `PlPlayerController.setOnlyPlayAudio` 释放系统屏幕常亮唤醒锁（Wakelock），支持听直播时正常息屏待机省电；
+    - 创立单活动纯音频占位卡片（`LiveAudioOnlyCard`）：听直播模式下从组件树中完全卸载底层视频 `PLVideoPlayer` 原生 Texture，消除 GPU 光栅化渲染与发热，仅保留底层音频管线持续输出；
+    - 听直播卡片融入高斯模糊封面背景、主播头像脉冲声波呼吸动效、模式状态胶囊、一键“恢复画面”胶囊按钮及全屏退出按钮；
+    - 控制栏快捷入口接入（`BottomControl`）：底栏画质选择旁增设耳机快捷图标按钮，响应式联动主题色与实时状态；
+  - 切房与销毁生命周期联动治理：
+    - 切房时引入 `_switchGeneration` 代际校验同步更新系统通知元数据，杜绝并发网络乱序导致的串房污染；
+    - 房间销毁与切房复位时确定性释放系统媒体通知，保持纯净状态；
+  - 自动化测试套件（`test/live/live_audio_mode_test.dart`）：
+    - 9 项端到端单元与组件测试覆盖直播 MediaItem 构造、controls 精简过滤、点播状态重置、Wakelock 联动、切房代际防串与 `LiveAudioOnlyCard` 交互渲染。
+
 - 直播分区排序增强与刷新交互心智对齐：
   - 接口层扩展（`LiveHttp.areaLiveList`）：支持 `sort_type`（`online` 热门排行 / `live_time` 最新开播）参数；
   - 直播大分区栏右侧内联微型排序入口（方案 A 架构重构）：

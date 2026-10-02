@@ -132,19 +132,35 @@ class _BottomControlState extends State<BottomControl> {
             }),
             const SizedBox(width: 4),
           ],
-          // Obx(
-          //   () => ComBtn(
-          //     icon: Icon(
-          //       widget.liveRoomCtr!.volumeOff.value
-          //           ? Icons.volume_off_outlined
-          //           : Icons.volume_up_outlined,
-          //       size: 18,
-          //       color: Colors.white,
-          //     ),
-          //     fuc: () => {},
-          //   ),
-          // ),
-          // const SizedBox(width: 4),
+          if (widget.liveRoomCtr != null) ...[
+            Obx(() {
+              final isAudio = widget.liveRoomCtr!.isAudioOnly.value;
+              return SizedBox(
+                width: 34,
+                height: 34,
+                child: IconButton(
+                  key: const ValueKey('bottom_control_audio_mode_btn'),
+                  tooltip: isAudio ? '恢复画面' : '听直播',
+                  style: ButtonStyle(
+                    padding: WidgetStateProperty.all(EdgeInsets.zero),
+                  ),
+                  onPressed: () {
+                    widget.liveRoomCtr!.toggleAudioOnly();
+                  },
+                  icon: Icon(
+                    isAudio
+                        ? Icons.headphones_rounded
+                        : Icons.headphones_outlined,
+                    size: 18,
+                    color: isAudio
+                        ? Theme.of(context).colorScheme.primary
+                        : Colors.white,
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(width: 4),
+          ],
           if (Platform.isAndroid) ...[
             SizedBox(
               width: 34,

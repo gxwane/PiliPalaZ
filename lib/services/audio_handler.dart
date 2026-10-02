@@ -29,6 +29,7 @@ class VideoPlayerServiceHandler extends BaseAudioHandler
   final Box<dynamic> setting;
   final Future<void> Function() _releasePlayer;
   bool enableBackgroundPlay = true;
+  bool isLiveStream = false;
   // PlPlayerController player = PlPlayerController.getInstance();
 
   VideoPlayerServiceHandler({
@@ -96,65 +97,99 @@ class VideoPlayerServiceHandler extends BaseAudioHandler
 
   Future<void> setPlaybackState(PlayerStatus status, bool isBuffering) async {
     if (!enableBackgroundPlay) return;
-    // print("isBuffering2: $isBuffering");
     final AudioProcessingState processingState;
     final playing = status == PlayerStatus.playing;
     if (status == PlayerStatus.disabled) {
       processingState = AudioProcessingState.idle;
     } else if (status == PlayerStatus.completed) {
       processingState = AudioProcessingState.completed;
-    } else if (isBuffering) {
-      // tmp_fix: 手动播放前媒体通知无限buffer状态
-      // processingState = AudioProcessingState.buffering;
-      processingState = AudioProcessingState.ready;
     } else {
       processingState = AudioProcessingState.ready;
     }
-    print("processingState: $processingState");
 
-    final qc = PlaybackQueueController.activeInstance;
-    final hasPrev = qc?.hasPrevious.value ?? false;
-    final hasNxt = qc?.hasNext.value ?? false;
-
+    final controlsData = _buildMediaControls(playing);
     playbackState.add(
       playbackState.value.copyWith(
         processingState: processingState,
-        controls: [
-          if (hasPrev)
-            MediaControl.skipToPrevious
-          else
-            MediaControl.rewind.copyWith(
-              androidIcon: 'drawable/ic_baseline_replay_10_24',
-            ),
-          if (playing) MediaControl.pause else MediaControl.play,
-          if (hasNxt)
-            MediaControl.skipToNext
-          else
-            MediaControl.fastForward.copyWith(
-              androidIcon: 'drawable/ic_baseline_forward_10_24',
-            ),
-        ],
-        androidCompactActionIndices: const [0, 1, 2],
+        controls: controlsData.$1,
+        androidCompactActionIndices: controlsData.$2,
         playing: playing,
-        systemActions: const {
-          MediaAction.seek,
-          MediaAction.seekForward,
-          MediaAction.seekBackward,
-          MediaAction.skipToPrevious,
-          MediaAction.skipToNext,
-        },
+        systemActions: controlsData.$3,
       ),
+    );
+  }
+
+  (List<MediaControl>, List<int>, Set<MediaAction>) _buildMediaControls(
+    bool playing,
+  ) {
+    if (isLiveStream) {
+      return (
+        <MediaControl>[
+          if (playing) MediaControl.pause else MediaControl.play,
+          MediaControl.stop,
+        ],
+        const <int>[0],
+        const <MediaAction>{
+          MediaAction.play,
+          MediaAction.pause,
+          MediaAction.stop,
+        },
+      );
+    }
+    final qc = PlaybackQueueController.activeInstance;
+    final hasPrev = qc?.hasPrevious.value ?? false;
+    final hasNxt = qc?.hasNext.value ?? false;
+    final controls = <MediaControl>[
+      if (hasPrev)
+        MediaControl.skipToPrevious
+      else
+        MediaControl.rewind.copyWith(
+          androidIcon: 'drawable/ic_baseline_replay_10_24',
+        ),
+      if (playing) MediaControl.pause else MediaControl.play,
+      if (hasNxt)
+        MediaControl.skipToNext
+      else
+        MediaControl.fastForward.copyWith(
+          androidIcon: 'drawable/ic_baseline_forward_10_24',
+        ),
+    ];
+    return (
+      controls,
+      const <int>[0, 1, 2],
+      const <MediaAction>{
+        MediaAction.seek,
+        MediaAction.seekForward,
+        MediaAction.seekBackward,
+        MediaAction.skipToPrevious,
+        MediaAction.skipToNext,
+      },
     );
   }
 
   void onStatusChange(PlayerStatus status, bool isBuffering) {
     if (!enableBackgroundPlay) return;
-    // print("此时调用栈为：");
-    // debugPrint(StackTrace.current.toString());
-    // print("isBuffering: $isBuffering");
-    // if (_item.isEmpty) return;
-    // isBuffering = false;
     setPlaybackState(status, isBuffering);
+  }
+
+  void onLiveDetailChange({
+    required String title,
+    required String anchorName,
+    required String coverUrl,
+    required String roomId,
+  }) {
+    if (!enableBackgroundPlay) return;
+    isLiveStream = true;
+    _mediaItemIdCounter++;
+    final liveMediaItem = MediaItem(
+      id: 'live_${roomId}_$_mediaItemIdCounter',
+      title: title.isNotEmpty ? title : '哔哩哔哩直播',
+      artist: anchorName.isNotEmpty ? anchorName : 'Bilibili 直播',
+      album: '直播间 $roomId',
+      duration: Duration.zero,
+      artUri: coverUrl.isNotEmpty ? Uri.tryParse(coverUrl) : null,
+    );
+    setMediaItem(liveMediaItem);
   }
 
   void onVideoDetailChange(
@@ -164,10 +199,8 @@ class VideoPlayerServiceHandler extends BaseAudioHandler
     String? artUri,
   ) {
     if (!enableBackgroundPlay) return;
-    // print('当前调用栈为：');
-    // print(StackTrace.current);
+    isLiveStream = false;
     if (!PlPlayerController.instanceExists()) return;
-    print("artUri: $artUri");
     _mediaItemIdCounter++;
     MediaItem mediaItem = MediaItem(
       id: 'media_item_${DateTime.now().millisecondsSinceEpoch}_$_mediaItemIdCounter',
@@ -245,6 +278,7 @@ class VideoPlayerServiceHandler extends BaseAudioHandler
 
   @override
   Future<void> stop() async {
+    isLiveStream = false;
     try {
       await _releasePlayer();
     } finally {
@@ -257,12 +291,11 @@ class VideoPlayerServiceHandler extends BaseAudioHandler
   Future<void> onTaskRemoved() => stop();
 
   void clearImpl() {
+    isLiveStream = false;
     playbackState.add(
       PlaybackState(processingState: AudioProcessingState.idle, playing: false),
     );
     mediaItem.add(null);
-    // _item.clear();
-    // stop();
   }
 
   bool checkTop() {

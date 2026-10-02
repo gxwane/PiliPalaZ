@@ -17,6 +17,7 @@ import 'package:pilipalaz/utils/screen_utils.dart';
 import 'controller.dart';
 import 'widgets/bottom_control.dart';
 import 'widgets/live_anchor_strip.dart';
+import 'widgets/live_audio_only_card.dart';
 import 'widgets/live_chat_panel.dart';
 import 'widgets/live_danmaku.dart';
 import 'widgets/live_input_bar.dart';
@@ -114,6 +115,12 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
           return Obx(() {
             if (_liveRoomController.hasStream.value &&
                 plPlayerController != null) {
+              if (_liveRoomController.isAudioOnly.value) {
+                return LiveAudioOnlyCard(
+                  controller: _liveRoomController,
+                  playerController: plPlayerController!,
+                );
+              }
               return PLVideoPlayer(
                 key: const ValueKey('single_active_live_player'),
                 controller: plPlayerController!,

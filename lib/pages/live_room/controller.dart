@@ -15,6 +15,7 @@ import '../../http/login.dart';
 import '../../models/live/room_info_h5.dart';
 import '../../services/live/live_danmaku_client.dart';
 import '../../services/live/live_message.dart';
+import '../../services/service_locator.dart';
 import '../../utils/danmaku.dart';
 import '../../utils/storage.dart';
 import '../../utils/video_utils.dart';
@@ -59,6 +60,41 @@ class LiveRoomController extends GetxController {
   Future<ApiResult<RoomInfoH5Model>>? latestH5Future;
   final RxBool isFollowed = false.obs;
   final RxBool isFollowUpdating = false.obs;
+  final RxBool isAudioOnly = false.obs;
+
+  void toggleAudioOnly() {
+    isAudioOnly.value = !isAudioOnly.value;
+    try {
+      plPlayerController.setOnlyPlayAudio(isAudioOnly.value);
+    } catch (_) {}
+    try {
+      SmartDialog.showToast(isAudioOnly.value ? '已开启听直播模式，已关闭画面渲染' : '已恢复直播画面');
+    } catch (_) {}
+  }
+
+  void _syncLiveMediaItem({int? generation, LiveItemModel? seedItem}) {
+    if (isDisposed || (generation != null && generation != _switchGeneration)) {
+      return;
+    }
+    try {
+      final h5 = roomInfoH5.value;
+      final title =
+          h5.roomInfo?.title ?? seedItem?.title ?? liveItem?.title ?? '';
+      final anchor =
+          h5.anchorInfo?.baseInfo?.uname ??
+          seedItem?.uname ??
+          liveItem?.uname ??
+          '';
+      final coverUrl =
+          h5.roomInfo?.cover ?? seedItem?.cover ?? liveItem?.cover ?? cover;
+      videoPlayerServiceHandler.onLiveDetailChange(
+        title: title,
+        anchorName: anchor,
+        coverUrl: coverUrl,
+        roomId: roomId.toString(),
+      );
+    } catch (_) {}
+  }
 
   @override
   void onInit() {
@@ -122,6 +158,7 @@ class LiveRoomController extends GetxController {
       enableHA: true,
       autoplay: true,
     );
+    _syncLiveMediaItem();
   }
 
   FormatItem? _extractFormat(List<Streams> streams) {
@@ -444,6 +481,7 @@ class LiveRoomController extends GetxController {
     if (isDisposed) return res;
     if (res case ApiSuccess<RoomInfoH5Model>(:final data)) {
       roomInfoH5.value = data;
+      _syncLiveMediaItem();
       final status = data.roomInfo?.liveStatus;
       if (status != null) {
         isLive.value = status == 1;
@@ -574,6 +612,7 @@ class LiveRoomController extends GetxController {
     roomId = newRoomId;
     if (item != null) liveItem = item;
     if (item?.cover != null && item!.cover!.isNotEmpty) cover = item.cover!;
+    _syncLiveMediaItem(generation: currentGen, seedItem: item);
 
     final playFuture = queryLiveInfo(cancelToken: _switchCancelToken);
     final h5Future = queryLiveInfoH5(cancelToken: _switchCancelToken);
@@ -585,6 +624,7 @@ class LiveRoomController extends GetxController {
         message: 'Switched away',
       );
     }
+    _syncLiveMediaItem(generation: currentGen);
 
     final playRes = results[0] as ApiResult<RoomInfoModel>;
     final h5Res = results[1] as ApiResult<RoomInfoH5Model>;
@@ -598,6 +638,10 @@ class LiveRoomController extends GetxController {
   }
 
   void _resetConnectionsAndState() {
+    isAudioOnly.value = false;
+    try {
+      plPlayerController.setOnlyPlayAudio(false);
+    } catch (_) {}
     _danmakuSub?.cancel();
     _danmakuSub = null;
     _popularitySub?.cancel();
@@ -628,6 +672,12 @@ class LiveRoomController extends GetxController {
     _popularitySub = null;
     danmakuClient?.dispose();
     danmakuClient = null;
+    try {
+      videoPlayerServiceHandler.clear();
+    } catch (_) {}
+    try {
+      plPlayerController.setOnlyPlayAudio(false);
+    } catch (_) {}
     unawaited(plPlayerController.releaseNativeResources(playerResourceOwner));
     super.onClose();
   }
