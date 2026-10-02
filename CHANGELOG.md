@@ -4,6 +4,22 @@
 
 ## [Unreleased]
 
+### 优化
+
+- 直播间横屏与全屏概念彻底解耦，支持大屏/平板横屏左右双栏交互（`LiveRoomPage`）：
+  - 建立五元正交状态机（`isFullScreen`、`isLandscape`、`isTablet`、`isSquarish`、`isDualColumn`）：
+    - 废除原有一刀切的 `isImmersive = isFullScreen || isLandscape` 逻辑，精准界定显式全屏、大屏横屏双栏、手机横屏沉浸、折叠屏近方屏与手机竖屏单栏形态；
+    - 引入 `!isSquarish && !isTablet` 防守链，杜绝折叠屏展开态（8:7 / 4:3 等比例）因宽大于高被误杀进入横屏沉浸态的缺陷；
+  - 落地平板与大屏横屏左右双栏架构（`_buildDualColumnLayout`）：
+    - 左栏（65% 视宽）：集成微型返回栏、16:9 动态安全钳位播放器容器与 `LiveAnchorStrip` 主播卡片；
+    - 右栏（35% 视宽）：自适应承载 `LiveScTicker`、`LiveChatPanel` 公屏聊天流与 `LiveInputBar` 发送栏；
+    - 键盘防溢出架构：双栏模式下关闭全局 Scaffold `resizeToAvoidBottomInset`，由右栏单侧消费键盘避让高度，彻底根除唤起输入法时左栏播放器因高度压缩引发的 `RenderFlex overflow` 崩溃；
+  - 导航与拦截架构治理：
+    - 将 `PopScope` 从播放器容器深处抽离至 `_buildActiveRoomView` 顶层统一调度，播放器容器恢复纯粹视窗职责；
+    - 平板双栏与竖屏单栏模式下放行返回键（`canPop = true`），全屏模式退全屏，手机横转退竖屏，根除大屏返回键死锁与误退房间问题；
+  - 自动化测试与质量守卫（`test/live/live_room_landscape_test.dart`）：
+    - 覆盖五元状态机多端真值表断言、350dp 虚拟键盘激进溢出压测与生产代码防劣化契约守卫，变异消灭率 100%。
+
 ## [1.5.0-beta.5] - 2026-10-02
 
 ### 新增

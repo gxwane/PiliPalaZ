@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:fl_pip/fl_pip.dart';
 import 'package:flutter/material.dart';
@@ -287,38 +288,155 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
   }
 
   Widget _buildActiveRoomView(BuildContext context, Widget videoPlayerPanel) {
-    return Obx(() {
-      final isLandscape =
-          MediaQuery.of(context).orientation == Orientation.landscape;
-      final isFullScreen = plPlayerController?.isFullScreen.value == true;
-      final isImmersive = isFullScreen || isLandscape;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Obx(() {
+          final bool isFullScreen =
+              plPlayerController?.isFullScreen.value == true;
+          final bool isLandscape =
+              MediaQuery.orientationOf(context) == Orientation.landscape;
+          final bool isTablet = ScreenUtils.isTablet(context);
+          final bool isSquarish = ScreenUtils.isSquarish(constraints);
 
-      return Scaffold(
-        primary: !isImmersive,
-        resizeToAvoidBottomInset: !isImmersive,
-        backgroundColor: Colors.black,
-        body: SizedBox.expand(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (!isImmersive) _buildAppBackground(),
-              Column(
-                children: [
-                  if (!isImmersive) _buildTopAppBar(context),
-                  _buildPlayerContainer(
-                    context,
-                    videoPlayerPanel,
-                    isImmersive: isImmersive,
-                  ),
-                  if (!isImmersive)
-                    Expanded(child: _buildPortraitContent(context)),
-                ],
+          final bool isDualColumn =
+              !isFullScreen &&
+              ScreenUtils.shouldUseLandscapeDualColumn(context, constraints);
+          final bool isPhoneLandscape =
+              !isFullScreen &&
+              !isDualColumn &&
+              !isTablet &&
+              !isSquarish &&
+              isLandscape;
+          final bool isImmersive = isFullScreen || isPhoneLandscape;
+
+          final bool shouldIntercept = isFullScreen || isPhoneLandscape;
+
+          return PopScope(
+            canPop: !shouldIntercept,
+            onPopInvokedWithResult: (bool didPop, Object? result) {
+              if (didPop) return;
+              if (isFullScreen) {
+                plPlayerController?.triggerFullScreen(status: false);
+              } else if (isPhoneLandscape) {
+                unawaited(verticalScreenForTwoSeconds());
+              } else {
+                Navigator.of(context).maybePop();
+              }
+            },
+            child: Scaffold(
+              primary: !isImmersive,
+              resizeToAvoidBottomInset: !isImmersive && !isDualColumn,
+              backgroundColor: Colors.black,
+              body: SizedBox.expand(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    if (!isImmersive) _buildAppBackground(),
+                    if (isDualColumn)
+                      _buildDualColumnLayout(
+                        context,
+                        videoPlayerPanel,
+                        constraints,
+                      )
+                    else
+                      Column(
+                        children: [
+                          if (!isImmersive) _buildTopAppBar(context),
+                          _buildPlayerContainer(
+                            context,
+                            videoPlayerPanel,
+                            isImmersive: isImmersive,
+                          ),
+                          if (!isImmersive)
+                            Expanded(child: _buildPortraitContent(context)),
+                        ],
+                      ),
+                  ],
+                ),
               ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  Widget _buildDualColumnLayout(
+    BuildContext context,
+    Widget videoPlayerPanel,
+    BoxConstraints constraints,
+  ) {
+    final double topPadding = MediaQuery.paddingOf(context).top;
+    const double topBarHeight = 56.0;
+    const double anchorStripHeight = 52.0;
+
+    final double leftWidth = constraints.maxWidth * 0.65;
+    final double maxAvailablePlayerHeight = max(
+      200.0,
+      constraints.maxHeight - topPadding - topBarHeight - anchorStripHeight,
+    );
+    final double playerHeight = min(
+      leftWidth * 9 / 16,
+      maxAvailablePlayerHeight,
+    );
+
+    final double keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: leftWidth,
+          height: constraints.maxHeight,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildTopAppBar(context, toolbarHeight: topBarHeight),
+              _buildPlayerContainer(
+                context,
+                videoPlayerPanel,
+                isImmersive: false,
+                customWidth: leftWidth,
+                customHeight: playerHeight,
+              ),
+              LiveAnchorStrip(liveRoomCtr: _liveRoomController),
             ],
           ),
         ),
-      );
-    });
+        VerticalDivider(
+          width: 1,
+          thickness: 1,
+          color: Colors.white.withValues(alpha: 0.08),
+        ),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(bottom: keyboardHeight),
+            child: Column(
+              children: [
+                SizedBox(height: topPadding),
+                LiveScTicker(
+                  chatController: _liveRoomController.chatController,
+                ),
+                Expanded(
+                  child: Obx(
+                    () => LiveChatPanel(
+                      chatController: _liveRoomController.chatController,
+                      anchorUid:
+                          _liveRoomController.roomInfoH5.value.roomInfo?.uid ??
+                          0,
+                    ),
+                  ),
+                ),
+                LiveInputBar(
+                  key: ValueKey('live_input_${_liveRoomController.roomId}'),
+                  roomId: _liveRoomController.roomId,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildAppBackground() {
@@ -361,7 +479,7 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
     );
   }
 
-  Widget _buildTopAppBar(BuildContext context) {
+  Widget _buildTopAppBar(BuildContext context, {double? toolbarHeight}) {
     final isPortrait =
         MediaQuery.of(context).orientation == Orientation.portrait;
     return AppBar(
@@ -369,7 +487,7 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
       titleSpacing: 0,
       backgroundColor: Colors.transparent,
       foregroundColor: Colors.white,
-      toolbarHeight: isPortrait ? 56 : 0,
+      toolbarHeight: toolbarHeight ?? (isPortrait ? 56 : 0),
       title: FutureBuilder<ApiResult<RoomInfoH5Model>>(
         future: _futureBuilder,
         builder: (context, snapshot) {
@@ -463,16 +581,13 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
     BuildContext context,
     Widget videoPlayerPanel, {
     required bool isImmersive,
+    double? customWidth,
+    double? customHeight,
   }) {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-    final isFullScreen = plPlayerController?.isFullScreen.value == true;
-    final bool shouldIntercept =
-        isFullScreen || (isLandscape && !ScreenUtils.isTabletDevice());
-
     final size = MediaQuery.sizeOf(context);
-    final double playerHeight = isImmersive ? size.height : size.width * 9 / 16;
-    final double playerWidth = size.width;
+    final double playerHeight =
+        customHeight ?? (isImmersive ? size.height : size.width * 9 / 16);
+    final double playerWidth = customWidth ?? size.width;
 
     return KeyedSubtree(
       key: _playerContainerKey,
@@ -480,20 +595,7 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
         color: Colors.black,
         width: playerWidth,
         height: playerHeight,
-        child: PopScope(
-          canPop: !shouldIntercept,
-          onPopInvokedWithResult: (bool didPop, Object? result) {
-            if (didPop) return;
-            if (plPlayerController?.isFullScreen.value == true) {
-              plPlayerController!.triggerFullScreen(status: false);
-            } else if (isLandscape && !ScreenUtils.isTabletDevice()) {
-              unawaited(verticalScreenForTwoSeconds());
-            } else {
-              Navigator.of(context).maybePop();
-            }
-          },
-          child: SizedBox.expand(child: videoPlayerPanel),
-        ),
+        child: SizedBox.expand(child: videoPlayerPanel),
       ),
     );
   }
