@@ -280,6 +280,7 @@ class _PlaySettingState extends State<PlaySetting> {
               setKey: SettingBoxKey.autoPiP,
               defaultVal: false,
               callFn: (val) {
+                PlPlayerController.updateSettingsIfExist();
                 if (val &&
                     !setting.get(
                       SettingBoxKey.enableBackgroundPlay,

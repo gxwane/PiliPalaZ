@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
+import 'package:fl_pip/fl_pip.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:canvas_danmaku/canvas_danmaku.dart';
@@ -38,6 +39,7 @@ class LiveRoomController extends GetxController {
   final LiveChatController chatController = LiveChatController();
   StreamSubscription<LiveDanmakuItem>? _danmakuSub;
   StreamSubscription<int>? _popularitySub;
+  StreamSubscription<VideoDimension>? _dimensionSub;
   bool _isDisposed = false;
   bool get isDisposed => _isDisposed || isClosed;
 
@@ -67,6 +69,13 @@ class LiveRoomController extends GetxController {
     try {
       plPlayerController.setOnlyPlayAudio(isAudioOnly.value);
     } catch (_) {}
+    if (isAudioOnly.value) {
+      _safeDisableBackgroundPiP();
+    } else {
+      if (GStorage.setting.get(SettingBoxKey.autoPiP, defaultValue: false)) {
+        plPlayerController.enableAutoPip();
+      }
+    }
     try {
       SmartDialog.showToast(isAudioOnly.value ? '已开启听直播模式，已关闭画面渲染' : '已恢复直播画面');
     } catch (_) {}
@@ -159,6 +168,25 @@ class LiveRoomController extends GetxController {
       autoplay: true,
     );
     _syncLiveMediaItem();
+    _startDimensionListener();
+  }
+
+  void _startDimensionListener() {
+    _dimensionSub?.cancel();
+    _dimensionSub = plPlayerController.onDimensionChanged.listen((dim) {
+      if (isDisposed) return;
+      if (dim.width > 0 && dim.height > 0) {
+        plPlayerController.direction.value = dim.height > dim.width
+            ? 'vertical'
+            : 'horizontal';
+      }
+    });
+    final initialDim = plPlayerController.videoDimension.value;
+    if (initialDim.width > 0 && initialDim.height > 0) {
+      plPlayerController.direction.value = initialDim.height > initialDim.width
+          ? 'vertical'
+          : 'horizontal';
+    }
   }
 
   FormatItem? _extractFormat(List<Streams> streams) {
@@ -638,6 +666,9 @@ class LiveRoomController extends GetxController {
   }
 
   void _resetConnectionsAndState() {
+    _dimensionSub?.cancel();
+    _dimensionSub = null;
+    plPlayerController.direction.value = 'horizontal';
     isAudioOnly.value = false;
     try {
       plPlayerController.setOnlyPlayAudio(false);
@@ -670,8 +701,12 @@ class LiveRoomController extends GetxController {
     _danmakuSub = null;
     _popularitySub?.cancel();
     _popularitySub = null;
+    _dimensionSub?.cancel();
+    _dimensionSub = null;
     danmakuClient?.dispose();
     danmakuClient = null;
+    _safeDisableBackgroundPiP();
+    plPlayerController.direction.value = 'horizontal';
     try {
       videoPlayerServiceHandler.clear();
     } catch (_) {}
@@ -680,5 +715,11 @@ class LiveRoomController extends GetxController {
     } catch (_) {}
     unawaited(plPlayerController.releaseNativeResources(playerResourceOwner));
     super.onClose();
+  }
+
+  void _safeDisableBackgroundPiP() {
+    try {
+      FlPiP().setEnableWhenBackground(false).catchError((_) => false);
+    } catch (_) {}
   }
 }

@@ -6,6 +6,23 @@
 
 ### 新增
 
+- 直播画中画（PiP）自适应比例、纯音频互斥与沉浸式体验优化：
+  - 画中画极限宽高比安全钳制（`VideoUtils.clampPiPRational`）：
+    - 引入基于最大公约数（GCD）的宽高比化简与 Android 系统原生极限比率 `[100/239, 239/100]` 安全钳制，彻底根治特殊或竖屏流宽高比越界引发系统 `IllegalArgumentException` 导致 PiP 崩溃的隐患；
+  - 播放器内核尺寸响应流与设置热联动（`PlPlayerController` & `PlaySetting`）：
+    - 暴露响应式 `videoDimension` 状态与 `onDimensionChanged` 流，实时捕获底层多媒体内核视频流宽高变化；
+    - 自动画中画配置接入动态宽高比计算；联动 `_onlyPlayAudio` 状态，纯音频模式下自动挂起后台画中画；
+    - 播放设置页切换自动画中画时即时触发 `PlPlayerController.updateSettingsIfExist()` 热生效；
+  - 直播流横竖屏方向自适应与生命周期互斥（`LiveRoomController`）：
+    - 接入流尺寸监听并实时同步 `direction.value`（高大于宽判定为 vertical），自适应竖屏直播；
+    - 切换听直播模式与房间销毁注销时安全停用后台画中画（`_safeDisableBackgroundPiP`），避免音画混淆与后台资源泄漏；
+  - 画中画无弹幕选项与横竖屏沉浸式布局（`LiveRoomPage` & `BottomControl`）：
+    - 画中画独立渲染面板接入 `SettingBoxKey.pipNoDanmaku` 开关判定，并隐去多余底栏控制项；
+    - 统一全屏与横屏沉浸态（`isImmersive`），优化返回拦截 `PopScope` 与全屏退出手势；
+    - 底栏手动画中画按钮使用安全比例并补充开启异常 Toast 提示，全屏切换按钮接入响应式状态监听；
+  - 自动化测试套件（`test/live/live_pip_orientation_test.dart`）：
+    - 10 项端到端单元与 Widget 测试覆盖宽高比化简与极限钳制、内核尺寸响应流、横竖屏流判断及沉浸式 PopScope 返回栈拦截。
+
 - 直播后台播放、锁屏纯音频（听直播）与系统播控：
   - 系统媒体通知与播控扩展（`VideoPlayerServiceHandler`）：
     - 引入 `isLiveStream` 状态标识与 `onLiveDetailChange` 元数据注入，将直播房间号、标题、主播名及封面无缝同步至系统通知中心；

@@ -1,3 +1,4 @@
+import 'package:fl_pip/fl_pip.dart';
 import 'package:pilipalaz/models/video/play/CDN.dart';
 import 'package:pilipalaz/models/video/play/url.dart';
 import 'package:pilipalaz/utils/storage.dart';
@@ -175,5 +176,37 @@ class VideoUtils {
     // }
 
     return videoUrl;
+  }
+
+  static int _gcd(int a, int b) {
+    while (b != 0) {
+      final t = b;
+      b = a % b;
+      a = t;
+    }
+    return a.abs();
+  }
+
+  static Rational clampPiPRational({
+    int? width,
+    int? height,
+    String fallbackDirection = 'horizontal',
+  }) {
+    if (width == null || height == null || width <= 0 || height <= 0) {
+      return fallbackDirection == 'vertical'
+          ? const Rational(9, 16)
+          : const Rational(16, 9);
+    }
+    final double ratio = width / height;
+    if (ratio > 2.39) {
+      return const Rational(239, 100);
+    }
+    if (ratio < (100 / 239)) {
+      return const Rational(100, 239);
+    }
+    final divisor = _gcd(width, height);
+    final safeW = (width ~/ divisor).clamp(1, 10000);
+    final safeH = (height ~/ divisor).clamp(1, 10000);
+    return Rational(safeW, safeH);
   }
 }

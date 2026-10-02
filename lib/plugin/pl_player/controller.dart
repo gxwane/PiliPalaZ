@@ -44,6 +44,7 @@ import 'package:pilipalaz/services/service_locator.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
 import 'package:pilipalaz/utils/screen_utils.dart';
 import 'package:pilipalaz/utils/storage.dart';
+import 'package:pilipalaz/utils/video_utils.dart';
 // import 'package:screen_brightness/screen_brightness.dart';
 import 'package:universal_platform/universal_platform.dart';
 import '../../models/video/play/subtitle.dart';
@@ -254,6 +255,10 @@ class PlPlayerController with WidgetsBindingObserver {
 
   /// [engineGeneration] 内核代际标识，用于在引擎平滑降级时通知 UI 重新构建对应视图
   final RxInt engineGeneration = 0.obs;
+
+  /// [videoDimension] reactive video dimension
+  final Rx<VideoDimension> videoDimension = VideoDimension.zero.obs;
+  Stream<VideoDimension> get onDimensionChanged => videoDimension.stream;
 
   /// [currentDimension] synchronous video dimension
   VideoDimension get currentDimension =>
@@ -480,6 +485,8 @@ class PlPlayerController with WidgetsBindingObserver {
     _heartDuration = 0;
     _positionGuard.reset(initialPosition: next.position);
     _positionGuard.expectPosition(next.position);
+    _direction.value = 'horizontal';
+    videoDimension.value = VideoDimension.zero;
     updatePositionSecond();
     updateSliderPositionSecond();
     updateBufferedSecond();
@@ -679,6 +686,18 @@ class PlPlayerController with WidgetsBindingObserver {
       speedsList.add(i.value);
     }
     speedsList.sort();
+
+    final bool autoPipSetting = setting.get(
+      SettingBoxKey.autoPiP,
+      defaultValue: false,
+    );
+    if (autoPipSetting) {
+      enableAutoPip();
+    } else {
+      _playerListenerForEnterPip?.cancel();
+      _playerListenerForEnterPip = null;
+      _safeSetEnableWhenBackground(false);
+    }
   }
 
   Future<void> _setWakelock({required bool enable}) async {
@@ -709,6 +728,13 @@ class PlPlayerController with WidgetsBindingObserver {
     });
     _audioOnlySubs = _onlyPlayAudio.listen((bool onlyAudio) {
       _updateWakelock();
+      if (onlyAudio) {
+        _safeSetEnableWhenBackground(false);
+      } else {
+        if (GStorage.setting.get(SettingBoxKey.autoPiP, defaultValue: false)) {
+          enableAutoPip();
+        }
+      }
     });
     enableAutoPip();
   }
@@ -744,37 +770,51 @@ class PlPlayerController with WidgetsBindingObserver {
 
   void enableAutoPip() async {
     if (!GStorage.setting.get(SettingBoxKey.autoPiP, defaultValue: false)) {
+      _playerListenerForEnterPip?.cancel();
+      _playerListenerForEnterPip = null;
+      _safeSetEnableWhenBackground(false);
       return;
     }
-    if (!await FlPiP().isAvailable) return;
+    try {
+      if (!await FlPiP().isAvailable) return;
+    } catch (_) {
+      return;
+    }
+    _playerListenerForEnterPip?.cancel();
     _playerListenerForEnterPip = onPlayerStatusChanged.listen((
       PlayerStatus status,
     ) async {
-      if (status != PlayerStatus.playing) {
-        // bool isActive = (await FlPiP().isActive)?.status == PiPStatus.enabled;
-        // if (isActive) return;
-        FlPiP().setEnableWhenBackground(false);
-        print('disable pip EnableWhenBackground');
+      if (status != PlayerStatus.playing || _onlyPlayAudio.value) {
+        _safeSetEnableWhenBackground(false);
         return;
       }
-      print('enable pip');
-      FlPiP().enable(
-        ios: FlPiPiOSConfig(
-          enabledWhenBackground: true,
-          videoPath: dataSource.videoSource ?? '',
-          audioPath: dataSource.audioSource ?? '',
-          packageName: 'PiliPalaZ',
-        ),
-        android: FlPiPAndroidConfig(
-          enabledWhenBackground: true,
-          aspectRatio: Rational(
-            direction.value == 'vertical' ? 9 : 16,
-            direction.value == 'horizontal' ? 9 : 16,
-          ),
-        ),
+      final dim = currentDimension;
+      final rational = VideoUtils.clampPiPRational(
+        width: dim.width > 0 ? dim.width : null,
+        height: dim.height > 0 ? dim.height : null,
+        fallbackDirection: direction.value,
       );
-      print('enabled pip');
+      try {
+        await FlPiP().enable(
+          ios: FlPiPiOSConfig(
+            enabledWhenBackground: true,
+            videoPath: dataSource.videoSource ?? '',
+            audioPath: dataSource.audioSource ?? '',
+            packageName: 'PiliPalaZ',
+          ),
+          android: FlPiPAndroidConfig(
+            enabledWhenBackground: true,
+            aspectRatio: rational,
+          ),
+        );
+      } catch (_) {}
     });
+  }
+
+  static void _safeSetEnableWhenBackground(bool enable) {
+    try {
+      FlPiP().setEnableWhenBackground(enable).catchError((_) => false);
+    } catch (_) {}
   }
 
   // 获取实例 传参
@@ -1834,6 +1874,10 @@ class PlPlayerController with WidgetsBindingObserver {
         _buffered.value = event;
         updateBufferedSecond();
       }),
+      engine.dimensionStream.listen((VideoDimension event) {
+        if (session != _playbackSession) return;
+        videoDimension.value = event;
+      }),
     ]);
   }
 
@@ -2036,6 +2080,20 @@ class PlPlayerController with WidgetsBindingObserver {
           const Duration(seconds: 1),
           () => videoPlayerServiceHandler.onPositionChange(event),
         );
+      }),
+      player.stream.width.listen((int? w) {
+        if (session != _playbackSession) return;
+        final currentH = videoDimension.value.height;
+        if (w != null && w > 0) {
+          videoDimension.value = VideoDimension(w, currentH);
+        }
+      }),
+      player.stream.height.listen((int? h) {
+        if (session != _playbackSession) return;
+        final currentW = videoDimension.value.width;
+        if (h != null && h > 0) {
+          videoDimension.value = VideoDimension(currentW, h);
+        }
       }),
     ]);
   }
@@ -2885,6 +2943,8 @@ class PlPlayerController with WidgetsBindingObserver {
       if (identical(_diagnosticSession, diagnostic)) {
         _diagnosticSession = null;
       }
+      _direction.value = 'horizontal';
+      videoDimension.value = VideoDimension.zero;
       videoPlayerServiceHandler.clear();
     } catch (err, stackTrace) {
       await diagnostic?.checkpoint(

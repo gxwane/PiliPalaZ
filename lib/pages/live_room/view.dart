@@ -13,6 +13,7 @@ import 'package:pilipalaz/models/live/room_info_h5.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/services/service_locator.dart';
 import 'package:pilipalaz/utils/screen_utils.dart';
+import 'package:pilipalaz/utils/storage.dart';
 
 import 'controller.dart';
 import 'widgets/bottom_control.dart';
@@ -106,9 +107,12 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final Widget videoPlayerPanel = FutureBuilder<ApiResult<RoomInfoModel>>(
+  Widget _buildVideoPlayerPanel({bool isPip = false}) {
+    final bool pipNoDanmaku = GStorage.setting.get(
+      SettingBoxKey.pipNoDanmaku,
+      defaultValue: false,
+    );
+    return FutureBuilder<ApiResult<RoomInfoModel>>(
       future: _futureBuilderFuture,
       builder: (BuildContext context, AsyncSnapshot snapshot) {
         if (snapshot.data is ApiSuccess<RoomInfoModel>) {
@@ -126,14 +130,18 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
                 controller: plPlayerController!,
                 enableVerticalGesture:
                     plPlayerController?.isFullScreen.value == true,
-                bottomControl: BottomControl(
-                  controller: plPlayerController,
-                  liveRoomCtr: _liveRoomController,
-                ),
-                danmuWidget: LiveDanmaku(
-                  liveRoomCtr: _liveRoomController,
-                  playerController: plPlayerController!,
-                ),
+                bottomControl: isPip
+                    ? null
+                    : BottomControl(
+                        controller: plPlayerController,
+                        liveRoomCtr: _liveRoomController,
+                      ),
+                danmuWidget: (isPip && pipNoDanmaku)
+                    ? null
+                    : LiveDanmaku(
+                        liveRoomCtr: _liveRoomController,
+                        playerController: plPlayerController!,
+                      ),
               );
             }
             return Center(
@@ -176,6 +184,11 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
         }
       },
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget normalVideoPanel = _buildVideoPlayerPanel(isPip: false);
 
     final Widget childWhenDisabled = NotificationListener<ScrollNotification>(
       onNotification: _onScrollNotification,
@@ -195,7 +208,7 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
           itemBuilder: (context, index) {
             return Obx(() {
               if (index == _playlistManager.currentIndex.value) {
-                return _buildActiveRoomView(context, videoPlayerPanel);
+                return _buildActiveRoomView(context, normalVideoPanel);
               }
               return LiveRoomPreviewCard(
                 item: _playlistManager.playlist[index],
@@ -213,7 +226,7 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
       builder: (PiPStatusInfo? statusInfo) {
         switch (statusInfo?.status) {
           case PiPStatus.enabled:
-            return videoPlayerPanel;
+            return _buildVideoPlayerPanel(isPip: true);
           case PiPStatus.disabled:
           case PiPStatus.unavailable:
           case null:
@@ -255,24 +268,43 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
   }
 
   Widget _buildActiveRoomView(BuildContext context, Widget videoPlayerPanel) {
-    return Scaffold(
-      primary: true,
-      resizeToAvoidBottomInset: true,
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          _buildAppBackground(),
-          Column(
-            children: [
-              _buildTopAppBar(context),
-              _buildPlayerContainer(context, videoPlayerPanel),
-              if (MediaQuery.of(context).orientation != Orientation.landscape)
-                Expanded(child: _buildPortraitContent(context)),
-            ],
-          ),
-        ],
-      ),
-    );
+    return Obx(() {
+      final isLandscape =
+          MediaQuery.of(context).orientation == Orientation.landscape;
+      final isFullScreen = plPlayerController?.isFullScreen.value == true;
+      final isImmersive = isFullScreen || isLandscape;
+
+      return Scaffold(
+        primary: !isImmersive,
+        resizeToAvoidBottomInset: !isImmersive,
+        backgroundColor: Colors.black,
+        body: Stack(
+          children: [
+            _buildAppBackground(),
+            if (isImmersive)
+              Positioned.fill(
+                child: _buildPlayerContainer(
+                  context,
+                  videoPlayerPanel,
+                  isImmersive: true,
+                ),
+              )
+            else
+              Column(
+                children: [
+                  _buildTopAppBar(context),
+                  _buildPlayerContainer(
+                    context,
+                    videoPlayerPanel,
+                    isImmersive: false,
+                  ),
+                  Expanded(child: _buildPortraitContent(context)),
+                ],
+              ),
+          ],
+        ),
+      );
+    });
   }
 
   Widget _buildAppBackground() {
@@ -413,25 +445,35 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
     });
   }
 
-  Widget _buildPlayerContainer(BuildContext context, Widget videoPlayerPanel) {
+  Widget _buildPlayerContainer(
+    BuildContext context,
+    Widget videoPlayerPanel, {
+    required bool isImmersive,
+  }) {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
     return PopScope(
-      canPop: plPlayerController?.isFullScreen.value != true,
+      canPop: !isImmersive,
       onPopInvokedWithResult: (bool didPop, Object? result) {
+        if (didPop) return;
         if (plPlayerController?.isFullScreen.value == true) {
           plPlayerController!.triggerFullScreen(status: false);
-        }
-        if (MediaQuery.of(context).orientation == Orientation.landscape &&
-            !ScreenUtils.isTabletDevice()) {
+        } else if (isLandscape && !ScreenUtils.isTabletDevice()) {
           unawaited(verticalScreenForTwoSeconds());
         }
       },
-      child: SizedBox(
-        width: Get.size.width,
-        height: MediaQuery.of(context).orientation == Orientation.landscape
-            ? Get.size.height
-            : Get.size.width * 9 / 16,
-        child: videoPlayerPanel,
-      ),
+      child: isImmersive
+          ? SizedBox.expand(child: videoPlayerPanel)
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                return SizedBox(
+                  width: width,
+                  height: width * 9 / 16,
+                  child: videoPlayerPanel,
+                );
+              },
+            ),
     );
   }
 

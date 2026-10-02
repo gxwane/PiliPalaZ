@@ -9,6 +9,7 @@ import 'package:pilipalaz/models/video/play/url.dart';
 import 'package:pilipalaz/pages/live_room/index.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/utils/storage.dart';
+import 'package:pilipalaz/utils/video_utils.dart';
 import 'live_quality_sheet.dart';
 
 class BottomControl extends StatefulWidget implements PreferredSizeWidget {
@@ -171,50 +172,40 @@ class _BottomControlState extends State<BottomControl> {
                   padding: WidgetStateProperty.all(EdgeInsets.zero),
                 ),
                 onPressed: () async {
-                  // bool canUsePiP = false;
-                  // widget.controller!.hiddenControls(false);
-                  // try {
-                  //   canUsePiP = await widget.floating!.isPipAvailable;
-                  // } on PlatformException catch (_) {
-                  //   canUsePiP = false;
-                  // }
-                  // if (canUsePiP) {
-                  //   await widget.floating!.enable(const ImmediatePiP());
-                  // } else {}
                   final controller = widget.controller;
-                  int rationalWidth = 16;
-                  int rationalHeight = 9;
                   if (controller != null) {
                     controller.controls = false;
-                    final dim = controller.currentDimension;
-                    if (dim.hasSize) {
-                      rationalWidth = dim.width;
-                      rationalHeight = dim.height;
-                    } else {
-                      final vpc = controller.videoPlayerController;
-                      if (controller.canControlPlayback && vpc != null) {
-                        final state = vpc.state;
-                        final width = state.width ?? 0;
-                        final height = state.height ?? 0;
-                        if (width > 0 && height > 0) {
-                          rationalWidth = width;
-                          rationalHeight = height;
-                        }
-                      }
-                    }
                   }
-                  FlPiP().enable(
-                    ios: FlPiPiOSConfig(
-                      videoPath:
-                          widget.controller?.dataSource.videoSource ?? "",
-                      audioPath:
-                          widget.controller?.dataSource.audioSource ?? "",
-                      packageName: null,
-                    ),
-                    android: FlPiPAndroidConfig(
-                      aspectRatio: Rational(rationalWidth, rationalHeight),
-                    ),
+                  final dim = controller?.currentDimension;
+                  final vpc = controller?.videoPlayerController;
+                  final int? width = (dim != null && dim.hasSize)
+                      ? dim.width
+                      : (vpc != null && controller!.canControlPlayback)
+                      ? vpc.state.width
+                      : null;
+                  final int? height = (dim != null && dim.hasSize)
+                      ? dim.height
+                      : (vpc != null && controller!.canControlPlayback)
+                      ? vpc.state.height
+                      : null;
+                  final rational = VideoUtils.clampPiPRational(
+                    width: width,
+                    height: height,
+                    fallbackDirection:
+                        controller?.direction.value ?? 'horizontal',
                   );
+                  try {
+                    await FlPiP().enable(
+                      ios: FlPiPiOSConfig(
+                        videoPath: controller?.dataSource.videoSource ?? '',
+                        audioPath: controller?.dataSource.audioSource ?? '',
+                        packageName: null,
+                      ),
+                      android: FlPiPAndroidConfig(aspectRatio: rational),
+                    );
+                  } catch (_) {
+                    SmartDialog.showToast('开启画中画失败');
+                  }
                 },
                 icon: const Icon(
                   Icons.picture_in_picture_alt,
@@ -225,21 +216,24 @@ class _BottomControlState extends State<BottomControl> {
             ),
             const SizedBox(width: 4),
           ],
-          ComBtn(
-            icon: Icon(
-              widget.controller!.isFullScreen.value
-                  ? Icons.fullscreen_exit
-                  : Icons.fullscreen,
-              semanticLabel: widget.controller!.isFullScreen.value
-                  ? '退出全屏'
-                  : '全屏',
-              size: 20,
-              color: Colors.white,
+          if (widget.controller != null)
+            Obx(
+              () => ComBtn(
+                icon: Icon(
+                  widget.controller!.isFullScreen.value
+                      ? Icons.fullscreen_exit
+                      : Icons.fullscreen,
+                  semanticLabel: widget.controller!.isFullScreen.value
+                      ? '退出全屏'
+                      : '全屏',
+                  size: 20,
+                  color: Colors.white,
+                ),
+                fuc: () => widget.controller!.triggerFullScreen(
+                  status: !widget.controller!.isFullScreen.value,
+                ),
+              ),
             ),
-            fuc: () => widget.controller!.triggerFullScreen(
-              status: !widget.controller!.isFullScreen.value,
-            ),
-          ),
         ],
       ),
     );
