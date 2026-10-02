@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.5.0-beta.6] - 2026-10-02
+
 ### 优化
 
 - 直播间横屏与全屏概念彻底解耦，支持大屏/平板横屏左右双栏交互（`LiveRoomPage`）：
@@ -915,7 +917,8 @@
 - 首次公开版本，包含直播、推荐、动态、投稿、番剧和视频播放。
 - 支持播放器手势、画质/音质/解码格式选择、点赞/投币/收藏、关注与用户主页、评论、历史记录和稍后再看。
 
-[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.5...HEAD
+[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.6...HEAD
+[1.5.0-beta.6]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.5...v1.5.0-beta.6
 [1.5.0-beta.5]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.4...v1.5.0-beta.5
 [1.5.0-beta.4]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.3...v1.5.0-beta.4
 [1.5.0-beta.3]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.2...v1.5.0-beta.3
