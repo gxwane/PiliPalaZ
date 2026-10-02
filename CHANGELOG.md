@@ -107,6 +107,13 @@
 
 ### 修复
 
+- 直播间横屏、全屏与沉浸式黑屏及布局尺寸塌陷修复（`LiveRoomPage`）：
+  - 根除 RenderStack 0x0 塌陷：引入同构渲染层级（`SizedBox.expand` + `Stack(fit: StackFit.expand)`），并通过 `MediaQuery.sizeOf(context)` 向播放器容器向下传递精确紧约束，彻底根治全屏与横屏沉浸式状态下 0x0 尺寸折叠导致的画面纯黑缺陷；
+  - 跨模态无损纹理复用：将播放器容器统一收敛在恒定 `Column` 父级并在外层声明稳定 `GlobalKey`（`_playerContainerKey`），杜绝横竖屏切换时 Element 树解挂与底层原生视频纹理（TextureId）销毁重建，消除切屏掉帧；
+  - 杜绝平板设备横屏退出死锁：优化 `PopScope` 拦截判定（`shouldIntercept = isFullScreen || (isLandscape && !ScreenUtils.isTabletDevice())`），解除平板在横屏常规状态下的返回键吞噬，并在回调中追加 `Navigator.maybePop` 安全兜底；
+  - 横屏全屏手势与视口对齐防护：横屏模式下同步开启垂直音量与亮度调节手势（`enableVerticalGesture`）；在 `didChangeDependencies` 捕获切回竖屏时，通过后帧安全调度 `jumpToPage` 保持 `PageView` 视口精准锚定当前房间；
+  - 自动化测试套件（`test/live/live_room_immersive_test.dart`）：覆盖全屏沉浸与竖屏 16:9 尺寸约束验证、生产代码防塌陷防死锁契约断言及变异消灭测试。
+
 - 搜索直播间点击崩溃与多态模型解析加固：
   - 在 `LiveItemModel` 引入 `LiveItemModel.fromDynamic(dynamic raw)` 领域解构器，平铺 `SearchLiveItemModel` 分词高亮标题为纯净文本，并映射 `roomid`、`cover`、`face`、`areaName`、`online`，支持 Map 与动态对象安全解构；
   - 修复 `LiveRoomPage` 与 `LiveRoomController` 中由 `argMap?['liveItem'] as LiveItemModel?` 强制类型断言引发的运行时 `TypeError` 崩溃；

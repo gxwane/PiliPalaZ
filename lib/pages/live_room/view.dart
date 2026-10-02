@@ -41,6 +41,7 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
   PlPlayerController? plPlayerController;
   late Future<ApiResult<RoomInfoH5Model>>? _futureBuilder;
   late Future<ApiResult<RoomInfoModel>>? _futureBuilderFuture;
+  final GlobalKey _playerContainerKey = GlobalKey();
 
   bool isShowCover = true;
   bool isPlay = true;
@@ -107,6 +108,23 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
     super.dispose();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final orientation = MediaQuery.of(context).orientation;
+    if (orientation == Orientation.portrait) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final pageController = _playlistManager.pageController;
+        if (pageController.hasClients &&
+            pageController.page?.round() !=
+                _playlistManager.currentIndex.value) {
+          pageController.jumpToPage(_playlistManager.currentIndex.value);
+        }
+      });
+    }
+  }
+
   Widget _buildVideoPlayerPanel({bool isPip = false}) {
     final bool pipNoDanmaku = GStorage.setting.get(
       SettingBoxKey.pipNoDanmaku,
@@ -129,7 +147,8 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
                 key: const ValueKey('single_active_live_player'),
                 controller: plPlayerController!,
                 enableVerticalGesture:
-                    plPlayerController?.isFullScreen.value == true,
+                    plPlayerController?.isFullScreen.value == true ||
+                    MediaQuery.of(context).orientation == Orientation.landscape,
                 bottomControl: isPip
                     ? null
                     : BottomControl(
@@ -278,30 +297,25 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
         primary: !isImmersive,
         resizeToAvoidBottomInset: !isImmersive,
         backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            _buildAppBackground(),
-            if (isImmersive)
-              Positioned.fill(
-                child: _buildPlayerContainer(
-                  context,
-                  videoPlayerPanel,
-                  isImmersive: true,
-                ),
-              )
-            else
+        body: SizedBox.expand(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (!isImmersive) _buildAppBackground(),
               Column(
                 children: [
-                  _buildTopAppBar(context),
+                  if (!isImmersive) _buildTopAppBar(context),
                   _buildPlayerContainer(
                     context,
                     videoPlayerPanel,
-                    isImmersive: false,
+                    isImmersive: isImmersive,
                   ),
-                  Expanded(child: _buildPortraitContent(context)),
+                  if (!isImmersive)
+                    Expanded(child: _buildPortraitContent(context)),
                 ],
               ),
-          ],
+            ],
+          ),
         ),
       );
     });
@@ -452,28 +466,35 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
   }) {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
-    return PopScope(
-      canPop: !isImmersive,
-      onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (didPop) return;
-        if (plPlayerController?.isFullScreen.value == true) {
-          plPlayerController!.triggerFullScreen(status: false);
-        } else if (isLandscape && !ScreenUtils.isTabletDevice()) {
-          unawaited(verticalScreenForTwoSeconds());
-        }
-      },
-      child: isImmersive
-          ? SizedBox.expand(child: videoPlayerPanel)
-          : LayoutBuilder(
-              builder: (context, constraints) {
-                final width = constraints.maxWidth;
-                return SizedBox(
-                  width: width,
-                  height: width * 9 / 16,
-                  child: videoPlayerPanel,
-                );
-              },
-            ),
+    final isFullScreen = plPlayerController?.isFullScreen.value == true;
+    final bool shouldIntercept =
+        isFullScreen || (isLandscape && !ScreenUtils.isTabletDevice());
+
+    final size = MediaQuery.sizeOf(context);
+    final double playerHeight = isImmersive ? size.height : size.width * 9 / 16;
+    final double playerWidth = size.width;
+
+    return KeyedSubtree(
+      key: _playerContainerKey,
+      child: Container(
+        color: Colors.black,
+        width: playerWidth,
+        height: playerHeight,
+        child: PopScope(
+          canPop: !shouldIntercept,
+          onPopInvokedWithResult: (bool didPop, Object? result) {
+            if (didPop) return;
+            if (plPlayerController?.isFullScreen.value == true) {
+              plPlayerController!.triggerFullScreen(status: false);
+            } else if (isLandscape && !ScreenUtils.isTabletDevice()) {
+              unawaited(verticalScreenForTwoSeconds());
+            } else {
+              Navigator.of(context).maybePop();
+            }
+          },
+          child: SizedBox.expand(child: videoPlayerPanel),
+        ),
+      ),
     );
   }
 
