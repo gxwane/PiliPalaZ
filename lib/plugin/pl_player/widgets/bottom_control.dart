@@ -19,11 +19,13 @@ List<BottomControlType> buildDefaultBottomControlTypes({
   required bool hasEpisodes,
   required bool isEquivalentFullScreen,
   required bool hasSubtitles,
+  bool hasChapters = false,
 }) {
   return [
     BottomControlType.playOrPause,
     if (hasEpisodes) BottomControlType.pre,
     if (hasEpisodes) BottomControlType.next,
+    if (hasChapters) BottomControlType.chapter,
     if (hasSubtitles) BottomControlType.subtitle,
     if (hasEpisodes) BottomControlType.episode,
     if (isEquivalentFullScreen) BottomControlType.fit,
@@ -91,6 +93,7 @@ BottomControlLayoutResult resolveBottomControlLayout({
   const optionalPriority = [
     BottomControlType.next,
     BottomControlType.pre,
+    BottomControlType.chapter,
     BottomControlType.episode,
     BottomControlType.speed,
     BottomControlType.subtitle,
@@ -226,6 +229,7 @@ class BottomControl extends StatelessWidget implements PreferredSizeWidget {
         height: 80 + (isEquivalentFullScreen ? Get.height * 0.08 : 0),
         padding: const EdgeInsets.symmetric(horizontal: 10),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             Padding(
@@ -238,6 +242,7 @@ class BottomControl extends StatelessWidget implements PreferredSizeWidget {
                 progress: Duration(seconds: value),
                 buffered: Duration(seconds: buffer),
                 total: Duration(seconds: durationSec),
+                chapterPoints: playerController.chapterSplitPoints,
                 progressBarColor: colorTheme,
                 baseBarColor: Colors.white.withValues(alpha: 0.2),
                 bufferedBarColor: colorTheme.withValues(alpha: 0.4),
@@ -270,9 +275,7 @@ class BottomControl extends StatelessWidget implements PreferredSizeWidget {
                       },
                     );
                   }
-                  playerController.onUpdatedSliderProgress(
-                    duration.timeStamp,
-                  );
+                  playerController.onUpdatedSliderProgress(duration.timeStamp);
                 },
                 onSeek: (duration) {
                   playerController.onChangedSliderEnd();

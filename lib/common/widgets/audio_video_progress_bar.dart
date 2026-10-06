@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 
 import '../../utils/utils.dart';
 
@@ -98,6 +99,8 @@ class ProgressBar extends LeafRenderObjectWidget {
     this.timeLabelType,
     this.timeLabelTextStyle,
     this.timeLabelPadding = 0.0,
+    this.chapterPoints,
+    this.chapterGapWidth = 2.0,
   });
 
   /// The elapsed playing time of the media.
@@ -107,6 +110,12 @@ class ProgressBar extends LeafRenderObjectWidget {
 
   /// The total duration of the media.
   final Duration total;
+
+  /// Optional chapter split points dividing the progress bar into segments.
+  final List<Duration>? chapterPoints;
+
+  /// Gap between chapter segments in logical pixels (default 2.0).
+  final double chapterGapWidth;
 
   /// The currently buffered content of the media.
   ///
@@ -285,6 +294,8 @@ class ProgressBar extends LeafRenderObjectWidget {
       timeLabelTextStyle: textStyle,
       timeLabelPadding: timeLabelPadding,
       textScaleFactor: textScaleFactor,
+      chapterPoints: chapterPoints,
+      chapterGapWidth: chapterGapWidth,
     );
   }
 
@@ -318,7 +329,9 @@ class ProgressBar extends LeafRenderObjectWidget {
       ..timeLabelType = timeLabelType ?? TimeLabelType.totalTime
       ..timeLabelTextStyle = textStyle
       ..timeLabelPadding = timeLabelPadding
-      ..textScaleFactor = textScaleFactor;
+      ..textScaleFactor = textScaleFactor
+      ..chapterPoints = chapterPoints
+      ..chapterGapWidth = chapterGapWidth;
   }
 
   @override
@@ -455,6 +468,8 @@ class _RenderProgressBar extends RenderBox {
     TextStyle? timeLabelTextStyle,
     double timeLabelPadding = 0.0,
     double textScaleFactor = 1.0,
+    List<Duration>? chapterPoints,
+    double chapterGapWidth = 2.0,
   }) : _total = total,
        _buffered = buffered,
        _onSeek = onSeek,
@@ -475,7 +490,9 @@ class _RenderProgressBar extends RenderBox {
        _timeLabelType = timeLabelType,
        _timeLabelTextStyle = timeLabelTextStyle,
        _timeLabelPadding = timeLabelPadding,
-       _textScaleFactor = textScaleFactor {
+       _textScaleFactor = textScaleFactor,
+       _chapterPoints = chapterPoints,
+       _chapterGapWidth = chapterGapWidth {
     _drag = _EagerHorizontalDragGestureRecognizer()
       ..onStart = _onDragStart
       ..onUpdate = _onDragUpdate
@@ -508,8 +525,32 @@ class _RenderProgressBar extends RenderBox {
     return (_thumbCanPaintOutsideBar) ? thumbRadius + minPadding : minPadding;
   }
 
+  int? _lastVibratedSegmentIndex;
+
+  void _checkChapterBoundaryHaptic(Duration currentDuration) {
+    final validPoints = _cleanChapterPoints();
+    if (validPoints.isEmpty) return;
+
+    final curMs = currentDuration.inMilliseconds;
+    int segmentIndex = 0;
+    for (int i = 0; i < validPoints.length; i++) {
+      if (curMs >= validPoints[i].inMilliseconds) {
+        segmentIndex = i + 1;
+      } else {
+        break;
+      }
+    }
+
+    if (_lastVibratedSegmentIndex != null &&
+        _lastVibratedSegmentIndex != segmentIndex) {
+      HapticFeedback.selectionClick();
+    }
+    _lastVibratedSegmentIndex = segmentIndex;
+  }
+
   void _onDragStart(DragStartDetails details) {
     _userIsDraggingThumb = true;
+    _lastVibratedSegmentIndex = null;
     _updateThumbPosition(details.localPosition);
     onDragStart?.call(
       ThumbDragDetails(
@@ -522,9 +563,11 @@ class _RenderProgressBar extends RenderBox {
 
   void _onDragUpdate(DragUpdateDetails details) {
     _updateThumbPosition(details.localPosition);
+    final curDuration = _currentThumbDuration();
+    _checkChapterBoundaryHaptic(curDuration);
     onDragUpdate?.call(
       ThumbDragDetails(
-        timeStamp: _currentThumbDuration(),
+        timeStamp: curDuration,
         globalPosition: details.globalPosition,
         localPosition: details.localPosition,
       ),
@@ -539,6 +582,7 @@ class _RenderProgressBar extends RenderBox {
 
   void _finishDrag() {
     _userIsDraggingThumb = false;
+    _lastVibratedSegmentIndex = null;
     markNeedsPaint();
   }
 
@@ -576,6 +620,22 @@ class _RenderProgressBar extends RenderBox {
 
   /// The play location of the media.
   ///
+  List<Duration>? _chapterPoints;
+  List<Duration>? get chapterPoints => _chapterPoints;
+  set chapterPoints(List<Duration>? value) {
+    if (_chapterPoints == value) return;
+    _chapterPoints = value;
+    markNeedsPaint();
+  }
+
+  double _chapterGapWidth = 2.0;
+  double get chapterGapWidth => _chapterGapWidth;
+  set chapterGapWidth(double value) {
+    if (_chapterGapWidth == value) return;
+    _chapterGapWidth = value;
+    markNeedsPaint();
+  }
+
   /// This is used to update the thumb value and the left time label.
   Duration get progress => _progress;
   Duration _progress = Duration.zero;
@@ -1071,25 +1131,168 @@ class _RenderProgressBar extends RenderBox {
     );
   }
 
+  List<Duration> _cleanChapterPoints() {
+    final raw = _chapterPoints;
+    if (raw == null || raw.isEmpty || total <= Duration.zero) {
+      return const <Duration>[];
+    }
+    final totalMs = total.inMilliseconds;
+    final validMs = <int>{};
+    for (int i = 0; i < raw.length; i++) {
+      final ms = raw[i].inMilliseconds;
+      if (ms > 0 && ms < totalMs) {
+        validMs.add(ms);
+      }
+    }
+    if (validMs.isEmpty) return const <Duration>[];
+    final sorted = validMs.toList()..sort();
+    return sorted
+        .map((ms) => Duration(milliseconds: ms))
+        .toList(growable: false);
+  }
+
+  void _drawSegmentedBar({
+    required Canvas canvas,
+    required double widthProportion,
+    required Color color,
+    required List<Duration> splitPoints,
+    required double adjustedWidth,
+    required double capRadius,
+    required double centerY,
+  }) {
+    final totalMs = total.inMilliseconds;
+    final fillX = capRadius + widthProportion * adjustedWidth;
+    final isRound = _barCapShape == BarCapShape.round;
+    final halfGap = _chapterGapWidth / 2;
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    Duration prev = Duration.zero;
+    final allBounds = <Duration>[...splitPoints, total];
+
+    for (int i = 0; i < allBounds.length; i++) {
+      final cur = allBounds[i];
+      _drawSingleSegment(
+        canvas: canvas,
+        paint: paint,
+        prev: prev,
+        cur: cur,
+        totalMs: totalMs,
+        adjustedWidth: adjustedWidth,
+        capRadius: capRadius,
+        centerY: centerY,
+        fillX: fillX,
+        halfGap: halfGap,
+        isFirst: i == 0,
+        isLast: i == allBounds.length - 1,
+        isRound: isRound,
+      );
+      prev = cur;
+    }
+  }
+
+  void _drawSingleSegment({
+    required Canvas canvas,
+    required Paint paint,
+    required Duration prev,
+    required Duration cur,
+    required int totalMs,
+    required double adjustedWidth,
+    required double capRadius,
+    required double centerY,
+    required double fillX,
+    required double halfGap,
+    required bool isFirst,
+    required bool isLast,
+    required bool isRound,
+  }) {
+    final startX = capRadius + (prev.inMilliseconds / totalMs) * adjustedWidth;
+    final endX = capRadius + (cur.inMilliseconds / totalMs) * adjustedWidth;
+    final segStartX = isFirst ? startX : (startX + halfGap);
+    final segEndX = isLast ? endX : (endX - halfGap);
+
+    if (segEndX <= segStartX || fillX <= segStartX) return;
+
+    final segFillX = min(fillX, segEndX);
+    final isFullSegment = segFillX >= segEndX;
+    final roundRadius = Radius.circular(capRadius);
+    const flatRadius = Radius.circular(1.0);
+
+    final rrect = RRect.fromRectAndCorners(
+      Rect.fromLTRB(
+        segStartX,
+        centerY - capRadius,
+        segFillX,
+        centerY + capRadius,
+      ),
+      topLeft: isFirst && isRound ? roundRadius : flatRadius,
+      bottomLeft: isFirst && isRound ? roundRadius : flatRadius,
+      topRight: isLast && isFullSegment && isRound ? roundRadius : flatRadius,
+      bottomRight: isLast && isFullSegment && isRound
+          ? roundRadius
+          : flatRadius,
+    );
+    canvas.drawRRect(rrect, paint);
+  }
+
+  void _drawContinuousBar({
+    required Canvas canvas,
+    required double widthProportion,
+    required Color color,
+    required double adjustedWidth,
+    required double capRadius,
+    required double centerY,
+    required StrokeCap strokeCap,
+  }) {
+    final baseBarPaint = Paint()
+      ..color = color
+      ..strokeCap = strokeCap
+      ..strokeWidth = _barHeight;
+    final dx = widthProportion * adjustedWidth + capRadius;
+    final startPoint = Offset(capRadius, centerY);
+    final endPoint = Offset(dx, centerY);
+    canvas.drawLine(startPoint, endPoint, baseBarPaint);
+  }
+
   void _drawBar({
     required Canvas canvas,
     required Size availableSize,
     required double widthProportion,
     required Color color,
   }) {
+    if (widthProportion <= 0.0) return;
+
     final strokeCap = (_barCapShape == BarCapShape.round)
         ? StrokeCap.round
         : StrokeCap.square;
-    final baseBarPaint = Paint()
-      ..color = color
-      ..strokeCap = strokeCap
-      ..strokeWidth = _barHeight;
     final capRadius = _barHeight / 2;
     final adjustedWidth = availableSize.width - barHeight;
-    final dx = widthProportion * adjustedWidth + capRadius;
-    final startPoint = Offset(capRadius, availableSize.height / 2);
-    var endPoint = Offset(dx, availableSize.height / 2);
-    canvas.drawLine(startPoint, endPoint, baseBarPaint);
+    final centerY = availableSize.height / 2;
+
+    final validPoints = _cleanChapterPoints();
+    if (validPoints.isEmpty) {
+      _drawContinuousBar(
+        canvas: canvas,
+        widthProportion: widthProportion,
+        color: color,
+        adjustedWidth: adjustedWidth,
+        capRadius: capRadius,
+        centerY: centerY,
+        strokeCap: strokeCap,
+      );
+      return;
+    }
+
+    _drawSegmentedBar(
+      canvas: canvas,
+      widthProportion: widthProportion,
+      color: color,
+      splitPoints: validPoints,
+      adjustedWidth: adjustedWidth,
+      capRadius: capRadius,
+      centerY: centerY,
+    );
   }
 
   void _drawThumb(Canvas canvas, Size localSize) {

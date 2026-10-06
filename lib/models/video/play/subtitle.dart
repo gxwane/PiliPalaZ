@@ -21,3 +21,15 @@ extension SubtitlePreferenceCode on SubtitlePreference {
     return null;
   }
 }
+
+final class VideoSubtitleSource {
+  const VideoSubtitleSource({
+    required this.url,
+    required this.language,
+    required this.title,
+  });
+
+  final String url;
+  final String language;
+  final String title;
+}

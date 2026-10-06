@@ -47,7 +47,6 @@ import 'package:pilipalaz/utils/storage.dart';
 import 'package:pilipalaz/utils/video_utils.dart';
 // import 'package:screen_brightness/screen_brightness.dart';
 import 'package:universal_platform/universal_platform.dart';
-import '../../models/video/play/subtitle.dart';
 import '../../pages/danmaku/controller.dart';
 import '../../pages/video/controller.dart';
 import '../../pages/video/introduction/bangumi/controller.dart';
@@ -160,6 +159,15 @@ class PlPlayerController with WidgetsBindingObserver {
   late DataSource dataSource;
   final RxList<Map<String, String>> _vttSubtitles = <Map<String, String>>[].obs;
   final RxInt _vttSubtitlesIndex = 0.obs;
+
+  final RxList<VideoChapter> chapters = <VideoChapter>[].obs;
+  final Rx<VideoChapter?> currentChapter = Rx<VideoChapter?>(null);
+
+  List<Duration> get chapterSplitPoints =>
+      VideoChapter.resolveChapterSplitPoints(
+        chapters,
+        totalDurationSeconds: durationSeconds.value,
+      );
 
   final RxDouble subtitleFontSize = 60.0.obs;
   final RxDouble subtitleBottomPadding = 24.0.obs;
@@ -431,12 +439,32 @@ class PlPlayerController with WidgetsBindingObserver {
 
   final List<StreamSubscription<dynamic>> subscriptions = [];
 
+  void updateCurrentChapter(int seconds) {
+    if (chapters.isEmpty) {
+      if (currentChapter.value != null) currentChapter.value = null;
+      return;
+    }
+    final isLastIndex = chapters.length - 1;
+    for (int i = 0; i < chapters.length; i++) {
+      if (chapters[i].contains(seconds, isLast: i == isLastIndex)) {
+        if (currentChapter.value != chapters[i]) {
+          currentChapter.value = chapters[i];
+        }
+        return;
+      }
+    }
+    if (currentChapter.value != null) {
+      currentChapter.value = null;
+    }
+  }
+
   void updateSliderPositionSecond() {
     int newSecond =
         (_sliderPosition.value.inMicroseconds / Duration.microsecondsPerSecond)
             .ceil();
     if (sliderPositionSeconds.value != newSecond) {
       sliderPositionSeconds.value = newSecond;
+      updateCurrentChapter(newSecond);
     }
   }
 
@@ -3080,6 +3108,8 @@ class PlPlayerController with WidgetsBindingObserver {
   }
 
   void _initializeSubtitles(DataSource dataSource, int session) {
+    chapters.clear();
+    currentChapter.value = null;
     if (dataSource.type == DataSourceType.file) {
       _vttSubtitles.clear();
       _vttSubtitlesIndex.value = 0;
@@ -3109,12 +3139,22 @@ class PlPlayerController with WidgetsBindingObserver {
 
   Future refreshVideoMetaInfo() async {
     _vttSubtitles.clear();
-    final metadata = await VideoHttp.videoMetaInfo(bvid: _bvid, cid: _cid);
-    if (metadata case ApiFailure<List<VideoSubtitleSource>> failure) {
+    chapters.clear();
+    currentChapter.value = null;
+    final metadata = await VideoHttp.videoPlayerMetadata(
+      bvid: _bvid,
+      cid: _cid,
+    );
+    if (metadata case ApiFailure<VideoPlayerMetadata> failure) {
       SmartDialog.showToast('查询视频元信息（字幕、防挡、章节等）错误，${failure.message}');
       return;
     }
-    final sources = (metadata as ApiSuccess<List<VideoSubtitleSource>>).data;
+    final metaData = (metadata as ApiSuccess<VideoPlayerMetadata>).data;
+    if (metaData.chapters.isNotEmpty) {
+      chapters.assignAll(metaData.chapters);
+      updateCurrentChapter(sliderPositionSeconds.value);
+    }
+    final sources = metaData.subtitles;
     if (sources.isEmpty) {
       return;
     }

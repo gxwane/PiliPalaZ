@@ -6,6 +6,7 @@ enum BottomControlType {
   space,
   spaceButton,
   episode,
+  chapter,
   fit,
   subtitle,
   speed,

@@ -23,6 +23,7 @@ import 'package:saver_gallery/saver_gallery.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 
 import '../../common/widgets/audio_video_progress_bar.dart';
+import '../../common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/pages/video/introduction/bangumi/controller.dart';
 import 'package:pilipalaz/controllers/playback_queue_controller.dart';
 import 'package:pilipalaz/pages/video/widgets/play_queue_bottom_sheet.dart';
@@ -30,6 +31,7 @@ import '../../common/widgets/list_sheet.dart';
 import '../../services/service_locator.dart';
 import '../../utils/utils.dart';
 import 'models/bottom_control_type.dart';
+import 'widgets/chapter_bottom_sheet.dart';
 import 'models/bottom_progress_behavior.dart';
 import 'models/play_repeat.dart';
 import 'models/play_status.dart';
@@ -521,6 +523,31 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     ).buildShowBottomSheet();
   }
 
+  void _showChapterList() {
+    final playerController = widget.controller;
+    final chapters = playerController.chapters;
+    if (chapters.isEmpty) return;
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return ChapterBottomSheet(
+          chapters: chapters,
+          activeChapter: playerController.currentChapter.value,
+          onSelect: (chapter) {
+            Navigator.of(sheetContext).pop();
+            playerController.seekTo(
+              Duration(seconds: chapter.from),
+              type: 'slider',
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _selectSubtitle(int value) {
     switch (value) {
       case -1:
@@ -566,6 +593,12 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
           leading: const Icon(Icons.list),
           title: const Text('选集'),
           onTap: () => _closeOverflowThen(sheetContext, _showEpisodeList),
+        );
+      case BottomControlType.chapter:
+        return ListTile(
+          leading: const Icon(Icons.bookmarks_outlined),
+          title: const Text('看点 / 章节'),
+          onTap: () => _closeOverflowThen(sheetContext, _showChapterList),
         );
       case BottomControlType.fit:
         return Obx(
@@ -786,6 +819,25 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         ),
       ),
 
+      /// 章节/看点
+      BottomControlType.chapter: SizedBox(
+        width: 48,
+        height: 48,
+        child: Semantics(
+          button: true,
+          label: '看点列表',
+          child: ComBtn(
+            semanticsLabel: '看点列表',
+            icon: const Icon(
+              Icons.bookmarks_outlined,
+              size: 22,
+              color: Colors.white,
+            ),
+            fuc: _showChapterList,
+          ),
+        ),
+      ),
+
       /// 画面比例
       BottomControlType.fit: SizedBox(
         width: 48,
@@ -934,15 +986,19 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
       ),
     };
     final hasSubtitles = playerController.vttSubtitles.isNotEmpty;
+    final hasChapters = playerController.chapters.isNotEmpty;
     final userSpecifyItems =
         (widget.bottomList ??
                 buildDefaultBottomControlTypes(
                   hasEpisodes: anySeason,
                   isEquivalentFullScreen: isEquivalentFullScreen,
                   hasSubtitles: hasSubtitles,
+                  hasChapters: hasChapters,
                 ))
             .where(
-              (type) => type != BottomControlType.subtitle || hasSubtitles,
+              (type) =>
+                  (type != BottomControlType.subtitle || hasSubtitles) &&
+                  (type != BottomControlType.chapter || hasChapters),
             );
     return userSpecifyItems
         .map(
@@ -1307,38 +1363,89 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                   opacity: playerController.isSliderMoving.value ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 150),
                   child: IntrinsicWidth(
-                    child: Container(
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: const Color(0x88000000),
-                        borderRadius: BorderRadius.circular(64.0),
-                      ),
-                      height: 34.0,
-                      padding: const EdgeInsets.only(left: 10, right: 10),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Obx(() {
-                            return Text(
-                              Utils.timeFormat(
-                                playerController.sliderPositionSeconds.value,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Obx(() {
+                          final chapter = playerController.currentChapter.value;
+                          if (chapter?.imgUrl != null &&
+                              chapter!.imgUrl!.isNotEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: NetworkImgLayer(
+                                  src: chapter.imgUrl!,
+                                  width: 120,
+                                  height: 67.5,
+                                ),
                               ),
-                              style: textStyle,
                             );
-                          }),
-                          const SizedBox(width: 2),
-                          const Text('/', style: textStyle),
-                          const SizedBox(width: 2),
-                          Obx(
-                            () => Text(
-                              Utils.timeFormat(
-                                playerController.durationSeconds.value,
-                              ),
-                              style: textStyle,
-                            ),
+                          }
+                          return const SizedBox.shrink();
+                        }),
+                        Container(
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: const Color(0x88000000),
+                            borderRadius: BorderRadius.circular(64.0),
                           ),
-                        ],
-                      ),
+                          height: 34.0,
+                          padding: const EdgeInsets.only(left: 10, right: 10),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Obx(() {
+                                return Text(
+                                  Utils.timeFormat(
+                                    playerController
+                                        .sliderPositionSeconds
+                                        .value,
+                                  ),
+                                  style: textStyle,
+                                );
+                              }),
+                              const SizedBox(width: 2),
+                              const Text('/', style: textStyle),
+                              const SizedBox(width: 2),
+                              Obx(
+                                () => Text(
+                                  Utils.timeFormat(
+                                    playerController.durationSeconds.value,
+                                  ),
+                                  style: textStyle,
+                                ),
+                              ),
+                              Obx(() {
+                                final chapter =
+                                    playerController.currentChapter.value;
+                                if (chapter == null || chapter.title.isEmpty) {
+                                  return const SizedBox();
+                                }
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(width: 6),
+                                    const Text('·', style: textStyle),
+                                    const SizedBox(width: 6),
+                                    ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        maxWidth: max(120.0, Get.width * 0.45),
+                                      ),
+                                      child: Text(
+                                        chapter.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: textStyle,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

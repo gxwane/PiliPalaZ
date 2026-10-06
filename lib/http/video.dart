@@ -9,7 +9,12 @@ import '../models/model_rec_video_item.dart';
 import '../models/rcmd_video_item.dart';
 import '../models/user/fav_folder.dart';
 import '../models/video/ai.dart';
+import '../models/video/play/chapter.dart';
+import '../models/video/play/subtitle.dart';
 import '../models/video_detail_res.dart';
+
+export '../models/video/play/chapter.dart';
+export '../models/video/play/subtitle.dart';
 import '../services/service_locator.dart';
 import '../utils/id_utils.dart';
 import '../utils/recommend_filter.dart';
@@ -77,18 +82,6 @@ final class BangumiFollowAction {
   const BangumiFollowAction(this.toast);
 
   final String toast;
-}
-
-final class VideoSubtitleSource {
-  const VideoSubtitleSource({
-    required this.url,
-    required this.language,
-    required this.title,
-  });
-
-  final String url;
-  final String language;
-  final String title;
 }
 
 abstract final class VideoHttp {
@@ -673,13 +666,47 @@ abstract final class VideoHttp {
     );
   }
 
-  static Future<ApiResult<List<VideoSubtitleSource>>> videoMetaInfo({
+  static List<VideoSubtitleSource> _parseSubtitles(Object? rawSubtitle) {
+    if (rawSubtitle is! Map) return const <VideoSubtitleSource>[];
+    final rawSubList = rawSubtitle['subtitles'];
+    if (rawSubList is! List) return const <VideoSubtitleSource>[];
+    final list = <VideoSubtitleSource>[];
+    for (final item in rawSubList) {
+      if (item is! Map) continue;
+      final rawUrl = item['subtitle_url'];
+      if (rawUrl is String && rawUrl.isNotEmpty) {
+        list.add(
+          VideoSubtitleSource(
+            url: rawUrl.startsWith('//') ? 'https:$rawUrl' : rawUrl,
+            language: item['lan'] as String? ?? '',
+            title: item['lan_doc'] as String? ?? '',
+          ),
+        );
+      }
+    }
+    return list;
+  }
+
+  static List<VideoChapter> _parseChapters(Object? rawViewPoints) {
+    if (rawViewPoints is! List) return const <VideoChapter>[];
+    final list = <VideoChapter>[];
+    for (final item in rawViewPoints) {
+      if (item is Map<String, dynamic>) {
+        list.add(VideoChapter.fromJson(item));
+      } else if (item is Map) {
+        list.add(VideoChapter.fromJson(Map<String, dynamic>.from(item)));
+      }
+    }
+    return list;
+  }
+
+  static Future<ApiResult<VideoPlayerMetadata>> videoPlayerMetadata({
     String? aid,
     String? bvid,
     required int cid,
   }) {
     assert(aid != null || bvid != null);
-    return _client.getJson<List<VideoSubtitleSource>>(
+    return _client.getJson<VideoPlayerMetadata>(
       Api.videoMetaInfo,
       queryParameters: <String, dynamic>{
         if (aid != null) 'aid': aid,
@@ -687,35 +714,34 @@ abstract final class VideoHttp {
         'cid': cid,
       },
       endpoint: 'video.metadata',
-      decode: (json) => BiliApiDecoder.data<List<VideoSubtitleSource>>(
+      decode: (json) => BiliApiDecoder.data<VideoPlayerMetadata>(
         json,
         decode: (value) {
           final data = BiliApiDecoder.object(value, field: 'data');
-          final subtitle = BiliApiDecoder.object(
-            data['subtitle'],
-            field: 'data.subtitle',
+          return VideoPlayerMetadata(
+            subtitles: _parseSubtitles(data['subtitle']),
+            chapters: _parseChapters(data['view_points']),
           );
-          return BiliApiDecoder.list(
-            subtitle['subtitles'],
-            field: 'data.subtitle.subtitles',
-          ).map((value) {
-            final item = BiliApiDecoder.object(
-              value,
-              field: 'data.subtitle.subtitles[]',
-            );
-            final rawUrl = item['subtitle_url'];
-            if (rawUrl is! String || rawUrl.isEmpty) {
-              throw const MalformedApiResponseException('字幕地址格式不正确');
-            }
-            return VideoSubtitleSource(
-              url: rawUrl.startsWith('//') ? 'https:$rawUrl' : rawUrl,
-              language: item['lan'] as String? ?? '',
-              title: item['lan_doc'] as String? ?? '',
-            );
-          }).toList();
         },
       ),
     );
+  }
+
+  static Future<ApiResult<List<VideoSubtitleSource>>> videoMetaInfo({
+    String? aid,
+    String? bvid,
+    required int cid,
+  }) async {
+    final metaResult = await videoPlayerMetadata(
+      aid: aid,
+      bvid: bvid,
+      cid: cid,
+    );
+    if (metaResult case ApiSuccess<VideoPlayerMetadata>(:final data)) {
+      return ApiSuccess<List<VideoSubtitleSource>>(data.subtitles);
+    }
+    return (metaResult as ApiFailure<VideoPlayerMetadata>)
+        .cast<List<VideoSubtitleSource>>();
   }
 
   static Future<ApiResult<List<Map<String, String>>>> vttSubtitles(
