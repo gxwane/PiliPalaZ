@@ -17,6 +17,7 @@ import 'package:pilipalaz/pages/video/reply/widgets/reply_preview_layout.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/playback_modal_guard.dart';
 import 'package:pilipalaz/utils/feed_back.dart';
+import 'package:pilipalaz/utils/reply_timestamp_parser.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:pilipalaz/utils/url_utils.dart';
 import 'package:pilipalaz/utils/utils.dart';
@@ -33,6 +34,7 @@ class ReplyItem extends StatelessWidget {
     this.showReplyRow = true,
     this.replyReply,
     this.replyType,
+    this.onTimestampSeek,
     super.key,
   });
   final ReplyItemModel? replyItem;
@@ -41,6 +43,7 @@ class ReplyItem extends StatelessWidget {
   final bool? showReplyRow;
   final Function? replyReply;
   final ReplyType? replyType;
+  final VoidCallback? onTimestampSeek;
 
   @override
   Widget build(BuildContext context) {
@@ -349,7 +352,13 @@ class ReplyItem extends StatelessWidget {
                     ),
                     const TextSpan(text: ' '),
                   ],
-                  buildContent(context, replyItem!, replyReply, null),
+                  buildContent(
+                    context,
+                    replyItem!,
+                    replyReply,
+                    null,
+                    onTimestampSeek: onTimestampSeek,
+                  ),
                 ],
               ),
             ),
@@ -370,6 +379,7 @@ class ReplyItem extends StatelessWidget {
               // f_rpid: replyItem!.rpid,
               replyItem: replyItem,
               replyReply: replyReply,
+              onTimestampSeek: onTimestampSeek,
             ),
           ),
         ],
@@ -471,12 +481,14 @@ class ReplyItemRow extends StatelessWidget {
     // this.f_rpid,
     this.replyItem,
     this.replyReply,
+    this.onTimestampSeek,
   });
   final List<ReplyItemModel>? replies;
   ReplyControl? replyControl;
   // int? f_rpid;
   ReplyItemModel? replyItem;
   Function? replyReply;
+  final VoidCallback? onTimestampSeek;
 
   @override
   Widget build(BuildContext context) {
@@ -584,6 +596,7 @@ class ReplyItemRow extends StatelessWidget {
                               replies![i],
                               replyReply,
                               replyItem,
+                              onTimestampSeek: onTimestampSeek,
                             ),
                           ],
                         ),
@@ -726,10 +739,15 @@ InlineSpan buildContent(
   BuildContext context,
   replyItem,
   replyReply,
-  fReplyItem,
-) {
+  fReplyItem, {
+  VoidCallback? onTimestampSeek,
+}) {
   final String routePath = Get.currentRoute;
-  bool isVideoPage = routePath.startsWith('/video');
+  final bool isVideoPage = routePath.startsWith('/video');
+  final bool hasActivePlayer =
+      PlPlayerController.instanceExists() &&
+      PlPlayerController.getInstance().canControlPlayback;
+  final bool canSeek = isVideoPage || hasActivePlayer;
 
   // replyItem 当前回复内容
   // replyReply 查看二楼回复（回复详情）回调
@@ -790,7 +808,7 @@ InlineSpan buildContent(
   if (patternStr.isNotEmpty) {
     patternStr += "|";
   }
-  patternStr += r'(\b(?:\d+[:：])?[0-5]?[0-9][:：][0-5]?[0-9]\b)';
+  patternStr += ReplyTimestampParser.timestampPattern.pattern;
   if (jumpUrlKeysList.isNotEmpty) {
     patternStr += '|${jumpUrlKeysList.map(RegExp.escape).join('|')}';
   }
@@ -847,33 +865,26 @@ InlineSpan buildContent(
               },
           ),
         );
-      } else if (RegExp(
-        r'^\b(?:\d+[:：])?[0-5]?[0-9][:：][0-5]?[0-9]\b$',
-      ).hasMatch(matchStr)) {
-        matchStr = matchStr.replaceAll('：', ':');
+      } else if (ReplyTimestampParser.isTimestamp(matchStr)) {
+        final String displayTimestamp = ReplyTimestampParser.normalizeTimestamp(
+          matchStr,
+        );
         spanChildren.add(
           TextSpan(
-            text: ' $matchStr ',
-            style: isVideoPage
+            text: ' $displayTimestamp ',
+            style: canSeek
                 ? TextStyle(color: Theme.of(context).colorScheme.primary)
                 : null,
-            recognizer: TapGestureRecognizer()
-              ..onTap = () {
-                // 跳转到指定位置
-                if (isVideoPage) {
-                  try {
-                    SmartDialog.showToast('跳转至：$matchStr');
-                    Get.find<VideoDetailController>(
-                      tag: Get.arguments['heroTag'],
-                    ).plPlayerController!.seekTo(
-                      Duration(seconds: Utils.duration(matchStr)),
-                      type: 'slider',
-                    );
-                  } catch (e) {
-                    SmartDialog.showToast('跳转失败: $e');
-                  }
-                }
-              },
+            recognizer: canSeek
+                ? (TapGestureRecognizer()
+                    ..onTap = () {
+                      ReplyTimestampParser.seekToTimestamp(
+                        matchStr,
+                        context: context,
+                        onSeek: onTimestampSeek,
+                      );
+                    })
+                : null,
           ),
         );
       } else {

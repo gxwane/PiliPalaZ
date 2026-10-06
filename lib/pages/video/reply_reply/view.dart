@@ -132,6 +132,7 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel> {
                         },
                         replyType: widget.replyType,
                         replyReply: (replyItem) => replyReply(replyItem),
+                        onTimestampSeek: () => widget.closePanel?.call(),
                       ),
                     ),
                     SliverToBoxAdapter(
@@ -169,6 +170,8 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel> {
                                     replyType: widget.replyType,
                                     replyReply: (replyItem) =>
                                         replyReply(replyItem),
+                                    onTimestampSeek: () =>
+                                        widget.closePanel?.call(),
                                   ),
                                 ),
                                 SliverToBoxAdapter(
@@ -227,6 +230,8 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel> {
                                                 .add(replyItem);
                                           },
                                           replyType: widget.replyType,
+                                          onTimestampSeek: () =>
+                                              widget.closePanel?.call(),
                                         );
                                       }
                                     },
