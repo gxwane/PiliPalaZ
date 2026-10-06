@@ -32,6 +32,7 @@ import '../../services/service_locator.dart';
 import '../../utils/utils.dart';
 import 'models/bottom_control_type.dart';
 import 'widgets/chapter_bottom_sheet.dart';
+import 'widgets/fullscreen_chapter_panel.dart';
 import 'models/bottom_progress_behavior.dart';
 import 'models/play_repeat.dart';
 import 'models/play_status.dart';
@@ -527,6 +528,27 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     final playerController = widget.controller;
     final chapters = playerController.chapters;
     if (chapters.isEmpty) return;
+
+    final bool isLandscapeOrFullScreen =
+        _isEquivalentFullScreen ||
+        playerController.isFullScreen.value ||
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+
+    if (isLandscapeOrFullScreen) {
+      FullScreenChapterPanel.show(
+        context: context,
+        chapters: chapters,
+        activeChapter: playerController.currentChapter,
+        onSelect: (chapter) {
+          playerController.seekTo(
+            Duration(seconds: chapter.from),
+            type: 'slider',
+          );
+        },
+      );
+      return;
+    }
+
     showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
