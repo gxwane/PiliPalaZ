@@ -7,6 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../../utils/utils.dart';
+import 'chapter_snap_coordinator.dart';
 
 /// This is where the current time and total time labels should appear in
 /// relation to the progress bar.
@@ -101,6 +102,7 @@ class ProgressBar extends LeafRenderObjectWidget {
     this.timeLabelPadding = 0.0,
     this.chapterPoints,
     this.chapterGapWidth = 2.0,
+    this.enableChapterSnap = true,
   });
 
   /// The elapsed playing time of the media.
@@ -116,6 +118,9 @@ class ProgressBar extends LeafRenderObjectWidget {
 
   /// Gap between chapter segments in logical pixels (default 2.0).
   final double chapterGapWidth;
+
+  /// Whether to magnetically snap the thumb when dragging near chapter split points.
+  final bool enableChapterSnap;
 
   /// The currently buffered content of the media.
   ///
@@ -296,6 +301,7 @@ class ProgressBar extends LeafRenderObjectWidget {
       textScaleFactor: textScaleFactor,
       chapterPoints: chapterPoints,
       chapterGapWidth: chapterGapWidth,
+      enableChapterSnap: enableChapterSnap,
     );
   }
 
@@ -331,7 +337,8 @@ class ProgressBar extends LeafRenderObjectWidget {
       ..timeLabelPadding = timeLabelPadding
       ..textScaleFactor = textScaleFactor
       ..chapterPoints = chapterPoints
-      ..chapterGapWidth = chapterGapWidth;
+      ..chapterGapWidth = chapterGapWidth
+      ..enableChapterSnap = enableChapterSnap;
   }
 
   @override
@@ -410,6 +417,8 @@ class ThumbDragDetails {
     this.timeStamp = Duration.zero,
     this.globalPosition = Offset.zero,
     this.localPosition = Offset.zero,
+    this.isSnapped = false,
+    this.snappedPoint,
   });
 
   /// The duration position of the thumb on the progress bar
@@ -421,12 +430,20 @@ class ThumbDragDetails {
   /// The local position of the drag event moving the thumb on the progress bar.
   final Offset localPosition;
 
+  /// Whether the thumb is currently magnetically snapped to a chapter split point.
+  final bool isSnapped;
+
+  /// The chapter split duration if currently snapped, null otherwise.
+  final Duration? snappedPoint;
+
   @override
   String toString() =>
       '${objectRuntimeType(this, 'ThumbDragDetails')}('
       'time: $timeStamp, '
       'global: $globalPosition, '
-      'local: $localPosition)';
+      'local: $localPosition, '
+      'isSnapped: $isSnapped, '
+      'snappedPoint: $snappedPoint)';
 }
 
 // Handles all gestures so that it will always win a the gesture arena.
@@ -470,6 +487,7 @@ class _RenderProgressBar extends RenderBox {
     double textScaleFactor = 1.0,
     List<Duration>? chapterPoints,
     double chapterGapWidth = 2.0,
+    bool enableChapterSnap = true,
   }) : _total = total,
        _buffered = buffered,
        _onSeek = onSeek,
@@ -492,7 +510,8 @@ class _RenderProgressBar extends RenderBox {
        _timeLabelPadding = timeLabelPadding,
        _textScaleFactor = textScaleFactor,
        _chapterPoints = chapterPoints,
-       _chapterGapWidth = chapterGapWidth {
+       _chapterGapWidth = chapterGapWidth,
+       _enableChapterSnap = enableChapterSnap {
     _drag = _EagerHorizontalDragGestureRecognizer()
       ..onStart = _onDragStart
       ..onUpdate = _onDragUpdate
@@ -516,6 +535,19 @@ class _RenderProgressBar extends RenderBox {
   // track of that so that while the user is dragging the thumb at the same
   // time as a [progress] update there won't be a conflict.
   bool _userIsDraggingThumb = false;
+
+  final ChapterSnapCoordinator _snapCoordinator = ChapterSnapCoordinator();
+
+  bool _enableChapterSnap = true;
+  bool get enableChapterSnap => _enableChapterSnap;
+  set enableChapterSnap(bool value) {
+    if (_enableChapterSnap == value) return;
+    _enableChapterSnap = value;
+    if (!value) _snapCoordinator.reset();
+  }
+
+  bool _isSnappedToChapter = false;
+  Duration? _snappedPoint;
 
   // This padding is always used between the time labels and the progress bar
   // when the time labels are on the sides. Any user defined [timeLabelPadding]
@@ -551,38 +583,48 @@ class _RenderProgressBar extends RenderBox {
   void _onDragStart(DragStartDetails details) {
     _userIsDraggingThumb = true;
     _lastVibratedSegmentIndex = null;
+    _snapCoordinator.reset();
     _updateThumbPosition(details.localPosition);
     onDragStart?.call(
       ThumbDragDetails(
-        timeStamp: _currentThumbDuration(),
+        timeStamp: _progress,
         globalPosition: details.globalPosition,
         localPosition: details.localPosition,
+        isSnapped: _isSnappedToChapter,
+        snappedPoint: _snappedPoint,
       ),
     );
   }
 
   void _onDragUpdate(DragUpdateDetails details) {
     _updateThumbPosition(details.localPosition);
-    final curDuration = _currentThumbDuration();
-    _checkChapterBoundaryHaptic(curDuration);
+    final curDuration = _progress;
+    if (!_isSnappedToChapter) {
+      _checkChapterBoundaryHaptic(curDuration);
+    }
     onDragUpdate?.call(
       ThumbDragDetails(
         timeStamp: curDuration,
         globalPosition: details.globalPosition,
         localPosition: details.localPosition,
+        isSnapped: _isSnappedToChapter,
+        snappedPoint: _snappedPoint,
       ),
     );
   }
 
   void _onDragEnd(DragEndDetails details) {
     onDragEnd?.call();
-    onSeek?.call(_currentThumbDuration());
+    onSeek?.call(_progress);
     _finishDrag();
   }
 
   void _finishDrag() {
     _userIsDraggingThumb = false;
     _lastVibratedSegmentIndex = null;
+    _snapCoordinator.reset();
+    _isSnappedToChapter = false;
+    _snappedPoint = null;
     markNeedsPaint();
   }
 
@@ -612,9 +654,37 @@ class _RenderProgressBar extends RenderBox {
     double barStart = lengthBefore + barCapRadius;
     double barEnd = size.width - lengthAfter - barCapRadius;
     final barWidth = barEnd - barStart;
-    final position = (dx - barStart).clamp(0.0, barWidth);
+
+    if (barWidth <= 0.0) return;
+
+    double effectiveDx = dx;
+    if (_enableChapterSnap) {
+      final cleanPoints = _cleanChapterPoints();
+      if (cleanPoints.isNotEmpty) {
+        final snapResult = _snapCoordinator.computeSnap(
+          rawX: dx,
+          barStart: barStart,
+          barWidth: barWidth,
+          total: total,
+          chapterPoints: cleanPoints,
+        );
+        effectiveDx = snapResult.effectiveX;
+        _isSnappedToChapter = snapResult.isSnapped;
+        _snappedPoint = snapResult.snappedPoint;
+      } else {
+        _isSnappedToChapter = false;
+        _snappedPoint = null;
+      }
+    } else {
+      _isSnappedToChapter = false;
+      _snappedPoint = null;
+    }
+
+    final position = (effectiveDx - barStart).clamp(0.0, barWidth);
     _thumbValue = (position / barWidth);
-    _progress = _currentThumbDuration();
+    _progress = _isSnappedToChapter && _snappedPoint != null
+        ? _snappedPoint!
+        : _currentThumbDuration();
     markNeedsPaint();
   }
 
@@ -625,6 +695,7 @@ class _RenderProgressBar extends RenderBox {
   set chapterPoints(List<Duration>? value) {
     if (_chapterPoints == value) return;
     _chapterPoints = value;
+    _invalidateChapterCache();
     markNeedsPaint();
   }
 
@@ -719,6 +790,7 @@ class _RenderProgressBar extends RenderBox {
       _clearLabelCache();
     }
     _total = clamp;
+    _invalidateChapterCache();
     if (!_userIsDraggingThumb) {
       _thumbValue = _proportionOfTotal(progress);
     }
@@ -954,6 +1026,7 @@ class _RenderProgressBar extends RenderBox {
   @override
   void performLayout() {
     size = computeDryLayout(constraints);
+    _invalidateChapterCache();
   }
 
   @override
@@ -1131,10 +1204,18 @@ class _RenderProgressBar extends RenderBox {
     );
   }
 
+  List<Duration>? _cachedCleanChapterPoints;
+  void _invalidateChapterCache() {
+    _cachedCleanChapterPoints = null;
+  }
+
   List<Duration> _cleanChapterPoints() {
+    if (_cachedCleanChapterPoints != null) {
+      return _cachedCleanChapterPoints!;
+    }
     final raw = _chapterPoints;
     if (raw == null || raw.isEmpty || total <= Duration.zero) {
-      return const <Duration>[];
+      return _cachedCleanChapterPoints = const <Duration>[];
     }
     final totalMs = total.inMilliseconds;
     final validMs = <int>{};
@@ -1144,9 +1225,11 @@ class _RenderProgressBar extends RenderBox {
         validMs.add(ms);
       }
     }
-    if (validMs.isEmpty) return const <Duration>[];
+    if (validMs.isEmpty) {
+      return _cachedCleanChapterPoints = const <Duration>[];
+    }
     final sorted = validMs.toList()..sort();
-    return sorted
+    return _cachedCleanChapterPoints = sorted
         .map((ms) => Duration(milliseconds: ms))
         .toList(growable: false);
   }
@@ -1305,10 +1388,19 @@ class _RenderProgressBar extends RenderBox {
     }
     final center = Offset(thumbDx, localSize.height / 2);
     if (_userIsDraggingThumb) {
-      final thumbGlowPaint = Paint()..color = thumbGlowColor;
-      canvas.drawCircle(center, thumbGlowRadius, thumbGlowPaint);
+      if (_isSnappedToChapter) {
+        final snapHaloPaint = Paint()
+          ..color = thumbGlowColor.withValues(alpha: 0.6);
+        canvas.drawCircle(center, thumbGlowRadius * 1.3, snapHaloPaint);
+      } else {
+        final thumbGlowPaint = Paint()..color = thumbGlowColor;
+        canvas.drawCircle(center, thumbGlowRadius, thumbGlowPaint);
+      }
     }
-    canvas.drawCircle(center, thumbRadius, thumbPaint);
+    final effectiveRadius = (_userIsDraggingThumb && _isSnappedToChapter)
+        ? thumbRadius * 1.25
+        : thumbRadius;
+    canvas.drawCircle(center, effectiveRadius, thumbPaint);
   }
 
   double _proportionOfTotal(Duration duration) {

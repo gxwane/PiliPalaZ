@@ -7,6 +7,7 @@ import 'package:pilipalaz/utils/id_utils.dart';
 import 'package:easy_debounce/easy_throttle.dart';
 import 'package:fl_pip/fl_pip.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -1123,6 +1124,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
               if (_gestureType == 'horizontal') {
                 // live模式下禁用
                 if (playerController.videoType.value == 'live') return;
+                final prevChapter = playerController.currentChapter.value;
                 final int curSliderPosition =
                     playerController.sliderPosition.value.inMilliseconds;
                 final double scale = 90000 / renderBox.size.width;
@@ -1135,6 +1137,11 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                 );
                 playerController.onUpdatedSliderProgress(result);
                 playerController.onChangedSliderStart();
+                final newChapter = playerController.currentChapter.value;
+                if (prevChapter != newChapter &&
+                    (prevChapter != null || newChapter != null)) {
+                  HapticFeedback.selectionClick();
+                }
               } else if (_gestureType == 'left') {
                 // 左边区域 👈
                 final double level =
