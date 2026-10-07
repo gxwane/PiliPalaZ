@@ -15,6 +15,7 @@ import 'package:pilipalaz/http/video_api.dart';
 import 'package:pilipalaz/models/download/download_task.dart';
 import 'package:pilipalaz/models/video/play/url.dart';
 import 'package:pilipalaz/services/download/download_storage_manager.dart';
+import 'package:pilipalaz/services/download/offline_chapter_service.dart';
 import 'package:pilipalaz/services/download/offline_danmaku_service.dart';
 import 'package:pilipalaz/services/download/offline_subtitle_service.dart';
 import 'package:pilipalaz/utils/video_utils.dart';
@@ -46,19 +47,22 @@ class DownloadTaskExecutor {
     Dio? dio,
     OfflineDanmakuService? danmakuService,
     OfflineSubtitleService? subtitleService,
+    OfflineChapterService? chapterService,
     this.onProgress,
     this.onUrlRenewed,
   }) : _videoUrl = videoUrl,
        _audioUrl = audioUrl,
        _dio = dio ?? Dio(),
        _danmakuService = danmakuService ?? OfflineDanmakuService(),
-       _subtitleService = subtitleService ?? OfflineSubtitleService();
+       _subtitleService = subtitleService ?? OfflineSubtitleService(),
+       _chapterService = chapterService ?? OfflineChapterService();
 
   final DownloadTask task;
   final DownloadStorageManager storageManager;
   final DownloadProgressCallback? onProgress;
   final OfflineDanmakuService _danmakuService;
   final OfflineSubtitleService _subtitleService;
+  final OfflineChapterService _chapterService;
 
   /// URL 续期成功后回调，让上层缓存新 URL。
   final void Function(RenewedUrls urls)? onUrlRenewed;
@@ -184,7 +188,28 @@ class DownloadTaskExecutor {
           );
         }
       }
-    } catch (_) {
+    } on Exception {
+      // 辅助资产非致命降级
+    }
+
+    // 4. 离线章节 (BAC-31 / Phase 3.1)
+    try {
+      if (!isCancelled && task.cid > 0) {
+        final String chaptersPath = await storageManager.absolutePath(
+          storageManager.pathsForTask(task).chaptersRelativePath,
+        );
+        final File chaptersFile = File(chaptersPath);
+        if (!await chaptersFile.exists()) {
+          await _chapterService.downloadChapters(
+            bvid: task.bvid,
+            cid: task.cid,
+            aid: task.aid,
+            targetFile: chaptersFile,
+            cancelToken: _cancelToken,
+          );
+        }
+      }
+    } on Exception {
       // 辅助资产非致命降级
     }
   }

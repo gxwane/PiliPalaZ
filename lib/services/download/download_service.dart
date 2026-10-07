@@ -114,6 +114,7 @@ class DownloadService {
       ..danmakuRelativePath = paths.danmakuRelativePath
       ..coverRelativePath = paths.coverRelativePath
       ..subtitlesRelativePath = paths.subtitlesRelativePath
+      ..chaptersRelativePath = paths.chaptersRelativePath
       ..status = DownloadTaskStatus.pending;
 
     await _dao.saveTask(task);

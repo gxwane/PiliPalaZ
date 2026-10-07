@@ -18,6 +18,8 @@ class NetworkImgLayer extends StatelessWidget {
     this.origAspectRatio,
     this.semanticsLabel,
     this.ignoreHeight,
+    this.placeholderWidget,
+    this.errorWidget,
   });
 
   final String? src;
@@ -30,6 +32,8 @@ class NetworkImgLayer extends StatelessWidget {
   final double? origAspectRatio;
   final String? semanticsLabel;
   final bool? ignoreHeight;
+  final Widget? placeholderWidget;
+  final Widget? errorWidget;
 
   @override
   Widget build(BuildContext context) {
@@ -70,9 +74,9 @@ class NetworkImgLayer extends StatelessWidget {
           fadeInDuration: fadeInDuration ?? const Duration(milliseconds: 120),
           filterQuality: FilterQuality.low,
           errorWidget: (BuildContext context, String url, Object error) =>
-              placeholder(context),
+              errorWidget ?? placeholder(context),
           placeholder: (BuildContext context, String url) =>
-              placeholder(context),
+              placeholderWidget ?? placeholder(context),
         ),
       );
     }

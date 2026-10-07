@@ -59,6 +59,7 @@ class VideoDetailController extends GetxController
   DownloadTask? offlineTask;
   File? offlineDanmakuFile;
   File? offlineSubtitleFile;
+  File? offlineChapterFile;
   PlaybackQueueController? playbackQueueController;
 
   /// tabs相关配置
@@ -385,6 +386,7 @@ class VideoDetailController extends GetxController
           type: isOffline ? DataSourceType.file : DataSourceType.network,
           file: isOffline ? File(video ?? videoUrl) : null,
           offlineSubtitleFile: isOffline ? offlineSubtitleFile : null,
+          offlineChapterFile: isOffline ? offlineChapterFile : null,
           httpHeaders: isOffline
               ? null
               : {
@@ -631,6 +633,16 @@ class VideoDetailController extends GetxController
         final sFile = File(subPath);
         if (await sFile.exists()) {
           offlineSubtitleFile = sFile;
+        }
+
+        offlineChapterFile = null;
+        final chapRel =
+            offlineTask!.chaptersRelativePath ??
+            storage.pathsForTask(offlineTask!).chaptersRelativePath;
+        final chapPath = await storage.absolutePath(chapRel);
+        final cFile = File(chapPath);
+        if (await cFile.exists()) {
+          offlineChapterFile = cFile;
         }
 
         firstVideo = VideoItem(

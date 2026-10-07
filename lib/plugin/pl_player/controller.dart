@@ -38,6 +38,7 @@ import 'package:pilipalaz/plugin/pl_player/playback_position_guard.dart';
 import 'package:pilipalaz/plugin/pl_player/volume_coordinator.dart';
 import 'package:pilipalaz/services/diagnostics/diagnostic_record.dart';
 import 'package:pilipalaz/services/diagnostics/local_diagnostics.dart';
+import 'package:pilipalaz/services/download/offline_chapter_service.dart';
 import 'package:pilipalaz/services/download/offline_subtitle_service.dart';
 import 'package:pilipalaz/services/player_diagnostics.dart';
 import 'package:pilipalaz/services/service_locator.dart';
@@ -3148,8 +3149,7 @@ class PlPlayerController with WidgetsBindingObserver {
   }
 
   void _initializeSubtitles(DataSource dataSource, int session) {
-    chapters.clear();
-    currentChapter.value = null;
+    _initializeChapters(dataSource, session);
     if (dataSource.type == DataSourceType.file) {
       _vttSubtitles.clear();
       _vttSubtitlesIndex.value = 0;
@@ -3174,6 +3174,26 @@ class PlPlayerController with WidgetsBindingObserver {
           chooseSubtitle();
         }
       });
+    }
+  }
+
+  void _initializeChapters(DataSource dataSource, int session) {
+    chapters.clear();
+    currentChapter.value = null;
+    if (dataSource.type == DataSourceType.file) {
+      final File? chapterFile = dataSource.offlineChapterFile;
+      if (chapterFile != null) {
+        OfflineChapterService.loadChaptersFromFile(chapterFile).then((
+          loadedChapters,
+        ) {
+          if (session == _playbackSession) {
+            if (loadedChapters != null && loadedChapters.isNotEmpty) {
+              chapters.assignAll(loadedChapters);
+              updateCurrentChapter(sliderPositionSeconds.value);
+            }
+          }
+        });
+      }
     }
   }
 

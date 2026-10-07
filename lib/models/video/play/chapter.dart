@@ -81,6 +81,14 @@ class VideoChapter {
     return sorted.map((sec) => Duration(seconds: sec)).toList(growable: false);
   }
 
+  /// 序列化为 JSON Map
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'from': from,
+    'to': to,
+    'title': title,
+    if (imgUrl != null) 'imgUrl': imgUrl,
+  };
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

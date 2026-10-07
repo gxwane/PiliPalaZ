@@ -213,6 +213,15 @@ class _FullScreenChapterPanelState extends State<FullScreenChapterPanel> {
                             src: chapter.imgUrl!,
                             width: 80,
                             height: 48,
+                            errorWidget: Container(
+                              color: primaryColor.withValues(alpha: 0.08),
+                              alignment: Alignment.center,
+                              child: Icon(
+                                Icons.play_circle_outline,
+                                color: primaryColor,
+                                size: 22,
+                              ),
+                            ),
                           )
                         : Container(
                             color: primaryColor.withValues(alpha: 0.08),

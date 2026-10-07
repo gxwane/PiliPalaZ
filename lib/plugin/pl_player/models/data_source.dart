@@ -26,6 +26,7 @@ class DataSource {
   String? audioSource;
   String? subFiles;
   File? offlineSubtitleFile;
+  File? offlineChapterFile;
   DataSourceType type;
   Map<String, String>? httpHeaders; // for headers
   AudioVolumeMetadata? volumeMetadata;
@@ -36,6 +37,7 @@ class DataSource {
     this.audioSource,
     this.subFiles,
     this.offlineSubtitleFile,
+    this.offlineChapterFile,
     required this.type,
     this.httpHeaders,
     this.volumeMetadata,
@@ -49,6 +51,7 @@ class DataSource {
     String? audioSource,
     String? subFiles,
     File? offlineSubtitleFile,
+    File? offlineChapterFile,
     DataSourceType? type,
     Duration? startAt,
     Map<String, String>? httpHeaders,
@@ -60,6 +63,7 @@ class DataSource {
       audioSource: audioSource ?? this.audioSource,
       subFiles: subFiles ?? this.subFiles,
       offlineSubtitleFile: offlineSubtitleFile ?? this.offlineSubtitleFile,
+      offlineChapterFile: offlineChapterFile ?? this.offlineChapterFile,
       type: type ?? this.type,
       httpHeaders: httpHeaders ?? this.httpHeaders,
       volumeMetadata: volumeMetadata ?? this.volumeMetadata,

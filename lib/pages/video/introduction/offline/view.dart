@@ -7,6 +7,7 @@ import 'package:pilipalaz/pages/download/controller.dart';
 import 'package:pilipalaz/pages/video/controller.dart';
 import 'package:pilipalaz/services/download/download_service.dart';
 import 'package:pilipalaz/services/download/download_storage_manager.dart';
+import 'package:pilipalaz/services/download/offline_chapter_service.dart';
 
 /// 离线视频信息面板（纯本地，无在线社交功能）。
 ///
@@ -64,6 +65,7 @@ class _OfflineIntroPanelBodyState extends State<_OfflineIntroPanelBody> {
   String _videoSize = '计算中...';
   String _audioSize = '计算中...';
   bool _danmakuExists = false;
+  int _chapterCount = 0;
 
   @override
   void initState() {
@@ -102,6 +104,7 @@ class _OfflineIntroPanelBodyState extends State<_OfflineIntroPanelBody> {
     String vSize = '未知';
     String aSize = '未知';
     bool dExists = false;
+    int chapCount = 0;
 
     if (widget.task.videoRelativePath != null) {
       try {
@@ -110,7 +113,7 @@ class _OfflineIntroPanelBodyState extends State<_OfflineIntroPanelBody> {
         if (await f.exists()) {
           vSize = DownloadPageController.formatBytes(await f.length());
         }
-      } catch (_) {}
+      } on Exception catch (_) {}
     }
 
     if (widget.task.audioRelativePath != null) {
@@ -120,7 +123,7 @@ class _OfflineIntroPanelBodyState extends State<_OfflineIntroPanelBody> {
         if (await f.exists()) {
           aSize = DownloadPageController.formatBytes(await f.length());
         }
-      } catch (_) {}
+      } on Exception catch (_) {}
     }
 
     if (widget.task.danmakuRelativePath != null) {
@@ -129,14 +132,29 @@ class _OfflineIntroPanelBodyState extends State<_OfflineIntroPanelBody> {
           widget.task.danmakuRelativePath!,
         );
         dExists = await File(path).exists();
-      } catch (_) {}
+      } on Exception catch (_) {}
     }
+
+    try {
+      final chapRel =
+          widget.task.chaptersRelativePath ??
+          storage.pathsForTask(widget.task).chaptersRelativePath;
+      final path = await storage.absolutePath(chapRel);
+      final f = File(path);
+      if (await f.exists()) {
+        final chapters = await OfflineChapterService.loadChaptersFromFile(f);
+        if (chapters != null) {
+          chapCount = chapters.length;
+        }
+      }
+    } on Exception catch (_) {}
 
     if (mounted) {
       setState(() {
         _videoSize = vSize;
         _audioSize = aSize;
         _danmakuExists = dExists;
+        _chapterCount = chapCount;
       });
     }
   }
@@ -216,7 +234,7 @@ class _OfflineIntroPanelBodyState extends State<_OfflineIntroPanelBody> {
             videoSize: _videoSize,
             audioSize: _audioSize,
           ),
-          // ── 弹幕状态 ────────────────────────────────────────────
+          // ── 辅助资产状态（弹幕 & 章节） ─────────────────────────
           const SizedBox(height: 6),
           Row(
             children: [
@@ -234,6 +252,22 @@ class _OfflineIntroPanelBodyState extends State<_OfflineIntroPanelBody> {
                   color: t.colorScheme.outline,
                 ),
               ),
+              if (_chapterCount > 0) ...[
+                const SizedBox(width: 16),
+                Icon(
+                  Icons.bookmarks_outlined,
+                  size: 14,
+                  color: t.colorScheme.primary,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '分章看点 ($_chapterCount个分段)',
+                  style: t.textTheme.bodySmall?.copyWith(
+                    color: t.colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ],
           ),
           // ── 多 P 选集 ───────────────────────────────────────────

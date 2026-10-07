@@ -6,6 +6,12 @@
 
 ### 新增
 
+- 视频分段章节元数据（view_points）离线持久化与离线播放一致性体系（Phase 3.1: Offline Chapters & Audiovisual Parity）：
+  - 打造高内聚离线章节领域服务（`OfflineChapterService`）：接入 B 站 `VideoHttp.videoPlayerMetadata` 接口，支持纯函数依赖注入（`ChapterFetcher`）与零网络本地加载；采用临时文件原子写入（`.tmp` -> `flush: true` -> `rename`），杜绝因进程意外中断导致的损坏文件；智能跳过无分段视频，避免生成 0 字节无效孤儿文件；
+  - 扩展离线下载任务与持久化存储（`DownloadTask` / `DownloadStorageManager`）：增加 `chaptersRelativePath` 字段并全向兼容 Hive 历史遗留存量任务；在创建任务与路径解析时自动规划 `${taskDir}/chapters.json`，并在任务删除时由 `deleteTaskFiles` 级联清理；
+  - 异步下载流水线非致命辅助资产集成（`DownloadTaskExecutor`）：在 `_downloadAuxiliaryAssets` 中并行拉取章节数据，任何网络超时或服务端缺失异常安全降级，绝不阻断主音视频轨道下载；
+  - 离线播放器视听体验完全对齐（`PlPlayerController` / `VideoDetailController`）：扩展 `DataSource.offlineChapterFile`，在离线起播与多 P 切换（`switchOfflineTask`）时自动装配本地分章文件；在播放器引擎中解耦 `_initializeChapters` 并设立 `session == _playbackSession` 守卫防异步竞态，离线播放状态下无缝激活分段间隙进度条、看点按钮、磁吸吸附、手势寻道 HUD 及 `ChapterBottomSheet`；
+  - 离线详情面板与极端断网体验加固：离线视频规格卡联动检测本地章节，高亮呈现「分章看点 (共 N 个分段)」芯片；`NetworkImgLayer` 扩展错误降级组件，断网环境下章节缩略图优雅退化为矢量播放图标，杜绝红屏白屏或阻塞卡死。
 - 播放器进度条与播控交互深度适配视频分章分节（ViewPoints / 章节标记）完整交互体系：
   - 接入 B 站视频分段元数据接口（`view_points`），智能解析视频分段起止时间、章节标题与看点缩略图；
   - 进度条（`ProgressBar`）适配分段绘制：支持配置切分点列表（`chapterPoints`）与分段物理间隙（`chapterGapWidth`），对底色轨、缓冲轨与进度填充轨实现独立分节与圆角自适应绘制，无章节视频平滑保持连续；

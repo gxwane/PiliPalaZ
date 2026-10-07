@@ -61,6 +61,7 @@ class DownloadStorageManager {
       danmakuRelativePath: p.join(dir, 'danmaku.bin'),
       coverRelativePath: p.join(dir, 'cover.jpg'),
       subtitlesRelativePath: p.join(dir, 'subtitles.json'),
+      chaptersRelativePath: p.join(dir, 'chapters.json'),
     );
   }
 
@@ -166,6 +167,7 @@ class DownloadPaths {
     required this.danmakuRelativePath,
     required this.coverRelativePath,
     required this.subtitlesRelativePath,
+    required this.chaptersRelativePath,
   });
 
   final String videoRelativePath;
@@ -173,4 +175,5 @@ class DownloadPaths {
   final String danmakuRelativePath;
   final String coverRelativePath;
   final String subtitlesRelativePath;
+  final String chaptersRelativePath;
 }

@@ -113,6 +113,15 @@ class ChapterBottomSheet extends StatelessWidget {
                           src: chapter.imgUrl!,
                           width: 88,
                           height: 50,
+                          errorWidget: Container(
+                            color: primaryColor.withValues(alpha: 0.08),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              Icons.play_circle_outline,
+                              color: primaryColor,
+                              size: 24,
+                            ),
+                          ),
                         )
                       : Container(
                           color: primaryColor.withValues(alpha: 0.08),

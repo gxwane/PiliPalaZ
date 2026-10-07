@@ -119,6 +119,8 @@ void main() {
         ..audioRelativePath = 'BV1test123_12345/audio.m4s'
         ..danmakuRelativePath = 'BV1test123_12345/danmaku.bin'
         ..coverRelativePath = 'BV1test123_12345/cover.jpg'
+        ..subtitlesRelativePath = 'BV1test123_12345/subtitles.json'
+        ..chaptersRelativePath = 'BV1test123_12345/chapters.json'
         ..status = DownloadTaskStatus.downloading
         ..totalBytes = 104857600
         ..downloadedBytes = 52428800
@@ -150,6 +152,10 @@ void main() {
       expect(
         restored.subtitlesRelativePath,
         equals(original.subtitlesRelativePath),
+      );
+      expect(
+        restored.chaptersRelativePath,
+        equals(original.chaptersRelativePath),
       );
       expect(restored.status, equals(original.status));
       expect(restored.totalBytes, equals(original.totalBytes));
@@ -271,6 +277,38 @@ void main() {
       final original = _createTask()..errorMessage = '网络错误';
       final cleared = original.copyWith(errorMessage: null);
       expect(cleared.errorMessage, isNull);
+    });
+
+    test('copyWith 正确更新 chaptersRelativePath', () {
+      final original = _createTask();
+      expect(original.chaptersRelativePath, isNull);
+      final updated = original.copyWith(
+        chaptersRelativePath: 'BV1test_123/chapters.json',
+      );
+      expect(updated.chaptersRelativePath, equals('BV1test_123/chapters.json'));
+    });
+
+    test('fromMap 向后兼容：缺少 chaptersRelativePath 时安全为 null', () {
+      final legacyMap = <String, dynamic>{
+        'id': 'BV1legacy_100',
+        'bvid': 'BV1legacy',
+        'cid': 100,
+        'title': '旧版本视频',
+        'partTitle': 'P1',
+        'cover': 'https://example.com/cover.jpg',
+        'ownerName': 'UP',
+        'duration': 120,
+        'videoQuality': 80,
+        'videoQualityDesc': '1080P',
+        'videoCodec': 'avc1',
+        'audioQuality': 30280,
+        'status': 'completed',
+        // 注意：不包含 chaptersRelativePath
+      };
+
+      final restored = DownloadTask.fromMap(legacyMap);
+      expect(restored.chaptersRelativePath, isNull);
+      expect(restored.status, equals(DownloadTaskStatus.completed));
     });
 
     test('equality 基于 id', () {

@@ -744,6 +744,23 @@ abstract final class VideoHttp {
         .cast<List<VideoSubtitleSource>>();
   }
 
+  static Future<ApiResult<List<VideoChapter>>> videoChapters({
+    String? aid,
+    String? bvid,
+    required int cid,
+  }) async {
+    final metaResult = await videoPlayerMetadata(
+      aid: aid,
+      bvid: bvid,
+      cid: cid,
+    );
+    if (metaResult case ApiSuccess<VideoPlayerMetadata>(:final data)) {
+      return ApiSuccess<List<VideoChapter>>(data.chapters);
+    }
+    return (metaResult as ApiFailure<VideoPlayerMetadata>)
+        .cast<List<VideoChapter>>();
+  }
+
   static Future<ApiResult<List<Map<String, String>>>> vttSubtitles(
     List<VideoSubtitleSource> subtitles,
   ) async {
