@@ -49,6 +49,12 @@ class BangumiIntroController extends GetxController {
             ? Utils.makeHeroTag(Get.parameters['bvid']!)
             : 'bangumi_${DateTime.now().millisecondsSinceEpoch}');
 
+  BangumiIntroController({String? heroTag}) {
+    if (heroTag != null && heroTag.isNotEmpty) {
+      this.heroTag = heroTag;
+    }
+  }
+
   // 是否预渲染 骨架屏
   bool preRender = false;
 
@@ -99,10 +105,11 @@ class BangumiIntroController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    if (Get.arguments.isNotEmpty as bool) {
-      if (Get.arguments.containsKey('bangumiItem') as bool) {
+    final args = Get.arguments;
+    if (args is Map && args.isNotEmpty) {
+      if (args.containsKey('bangumiItem')) {
         preRender = true;
-        bangumiItem = Get.arguments['bangumiItem'];
+        bangumiItem = args['bangumiItem'];
         // bangumiItem!['pic'] = args.pic;
         // if (args.title is String) {
         //   videoItem!['title'] = args.title;
@@ -139,19 +146,23 @@ class BangumiIntroController extends GetxController {
     };
 
     bangumiDetail.listen((value) {
-      final VideoDetailController videoDetailCtr =
-          Get.find<VideoDetailController>(tag: heroTag);
-      final cid = videoDetailCtr.cid.value;
-      final current = value.episodes?.firstWhereOrNull(
-        (element) => element.cid == cid,
-      );
+      try {
+        final VideoDetailController videoDetailCtr =
+            Get.isRegistered<VideoDetailController>(tag: heroTag)
+            ? Get.find<VideoDetailController>(tag: heroTag)
+            : Get.find<VideoDetailController>();
+        final cid = videoDetailCtr.cid.value;
+        final current = value.episodes?.firstWhereOrNull(
+          (element) => element.cid == cid,
+        );
 
-      videoPlayerServiceHandler.onVideoDetailChange(
-        current?.longTitle ?? "",
-        value.title ?? "",
-        Duration(milliseconds: current?.duration ?? 0),
-        value.cover ?? "",
-      );
+        videoPlayerServiceHandler.onVideoDetailChange(
+          current?.longTitle ?? "",
+          value.title ?? "",
+          Duration(milliseconds: current?.duration ?? 0),
+          value.cover ?? "",
+        );
+      } catch (_) {}
     });
   }
 

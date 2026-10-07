@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -41,6 +43,8 @@ class _BangumiIntroPanelState extends State<BangumiIntroPanel>
   late Future<ApiResult<PgcInfoBundle>> _futureBuilderFuture;
   late int cid;
   late String heroTag;
+  StreamSubscription<BangumiInfoModel>? _bangumiDetailSubscription;
+  StreamSubscription<int>? _cidSubscription;
 
   // 添加页面缓存
   @override
@@ -49,20 +53,28 @@ class _BangumiIntroPanelState extends State<BangumiIntroPanel>
   @override
   void initState() {
     super.initState();
-    // heroTag = Get.arguments['heroTag'];
     heroTag = widget.heroTag;
     bangumiIntroController = Get.put(BangumiIntroController(), tag: heroTag);
     videoDetailCtr = Get.find<VideoDetailController>(tag: heroTag);
     cid = widget.cid ?? videoDetailCtr.cid.value;
-    bangumiIntroController.bangumiDetail.listen((BangumiInfoModel value) {
+    _bangumiDetailSubscription = bangumiIntroController.bangumiDetail.listen((
+      BangumiInfoModel value,
+    ) {
       bangumiDetail = value;
     });
     _futureBuilderFuture = bangumiIntroController.queryBangumiIntro();
-    videoDetailCtr.cid.listen((int p0) {
+    _cidSubscription = videoDetailCtr.cid.listen((int p0) {
       cid = p0;
       if (!mounted) return;
       setState(() {});
     });
+  }
+
+  @override
+  void dispose() {
+    _bangumiDetailSubscription?.cancel();
+    _cidSubscription?.cancel();
+    super.dispose();
   }
 
   @override
@@ -80,6 +92,7 @@ class _BangumiIntroPanelState extends State<BangumiIntroPanel>
                 loadingStatus: true,
                 bangumiDetail: bangumiDetail,
                 cid: cid,
+                heroTag: heroTag,
               );
             }
             final result = snapshot.data;
@@ -88,6 +101,7 @@ class _BangumiIntroPanelState extends State<BangumiIntroPanel>
                 loadingStatus: false,
                 bangumiDetail: data.detail,
                 cid: cid,
+                heroTag: heroTag,
               );
             }
             final message = result is ApiFailure<PgcInfoBundle>
@@ -113,22 +127,25 @@ class BangumiInfo extends StatefulWidget {
     this.loadingStatus = false,
     this.bangumiDetail,
     this.cid,
+    this.heroTag,
   });
 
   final bool loadingStatus;
   final BangumiInfoModel? bangumiDetail;
   final int? cid;
+  final String? heroTag;
 
   @override
   State<BangumiInfo> createState() => _BangumiInfoState();
 }
 
 class _BangumiInfoState extends State<BangumiInfo> {
-  String heroTag = Get.arguments['heroTag'];
+  late final String heroTag;
   late final BangumiIntroController bangumiIntroController;
   late final VideoDetailController videoDetailCtr;
   late final BangumiInfoModel? bangumiItem;
   int? cid;
+  StreamSubscription<int>? _cidSubscription;
   bool isProcessing = false;
   void Function()? handleState(Future Function() action) {
     return isProcessing
@@ -146,15 +163,49 @@ class _BangumiInfoState extends State<BangumiInfo> {
   @override
   void initState() {
     super.initState();
-    bangumiIntroController = Get.put(BangumiIntroController(), tag: heroTag);
-    videoDetailCtr = Get.find<VideoDetailController>(tag: heroTag);
+    final safeHeroTag =
+        widget.heroTag ??
+        (Get.arguments is Map ? Get.arguments['heroTag']?.toString() : null) ??
+        '';
+    heroTag = safeHeroTag;
+
+    if (safeHeroTag.isNotEmpty &&
+        Get.isRegistered<BangumiIntroController>(tag: safeHeroTag)) {
+      bangumiIntroController = Get.find<BangumiIntroController>(
+        tag: safeHeroTag,
+      );
+    } else {
+      bangumiIntroController = Get.put(
+        BangumiIntroController(),
+        tag: safeHeroTag.isNotEmpty ? safeHeroTag : null,
+      );
+    }
+
+    if (safeHeroTag.isNotEmpty &&
+        Get.isRegistered<VideoDetailController>(tag: safeHeroTag)) {
+      videoDetailCtr = Get.find<VideoDetailController>(tag: safeHeroTag);
+    } else if (Get.isRegistered<VideoDetailController>()) {
+      videoDetailCtr = Get.find<VideoDetailController>();
+    } else {
+      videoDetailCtr = Get.put(
+        VideoDetailController(),
+        tag: safeHeroTag.isNotEmpty ? safeHeroTag : null,
+      );
+    }
+
     bangumiItem = bangumiIntroController.bangumiItem;
     cid = widget.cid ?? videoDetailCtr.cid.value;
-    videoDetailCtr.cid.listen((p0) {
+    _cidSubscription = videoDetailCtr.cid.listen((p0) {
       cid = p0;
       if (!mounted) return;
       setState(() {});
     });
+  }
+
+  @override
+  void dispose() {
+    _cidSubscription?.cancel();
+    super.dispose();
   }
 
   // 收藏
@@ -329,6 +380,8 @@ class _BangumiInfoState extends State<BangumiInfo> {
                       cid: cid ?? episodes.first.cid,
                       changeFuc: bangumiIntroController.changeSeasonOrbangu,
                       isMovie: displayData.type == 2,
+                      heroTag: heroTag,
+                      videoDetailCtr: videoDetailCtr,
                     ),
                   ],
                 ],

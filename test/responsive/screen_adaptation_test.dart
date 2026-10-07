@@ -164,9 +164,9 @@ void main() {
       final pgcCtr = Get.find<VideoDetailController>(tag: pgcHeroTag);
       expect(pgcCtr.sourceType, equals(VideoSourceType.pgc));
 
-      // Assert PGC TabBar renders cleanly with zero assertion errors
-      expect(find.text('相关推荐'), findsOneWidget);
-      expect(find.text('评论交流'), findsOneWidget);
+      // Assert PGC TabBar renders cleanly with dynamic PGC tabs ('剧集选集')
+      expect(find.widgetWithText(Tab, '剧集选集'), findsOneWidget);
+      expect(find.widgetWithText(Tab, '评论交流'), findsOneWidget);
 
       // Flush timers
       await tester.pumpWidget(const SizedBox());

@@ -27,13 +27,16 @@ import '../../common/widgets/audio_video_progress_bar.dart';
 import '../../common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/pages/video/introduction/bangumi/controller.dart';
 import 'package:pilipalaz/controllers/playback_queue_controller.dart';
+import 'package:pilipalaz/models/common/play_queue_item.dart';
 import 'package:pilipalaz/pages/video/widgets/play_queue_bottom_sheet.dart';
 import '../../common/widgets/list_sheet.dart';
 import '../../services/service_locator.dart';
 import '../../utils/utils.dart';
+import 'package:pilipalaz/models/bangumi/info.dart';
 import 'models/bottom_control_type.dart';
 import 'widgets/chapter_bottom_sheet.dart';
 import 'widgets/fullscreen_chapter_panel.dart';
+import 'widgets/fullscreen_episode_panel.dart';
 import 'models/bottom_progress_behavior.dart';
 import 'models/play_repeat.dart';
 import 'models/play_status.dart';
@@ -492,11 +495,38 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
   }
 
   void _showEpisodeList() {
+    final bool isLandscapeOrFullScreen =
+        _isEquivalentFullScreen ||
+        widget.controller.isFullScreen.value ||
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+
     final qc = _queueController;
-    if (qc != null && qc.queue.isNotEmpty) {
-      PlayQueueBottomSheet.show(context, controller: qc);
-      return;
+    if (isLandscapeOrFullScreen) {
+      if (qc != null && qc.queue.isNotEmpty) {
+        FullScreenEpisodePanel.show(
+          context: context,
+          episodes: qc.queue.toList(),
+          currentCid: widget.controller.cid,
+          bvid: widget.controller.bvid,
+          aid: IdUtils.bv2av(widget.controller.bvid),
+          isMovie:
+              _isBangumi &&
+              bangumiIntroController?.bangumiDetail.value.type == 2,
+          onSelect: (dynamic item) {
+            if (item is PlayQueueItem) {
+              qc.playItem(item);
+            }
+          },
+        );
+        return;
+      }
+    } else {
+      if (qc != null && qc.queue.isNotEmpty) {
+        PlayQueueBottomSheet.show(context, controller: qc);
+        return;
+      }
     }
+
     final episodes = <dynamic>[];
     Function? changeCallback;
     if (_isPage) {
@@ -516,14 +546,38 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
     if (changeCallback == null) {
       return;
     }
-    ListSheet(
-      episodes: episodes,
-      bvid: widget.controller.bvid,
-      aid: IdUtils.bv2av(widget.controller.bvid),
-      currentCid: widget.controller.cid,
-      changeFucCall: changeCallback,
-      context: context,
-    ).buildShowBottomSheet();
+
+    if (isLandscapeOrFullScreen) {
+      FullScreenEpisodePanel.show(
+        context: context,
+        episodes: episodes,
+        currentCid: widget.controller.cid,
+        bvid: widget.controller.bvid,
+        aid: IdUtils.bv2av(widget.controller.bvid),
+        isMovie:
+            _isBangumi && bangumiIntroController?.bangumiDetail.value.type == 2,
+        onSelect: (dynamic ep) {
+          if (ep is EpisodeItem) {
+            changeCallback!(ep.bvid, ep.cid, ep.aid, ep.epId);
+          } else {
+            changeCallback!(
+              widget.controller.bvid,
+              ep.cid,
+              IdUtils.bv2av(widget.controller.bvid),
+            );
+          }
+        },
+      );
+    } else {
+      ListSheet(
+        episodes: episodes,
+        bvid: widget.controller.bvid,
+        aid: IdUtils.bv2av(widget.controller.bvid),
+        currentCid: widget.controller.cid,
+        changeFucCall: changeCallback,
+        context: context,
+      ).buildShowBottomSheet();
+    }
   }
 
   void _showChapterList() {

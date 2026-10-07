@@ -39,6 +39,13 @@
   - 软键盘单侧消费与 Inset 隔离（SPEC-02）：根 Scaffold 启用 `resizeToAvoidBottomInset: false`，杜绝软键盘弹起时挤压左侧播放器引发的变形与 `RenderFlex overflow`；右栏通过 `clampedKeyboardHeight` 动态预留至少 120dp 视口高度，并通过 `MediaQuery.removeViewInsets(removeBottom: true)` 彻底切断内层组件二次 Inset 重复消费；
   - 根 PopScope 导航防死锁与画中画联动（SPEC-03）：将返回监听提升至根节点，`didPop == false` 时仅精准消费全屏退出与手机横屏旋转，杜绝深层 child PopScopes 递归导致的无限死锁；平板横屏模式放行返回事件并平滑联动画中画小窗；
   - 平板大屏横屏观影与交互净化（SPEC-05）：修复 `HeaderControl` 顶栏返回键在平板横屏下误触强制转竖屏的缺陷；在双栏模式下移除左栏下划全屏（`pullToFullScreen`）手势包装，杜绝大屏滑动浏览简介时的误触全屏。
+- 番剧/影视详情页（PGC VideoDetail）与电影观影模式大屏适配（Cinema Viewport & FullScreenEpisodePanel）：
+  - 打造电影级宽银幕动态视口引擎（Cinema Viewport Engine）：在 `VideoDetailLayoutCoordinator` 中实现动态宽高比计算，精准自适应 16:9、21:9、2.35:1 与 2.39:1 电影宽银幕视频，并将极限比例安全钳制在 4:3 至 2.40 黄金区间；根据真实流媒体宽高比动态缩放播放器高度，从根源消除宽银幕电影在大屏双栏下的无效黑场与留白；
+  - PGC 大屏双栏动态 Tab 架构：在双栏模式下智能感知内容形态（`sourceType.isPgc`），将右栏 Tab 动态切换为【剧集选集】与【评论交流】，彻底解决番剧/影视选集被硬塞在左栏狭窄区域内的痛点；
+  - 打造独立大屏双栏剧集目录组件（`BangumiEpisodeCatalog`）：支持多季/PV/花絮横向滑动 Chip 筛选，以网格与卡片形态优雅呈现全话列表，并集成正在播放实时高亮与初始自动定位居中滚动；
+  - 参数解耦与生命周期安全防线：重构 `BangumiPanel`、`BangumiInfo` 与 `BangumiIntroController`，显式传递 `heroTag` 与控制器实例，彻底消除空参外部调用与 Scheme 直达时的 `TypeError` 崩溃风险；并在控制器与面板 `dispose` 时可靠取消 `StreamSubscription`，根绝内存泄漏；
+  - 打造全屏与横屏沉浸态右侧选集面板（`FullScreenEpisodePanel`）：在全屏/横屏模式下点击选集按钮时自适应滑出右侧半透明选集抽屉，左侧覆盖暗色遮罩；全面兼容 UGC 分 P、合集、番剧选集以及统一播放队列（`PlayQueueItem`），支持正在播放指示器、大会员权益拦截、右滑手势退场与竖屏自我销毁；
+  - 播放队列弹窗防抖加固：为 `PlayQueueBottomSheet.show` 增加 `_isShowing` 单例守卫，杜绝快速连续点击造成的弹窗多层叠加与文字重叠渲染。
 
 ## [1.5.0] - 2026-10-05
 

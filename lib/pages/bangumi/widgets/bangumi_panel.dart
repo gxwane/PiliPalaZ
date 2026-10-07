@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/models/bangumi/info.dart';
 import 'package:pilipalaz/pages/video/index.dart';
 import 'package:scrollable_positioned_list/scrollable_positioned_list.dart';
 import 'package:pilipalaz/common/widgets/list_sheet.dart';
+import 'package:pilipalaz/plugin/pl_player/widgets/fullscreen_episode_panel.dart';
 
 class BangumiPanel extends StatefulWidget {
   const BangumiPanel({
@@ -12,12 +15,16 @@ class BangumiPanel extends StatefulWidget {
     this.cid,
     required this.changeFuc,
     this.isMovie = false,
+    this.heroTag,
+    this.videoDetailCtr,
   });
 
   final List<EpisodeItem> pages;
   final int? cid;
   final Function changeFuc;
   final bool isMovie;
+  final String? heroTag;
+  final VideoDetailController? videoDetailCtr;
 
   @override
   State<BangumiPanel> createState() => _BangumiPanelState();
@@ -28,31 +35,51 @@ class _BangumiPanelState extends State<BangumiPanel> {
   final ScrollController listViewScrollCtr = ScrollController();
   final ScrollController listViewScrollCtr_2 = ScrollController();
   late int cid;
-  String heroTag = Get.arguments['heroTag'];
-  late final VideoDetailController videoDetailCtr;
+  late final String heroTag;
+  VideoDetailController? videoDetailCtr;
+  StreamSubscription<int>? _cidSubscription;
   final ItemScrollController itemScrollController = ItemScrollController();
 
   @override
   void initState() {
     super.initState();
-    cid = widget.cid!;
+    cid =
+        widget.cid ??
+        (widget.pages.isNotEmpty ? widget.pages.first.cid ?? 0 : 0);
     currentIndex = widget.pages.indexWhere((e) => e.cid == cid);
     if (currentIndex < 0) currentIndex = 0;
     scrollToIndex();
-    videoDetailCtr = Get.find<VideoDetailController>(tag: heroTag);
 
-    videoDetailCtr.cid.listen((int p0) {
-      cid = p0;
-      currentIndex = widget.pages.indexWhere((EpisodeItem e) => e.cid == cid);
-      if (currentIndex < 0) currentIndex = 0;
-      if (!mounted) return;
-      setState(() {});
-      scrollToIndex();
-    });
+    final safeHeroTag =
+        widget.heroTag ??
+        (Get.arguments is Map ? Get.arguments['heroTag']?.toString() : null) ??
+        '';
+    heroTag = safeHeroTag;
+
+    if (widget.videoDetailCtr != null) {
+      videoDetailCtr = widget.videoDetailCtr;
+    } else if (safeHeroTag.isNotEmpty &&
+        Get.isRegistered<VideoDetailController>(tag: safeHeroTag)) {
+      videoDetailCtr = Get.find<VideoDetailController>(tag: safeHeroTag);
+    } else if (Get.isRegistered<VideoDetailController>()) {
+      videoDetailCtr = Get.find<VideoDetailController>();
+    }
+
+    if (videoDetailCtr != null) {
+      _cidSubscription = videoDetailCtr!.cid.listen((int p0) {
+        cid = p0;
+        currentIndex = widget.pages.indexWhere((EpisodeItem e) => e.cid == cid);
+        if (currentIndex < 0) currentIndex = 0;
+        if (!mounted) return;
+        setState(() {});
+        scrollToIndex();
+      });
+    }
   }
 
   @override
   void dispose() {
+    _cidSubscription?.cancel();
     listViewScrollCtr.dispose();
     listViewScrollCtr_2.dispose();
     super.dispose();
@@ -112,19 +139,42 @@ class _BangumiPanelState extends State<BangumiPanel> {
                     padding: WidgetStateProperty.all(EdgeInsets.zero),
                   ),
                   onPressed: () {
-                    ListSheet(
-                      episodes: widget.pages,
-                      bvid: widget.pages[currentIndex].bvid!,
-                      aid: widget.pages[currentIndex].aid!,
-                      currentCid: cid,
-                      changeFucCall: (bvid, cid, aid) {
-                        final EpisodeItem episode = widget.pages.firstWhere(
-                          (item) => item.cid == cid,
-                        );
-                        widget.changeFuc(bvid, cid, aid, episode.epId);
-                      },
-                      context: context,
-                    ).buildShowBottomSheet();
+                    final bool isLandscape =
+                        MediaQuery.orientationOf(context) ==
+                        Orientation.landscape;
+                    if (isLandscape) {
+                      FullScreenEpisodePanel.show(
+                        context: context,
+                        episodes: widget.pages,
+                        currentCid: cid,
+                        isMovie: widget.isMovie,
+                        bvid: widget.pages[currentIndex].bvid,
+                        aid: widget.pages[currentIndex].aid,
+                        onSelect: (dynamic ep) {
+                          final EpisodeItem episode = ep as EpisodeItem;
+                          widget.changeFuc(
+                            episode.bvid,
+                            episode.cid,
+                            episode.aid,
+                            episode.epId,
+                          );
+                        },
+                      );
+                    } else {
+                      ListSheet(
+                        episodes: widget.pages,
+                        bvid: widget.pages[currentIndex].bvid!,
+                        aid: widget.pages[currentIndex].aid!,
+                        currentCid: cid,
+                        changeFucCall: (bvid, cid, aid) {
+                          final EpisodeItem episode = widget.pages.firstWhere(
+                            (item) => item.cid == cid,
+                          );
+                          widget.changeFuc(bvid, cid, aid, episode.epId);
+                        },
+                        context: context,
+                      ).buildShowBottomSheet();
+                    }
                   },
                   child: Text(
                     widget.isMovie ? '全片' : '全${widget.pages.length}话',

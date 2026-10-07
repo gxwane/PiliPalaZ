@@ -71,6 +71,49 @@ void main() {
     );
 
     test(
+      'computeClampedPlayerHeight supports dynamic aspect ratio for CinemaScope and 4:3 anime',
+      () {
+        // 2.39:1 CinemaScope wide movie: leftWidth = 793, raw height = 793 / 2.39 = 331.79
+        final cinemaHeight =
+            VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
+              maxHeight: 800.0,
+              leftWidth: 793.0,
+              aspectRatio: 2.39,
+            );
+        expect(cinemaHeight, closeTo(793.0 / 2.39, 0.01));
+        expect(cinemaHeight, lessThan(793.0 * 9 / 16));
+
+        // 4:3 vintage anime: leftWidth = 793, raw height = 793 / (4/3) = 594.75
+        // Clamped by maxPlayerHeightRatio (800 * 0.62 = 496.0)
+        final animeHeight =
+            VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
+              maxHeight: 800.0,
+              leftWidth: 793.0,
+              aspectRatio: 4.0 / 3.0,
+            );
+        expect(animeHeight, equals(496.0));
+
+        // Extreme wide aspect ratio (> 2.40) clamped to 2.40
+        final ultraWideHeight =
+            VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
+              maxHeight: 800.0,
+              leftWidth: 793.0,
+              aspectRatio: 3.2,
+            );
+        expect(ultraWideHeight, closeTo(793.0 / 2.40, 0.01));
+
+        // Extreme tall aspect ratio (< 4/3) clamped to 4/3
+        final extremeTallHeight =
+            VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
+              maxHeight: 1200.0,
+              leftWidth: 793.0,
+              aspectRatio: 0.5,
+            );
+        expect(extremeTallHeight, closeTo(793.0 / (4.0 / 3.0), 0.01));
+      },
+    );
+
+    test(
       'computeClampedKeyboardHeight reserves at least 120dp for right column content',
       () {
         // Normal height: maxHeight = 800, keyboard = 300 -> allowed

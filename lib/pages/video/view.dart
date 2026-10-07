@@ -32,6 +32,7 @@ import 'package:pilipalaz/utils/utils.dart';
 import '../../../services/shutdown_timer_service.dart';
 import 'widgets/header_control.dart';
 import 'widgets/video_detail_layout_coordinator.dart';
+import '../bangumi/widgets/bangumi_episode_catalog.dart';
 import 'package:pilipalaz/common/widgets/spring_physics.dart';
 import 'package:flutter_floating/floating/manager/floating_manager.dart';
 import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
@@ -1025,11 +1026,6 @@ class _VideoDetailPageState extends State<VideoDetailPage>
               VideoDetailLayoutCoordinator.computeLeftColumnWidth(
                 safeConstraints.maxWidth,
               );
-          final double clampedPlayerHeight =
-              VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
-                maxHeight: safeConstraints.maxHeight,
-                leftWidth: leftWidth,
-              );
 
           final double rawKeyboardHeight = MediaQuery.viewInsetsOf(
             context,
@@ -1093,11 +1089,24 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                   height: safeConstraints.maxHeight,
                   color: Colors.black,
                   child: Center(
-                    child: SizedBox(
-                      width: leftWidth,
-                      height: clampedPlayerHeight,
-                      child: playerPopScope(leftWidth, clampedPlayerHeight),
-                    ),
+                    child: Obx(() {
+                      final double? playerAspectRatio =
+                          plPlayerController?.videoDimension.value.hasSize ==
+                              true
+                          ? plPlayerController!.videoDimension.value.aspectRatio
+                          : null;
+                      final double dynamicPlayerHeight =
+                          VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
+                            maxHeight: safeConstraints.maxHeight,
+                            leftWidth: leftWidth,
+                            aspectRatio: playerAspectRatio,
+                          );
+                      return SizedBox(
+                        width: leftWidth,
+                        height: dynamicPlayerHeight,
+                        child: playerPopScope(leftWidth, dynamicPlayerHeight),
+                      );
+                    }),
                   ),
                 ),
                 VerticalDivider(
@@ -1130,11 +1139,24 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                 height: safeConstraints.maxHeight,
                 child: Column(
                   children: [
-                    SizedBox(
-                      width: leftWidth,
-                      height: clampedPlayerHeight,
-                      child: playerPopScope(leftWidth, clampedPlayerHeight),
-                    ),
+                    Obx(() {
+                      final double? playerAspectRatio =
+                          plPlayerController?.videoDimension.value.hasSize ==
+                              true
+                          ? plPlayerController!.videoDimension.value.aspectRatio
+                          : null;
+                      final double dynamicPlayerHeight =
+                          VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
+                            maxHeight: safeConstraints.maxHeight,
+                            leftWidth: leftWidth,
+                            aspectRatio: playerAspectRatio,
+                          );
+                      return SizedBox(
+                        width: leftWidth,
+                        height: dynamicPlayerHeight,
+                        child: playerPopScope(leftWidth, dynamicPlayerHeight),
+                      );
+                    }),
                     Expanded(
                       child: CustomScrollView(
                         cacheExtent: 3500,
@@ -1168,9 +1190,13 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                             indicatorColor: Theme.of(
                               context,
                             ).colorScheme.primary,
-                            tabs: const <Widget>[
-                              Tab(text: '相关推荐'),
-                              Tab(text: '评论交流'),
+                            tabs: <Widget>[
+                              Tab(
+                                text: videoDetailController.sourceType.isPgc
+                                    ? '剧集选集'
+                                    : '相关推荐',
+                              ),
+                              const Tab(text: '评论交流'),
                             ],
                           ),
                         ),
@@ -1179,10 +1205,13 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                             physics: const CustomTabBarViewScrollPhysics(),
                             controller: videoDetailController.tabCtr,
                             children: <Widget>[
-                              CustomScrollView(
-                                cacheExtent: 3500,
-                                slivers: [relatedVideo],
-                              ),
+                              if (videoDetailController.sourceType.isPgc)
+                                BangumiEpisodeCatalogView(heroTag: heroTag)
+                              else
+                                CustomScrollView(
+                                  cacheExtent: 3500,
+                                  slivers: [relatedVideo],
+                                ),
                               videoReply,
                             ],
                           ),

@@ -378,6 +378,15 @@ class PlaybackQueueController extends GetxController {
     return true;
   }
 
+  /// 播放指定队列项
+  Future<bool> playItem(PlayQueueItem item) async {
+    final idx = queue.indexWhere((e) => e.id == item.id);
+    if (idx >= 0) {
+      return await jumpToIndex(idx);
+    }
+    return false;
+  }
+
   // ---------------------------------------------------------------------------
   // Queue Item Manipulation
   // ---------------------------------------------------------------------------

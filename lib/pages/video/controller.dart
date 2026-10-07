@@ -34,8 +34,8 @@ import 'widgets/header_control.dart';
 class VideoDetailController extends GetxController
     with GetSingleTickerProviderStateMixin {
   /// 路由传参
-  String bvid = Get.parameters['bvid']!;
-  RxInt cid = int.parse(Get.parameters['cid']!).obs;
+  String bvid = Get.parameters['bvid'] ?? '';
+  RxInt cid = (int.tryParse(Get.parameters['cid'] ?? '') ?? 0).obs;
   // 用于小窗返回
   bool resumePlay = Get.parameters['resume']?.toLowerCase() == 'true';
   RxInt danmakuCid = 0.obs;
@@ -130,7 +130,7 @@ class VideoDetailController extends GetxController
   @override
   void onInit() async {
     super.onInit();
-    final Map argMap = Get.arguments;
+    final Map argMap = Get.arguments is Map ? Get.arguments : {};
     userInfo = userInfoCache.get('userInfoCache');
     var keys = argMap.keys.toList();
     if (keys.isNotEmpty) {

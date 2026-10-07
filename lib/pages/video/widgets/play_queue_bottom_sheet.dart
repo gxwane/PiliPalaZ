@@ -20,12 +20,28 @@ class PlayQueueBottomSheet extends StatefulWidget {
 
   final PlaybackQueueController controller;
 
+  static bool _isShowing = false;
+  static DateTime? _lastDismissTime;
+
   /// 快捷弹出方法
   static void show(
     BuildContext context, {
     required PlaybackQueueController controller,
   }) {
-    MyDialog.showCorner(context, PlayQueueBottomSheet(controller: controller));
+    if (_isShowing) return;
+    if (_lastDismissTime != null &&
+        DateTime.now().difference(_lastDismissTime!) <
+            const Duration(milliseconds: 300)) {
+      return;
+    }
+    _isShowing = true;
+    MyDialog.showCorner(
+      context,
+      PlayQueueBottomSheet(controller: controller),
+    ).whenComplete(() {
+      _isShowing = false;
+      _lastDismissTime = DateTime.now();
+    });
   }
 
   @override
@@ -353,6 +369,8 @@ class _PlayQueueBottomSheetState extends State<PlayQueueBottomSheet> {
                   const Spacer(),
                   // 循环模式切换
                   IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.all(4),
                     icon: Icon(
                       _getRepeatModeIcon(currentRepeat),
                       size: 20,
@@ -365,12 +383,16 @@ class _PlayQueueBottomSheetState extends State<PlayQueueBottomSheet> {
                   ),
                   // 定位当前播放条目
                   IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.all(4),
                     tooltip: '定位到当前播放',
                     icon: const Icon(Icons.my_location, size: 20),
                     onPressed: _scrollToCurrentIndex,
                   ),
                   // 反序切换
                   IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.all(4),
                     tooltip: reverse ? '正序排列' : '倒序排列',
                     icon: Icon(
                       !reverse
@@ -387,6 +409,8 @@ class _PlayQueueBottomSheetState extends State<PlayQueueBottomSheet> {
                   // 清空待播
                   if (hasUpcoming)
                     IconButton(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.all(4),
                       tooltip: '清空待播',
                       icon: const Icon(Icons.playlist_remove, size: 21),
                       onPressed: () {
@@ -396,6 +420,8 @@ class _PlayQueueBottomSheetState extends State<PlayQueueBottomSheet> {
                     ),
                   // 关闭
                   IconButton(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.all(4),
                     tooltip: '关闭',
                     icon: const Icon(Icons.close, size: 20),
                     onPressed: Get.back,
