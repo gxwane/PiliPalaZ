@@ -181,6 +181,7 @@ class PlPlayerController with WidgetsBindingObserver {
   Timer? _timerForGettingVolume;
   Timer? timerForTrackingMouse;
   Timer? _timerForLongPressSpeed;
+  int _speedSessionToken = 0;
 
   void _cancelAllTimers() {
     _retryTimer?.cancel();
@@ -2535,39 +2536,78 @@ class PlPlayerController with WidgetsBindingObserver {
     }
   }
 
-  /// 设置长按倍速状态 live模式下禁用
-  void setDoubleSpeedStatus(bool val) async {
-    if (videoType.value == 'live') {
-      return;
-    }
-    if (controlsLock.value) {
-      return;
-    }
+  /// 触发长按动态倍速。若成功激活返回 true，若被前置条件拦截返回 false。
+  bool startLongPressSpeed() {
+    if (videoType.value == 'live') return false;
+    if (controlsLock.value) return false;
+    if (!canControlPlayback) return false;
+    if (playerStatus.status.value != PlayerStatus.playing) return false;
+
+    final int currentToken = ++_speedSessionToken;
     _timerForLongPressSpeed?.cancel();
     _timerForLongPressSpeed = null;
-    if (val) {
-      _doubleSpeedStatus.value = enableAutoLongPressSpeed
-          ? playbackSpeed * 2
-          : longPressSpeed;
-      await setPlaybackSpeed(_doubleSpeedStatus.value);
+
+    final double targetSpeed = enableAutoLongPressSpeed
+        ? playbackSpeed * 2
+        : longPressSpeed;
+    _doubleSpeedStatus.value = targetSpeed;
+
+    unawaited(() async {
+      await setPlaybackSpeed(targetSpeed);
+      if (_speedSessionToken != currentToken) return;
+
       if (enableLongPressSpeedIncrease) {
         _timerForLongPressSpeed = Timer.periodic(
           const Duration(milliseconds: 500),
           (timer) async {
-            if (!canControlPlayback || _doubleSpeedStatus.value <= 0) {
+            if (_speedSessionToken != currentToken ||
+                !canControlPlayback ||
+                _doubleSpeedStatus.value <= 0) {
               timer.cancel();
               _timerForLongPressSpeed = null;
               return;
             }
-            _doubleSpeedStatus.value = min(8, _doubleSpeedStatus.value * 1.15);
-            await setPlaybackSpeed(_doubleSpeedStatus.value);
+            final double nextSpeed = min(4.0, _doubleSpeedStatus.value * 1.15);
+            if (nextSpeed != _doubleSpeedStatus.value) {
+              _doubleSpeedStatus.value = nextSpeed;
+              FeedBackUtils.selectionClick();
+              await setPlaybackSpeed(nextSpeed);
+            } else {
+              // 顶格封顶
+              timer.cancel();
+              _timerForLongPressSpeed = null;
+              FeedBackUtils.mediumImpact();
+            }
           },
         );
       }
-    } else {
-      print("playbackSpeed: $playbackSpeed");
-      _doubleSpeedStatus.value = 0;
+    }());
+    return true;
+  }
+
+  /// 结束长按倍速并还原基准播放速度。
+  bool stopLongPressSpeed({bool silent = false}) {
+    if (_doubleSpeedStatus.value <= 0.0) return false;
+
+    final int currentToken = ++_speedSessionToken;
+    _timerForLongPressSpeed?.cancel();
+    _timerForLongPressSpeed = null;
+
+    _doubleSpeedStatus.value = 0.0;
+    unawaited(() async {
       await setPlaybackSpeed(playbackSpeed);
+      if (_speedSessionToken != currentToken) return;
+    }());
+
+    return true;
+  }
+
+  /// 设置长按倍速状态（兼容旧调用）
+  void setDoubleSpeedStatus(bool val) {
+    if (val) {
+      startLongPressSpeed();
+    } else {
+      stopLongPressSpeed();
     }
   }
 

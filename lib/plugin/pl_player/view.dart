@@ -44,6 +44,7 @@ import 'widgets/backward_seek.dart';
 import 'widgets/bottom_control.dart';
 import 'widgets/common_btn.dart';
 import 'widgets/episode_nav_btn.dart';
+import 'widgets/fast_forward_indicator.dart';
 import 'widgets/forward_seek.dart';
 import 'widgets/play_pause_btn.dart';
 import 'player_gesture_coordinator.dart';
@@ -1340,39 +1341,17 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
           ),
         ),
 
-        /// 长按倍速 toast
-        Obx(
-          () => Align(
+        /// 长按倍速指示器
+        SafeArea(
+          top: true,
+          bottom: false,
+          child: Align(
             alignment: Alignment.topCenter,
-            child: FractionalTranslation(
-              translation: const Offset(0.0, 0.3), // 上下偏移量（负数向上偏移）
-              child: AnimatedOpacity(
-                curve: Curves.easeInOut,
-                opacity: playerController.doubleSpeedStatus.value > 0
-                    ? 1.0
-                    : 0.0,
-                duration: const Duration(milliseconds: 150),
-                child: Container(
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: const Color(0x88000000),
-                    borderRadius: BorderRadius.circular(16.0),
-                  ),
-                  height: 32.0,
-                  width: 85.0,
-                  child: Center(
-                    child: Obx(
-                      () => Text(
-                        playerController.doubleSpeedStatus.value > 0
-                            ? '${playerController.doubleSpeedStatus.value.toStringAsFixed(2)}倍速中'
-                            : '${playerController.playbackSpeed}倍速',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 16.0),
+              child: Obx(
+                () => FastForwardIndicator(
+                  speed: playerController.doubleSpeedStatus.value,
                 ),
               ),
             ),
@@ -1649,11 +1628,17 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                 doubleTapFuc(type);
               },
               onLongPressStart: (LongPressStartDetails detail) {
-                playerController.setDoubleSpeedStatus(true);
-                feedBack();
+                if (playerController.startLongPressSpeed()) {
+                  FeedBackUtils.selectionClick();
+                }
               },
               onLongPressEnd: (LongPressEndDetails details) {
-                playerController.setDoubleSpeedStatus(false);
+                if (playerController.stopLongPressSpeed()) {
+                  FeedBackUtils.lightImpact();
+                }
+              },
+              onLongPressCancel: () {
+                playerController.stopLongPressSpeed(silent: true);
               },
             ),
           ),

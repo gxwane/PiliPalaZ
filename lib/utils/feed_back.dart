@@ -1,13 +1,34 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:hive/hive.dart';
 import 'storage.dart';
 
-void feedBack() {
-  Box<dynamic> setting = GStorage.setting;
-  // 设置中是否开启
-  final bool enable =
-      setting.get(SettingBoxKey.feedBackEnable, defaultValue: false) as bool;
-  if (enable) {
-    HapticFeedback.lightImpact();
+class FeedBackUtils {
+  static Box<dynamic> get _setting => GStorage.setting;
+
+  static bool get isEnabled =>
+      _setting.get(SettingBoxKey.feedBackEnable, defaultValue: false) as bool;
+
+  static void selectionClick() {
+    if (isEnabled) {
+      unawaited(HapticFeedback.selectionClick());
+    }
   }
+
+  static void lightImpact() {
+    if (isEnabled) {
+      unawaited(HapticFeedback.lightImpact());
+    }
+  }
+
+  static void mediumImpact() {
+    if (isEnabled) {
+      unawaited(HapticFeedback.mediumImpact());
+    }
+  }
+}
+
+void feedBack() {
+  FeedBackUtils.lightImpact();
 }
