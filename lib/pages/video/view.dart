@@ -31,6 +31,7 @@ import 'package:pilipalaz/utils/utils.dart';
 
 import '../../../services/shutdown_timer_service.dart';
 import 'widgets/header_control.dart';
+import 'widgets/video_detail_layout_coordinator.dart';
 import 'package:pilipalaz/common/widgets/spring_physics.dart';
 import 'package:flutter_floating/floating/manager/floating_manager.dart';
 import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
@@ -714,26 +715,8 @@ class _VideoDetailPageState extends State<VideoDetailPage>
       ],
     ],
   );
-  Widget playerPopScope(videoWidth, videoHeight) => Hero(
-    tag: heroTag,
-    child: PopScope(
-      canPop: isFullScreen.value != true,
-      onPopInvokedWithResult: (bool didPop, Object? result) {
-        if (isFullScreen.value == true) {
-          plPlayerController!.triggerFullScreen(status: false);
-        }
-        if (MediaQuery.orientationOf(context) == Orientation.landscape &&
-            !ScreenUtils.isTablet(context) &&
-            !horizontalScreen) {
-          verticalScreenForTwoSeconds();
-        }
-        if (didPop) {
-          triggerFloatingWindowWhenLeaving();
-        }
-      },
-      child: playerStack(videoWidth, videoHeight),
-    ),
-  );
+  Widget playerPopScope(double videoWidth, double videoHeight) =>
+      Hero(tag: heroTag, child: playerStack(videoWidth, videoHeight));
 
   Widget get relatedVideo => videoDetailController.isOffline
       ? const SliverToBoxAdapter(child: SizedBox.shrink())
@@ -791,320 +774,178 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     child: child,
   );
 
-  Widget get childWhenDisabled => SafeArea(
-    top:
-        !removeSafeArea &&
-        MediaQuery.of(context).orientation == Orientation.portrait &&
-        isFullScreen.value == true,
-    bottom:
-        !removeSafeArea &&
-        MediaQuery.of(context).orientation == Orientation.portrait &&
-        isFullScreen.value == true,
-    left: false, //isFullScreen != true,
-    right: false, //isFullScreen != true,
-    child: Scaffold(
-      resizeToAvoidBottomInset: false,
-      key: scaffoldKey,
-      // backgroundColor: Colors.black,
-      appBar:
-          removeSafeArea ||
-              MediaQuery.of(context).orientation == Orientation.landscape
-          ? null
-          : AppBar(
-              backgroundColor: showStatusBarBackgroundColor
-                  ? null
-                  : Colors.black,
-              elevation: 0,
-              toolbarHeight: 0,
-              systemOverlayStyle: SystemUiOverlayStyle(
-                statusBarIconBrightness:
-                    Theme.of(context).brightness == Brightness.dark ||
-                        !showStatusBarBackgroundColor
-                    ? Brightness.light
-                    : Brightness.dark,
-                systemNavigationBarColor: Colors.transparent,
-              ),
-            ),
-      body: Column(
-        children: [
-          Obx(() {
-            double videoHeight = context.width * 9 / 16;
-            final double videoWidth = context.width;
-            // print(videoDetailController.tabCtr.index);
-            if (enableVerticalExpand &&
-                plPlayerController?.direction.value == 'vertical') {
-              videoHeight = context.width;
-            }
-            if (MediaQuery.of(context).orientation == Orientation.landscape &&
-                !horizontalScreen &&
-                !isFullScreen.value &&
-                isShowing &&
-                mounted) {
-              hideStatusBar();
-            }
-            if (MediaQuery.of(context).orientation == Orientation.portrait &&
-                !isFullScreen.value &&
-                isShowing &&
-                mounted) {
-              if (!removeSafeArea) showStatusBar();
-            }
-            return Container(
-              color: showStatusBarBackgroundColor ? null : Colors.black,
-              height:
-                  MediaQuery.of(context).orientation == Orientation.landscape ||
-                      isFullScreen.value == true
-                  ? MediaQuery.sizeOf(context).height -
-                        (MediaQuery.of(context).orientation ==
-                                    Orientation.landscape ||
-                                removeSafeArea
-                            ? 0
-                            : MediaQuery.of(context).padding.top)
-                  : videoHeight,
-              width: context.width,
-              child: playerPopScope(videoWidth, videoHeight),
-            );
-          }),
-          if (MediaQuery.of(context).orientation != Orientation.landscape)
-            Expanded(
-              child: ColoredBox(
-                key: Key(heroTag),
-                color: Theme.of(context).colorScheme.surface,
-                child: videoDetailController.isOffline
-                    ? pullToFullScreen(
-                        CustomScrollView(
-                          cacheExtent: 3500,
-                          key: const PageStorageKey<String>('离线简介'),
-                          slivers: <Widget>[
-                            OfflineVideoIntroPanel(heroTag: heroTag),
-                          ],
-                        ),
-                      )
-                    : Column(
-                        children: [
-                          Expanded(
-                            child: TabBarView(
-                              physics: const CustomTabBarViewScrollPhysics(),
-                              controller: videoDetailController.tabCtr,
-                              children: <Widget>[
-                                pullToFullScreen(
-                                  CustomScrollView(
-                                    cacheExtent: 3500,
-                                    key: const PageStorageKey<String>('简介'),
-                                    slivers: <Widget>[
-                                      videoIntro,
-                                      if (!videoDetailController
-                                          .sourceType
-                                          .isPgc) ...[
-                                        divider,
-                                        relatedVideo,
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                                videoReply,
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-            ),
-        ],
+  PreferredSizeWidget? _buildAppBar(BuildContext context) {
+    if (isFullScreen.value == true ||
+        removeSafeArea ||
+        (MediaQuery.orientationOf(context) == Orientation.landscape &&
+            !ScreenUtils.isTablet(context))) {
+      return null;
+    }
+    return AppBar(
+      backgroundColor: showStatusBarBackgroundColor ? null : Colors.black,
+      elevation: 0,
+      toolbarHeight: 0,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarIconBrightness:
+            Theme.of(context).brightness == Brightness.dark ||
+                !showStatusBarBackgroundColor
+            ? Brightness.light
+            : Brightness.dark,
+        systemNavigationBarColor: Colors.transparent,
       ),
-    ),
-  );
-  Widget get childWhenDisabledAlmostSquareInner => Obx(() {
-    plPlayerController?.direction.value;
-    isFullScreen.value;
+    );
+  }
+
+  Widget _buildPortraitLayout(
+    BuildContext context,
+    BoxConstraints constraints,
+  ) {
+    double videoHeight = constraints.maxWidth * 9 / 16;
+    final double videoWidth = constraints.maxWidth;
     if (enableVerticalExpand &&
         plPlayerController?.direction.value == 'vertical') {
-      final double videoHeight =
-          context.height -
-          (removeSafeArea
-              ? 0
-              : (MediaQuery.of(context).padding.top +
-                    MediaQuery.of(context).padding.bottom));
-      final double videoWidth = videoHeight * 9 / 16;
-      return Row(
-        children: [
-          SizedBox(
-            height: videoHeight,
-            width: isFullScreen.value == true ? context.width : videoWidth,
-            child: playerPopScope(videoWidth, videoHeight),
-          ),
-          Expanded(
-            child: videoDetailController.isOffline
-                ? pullToFullScreen(
-                    CustomScrollView(
-                      cacheExtent: 3500,
-                      key: const PageStorageKey<String>('离线简介'),
-                      slivers: <Widget>[
-                        OfflineVideoIntroPanel(heroTag: heroTag),
-                      ],
-                    ),
-                  )
-                : TabBarView(
-                    physics: const CustomTabBarViewScrollPhysics(),
-                    controller: videoDetailController.tabCtr,
-                    children: <Widget>[
-                      pullToFullScreen(
-                        CustomScrollView(
-                          cacheExtent: 3500,
-                          key: const PageStorageKey<String>('简介'),
-                          slivers: <Widget>[
-                            videoIntro,
-                            if (!videoDetailController.sourceType.isPgc) ...[
-                              divider,
-                              relatedVideo,
-                            ],
-                          ],
-                        ),
-                      ),
-                      videoReply,
-                    ],
-                  ),
-          ),
-        ],
-      );
+      videoHeight = constraints.maxWidth;
     }
-    final double videoHeight = context.height / 2.5;
-    final double videoWidth = context.width;
+    if (MediaQuery.orientationOf(context) == Orientation.landscape &&
+        !horizontalScreen &&
+        !isFullScreen.value &&
+        isShowing &&
+        mounted) {
+      hideStatusBar();
+    }
+    if (MediaQuery.orientationOf(context) == Orientation.portrait &&
+        !isFullScreen.value &&
+        isShowing &&
+        mounted) {
+      if (!removeSafeArea) showStatusBar();
+    }
+
+    final double effectiveVideoHeight =
+        (MediaQuery.orientationOf(context) == Orientation.landscape ||
+            isFullScreen.value == true)
+        ? constraints.maxHeight
+        : videoHeight;
+
     return Column(
       children: [
-        SizedBox(
+        Container(
+          color: showStatusBarBackgroundColor ? null : Colors.black,
+          height: effectiveVideoHeight,
           width: videoWidth,
-          height: videoHeight,
-          child: playerPopScope(videoWidth, videoHeight),
+          child: playerPopScope(videoWidth, effectiveVideoHeight),
         ),
-        Expanded(
-          child: videoDetailController.isOffline
-              ? pullToFullScreen(
-                  CustomScrollView(
-                    cacheExtent: 3500,
-                    key: PageStorageKey<String>(
-                      '离线简介${videoDetailController.bvid}',
-                    ),
-                    slivers: <Widget>[OfflineVideoIntroPanel(heroTag: heroTag)],
-                  ),
-                )
-              : Row(
-                  children: [
-                    Expanded(
-                      child: pullToFullScreen(
-                        CustomScrollView(
-                          cacheExtent: 3500,
-                          key: PageStorageKey<String>(
-                            '简介${videoDetailController.bvid}',
-                          ),
-                          slivers: <Widget>[
-                            videoIntro,
-                            if (!videoDetailController.sourceType.isPgc) ...[
-                              divider,
-                              relatedVideo,
-                            ],
-                          ],
-                        ),
+        if (MediaQuery.orientationOf(context) != Orientation.landscape)
+          Expanded(
+            child: ColoredBox(
+              key: Key(heroTag),
+              color: Theme.of(context).colorScheme.surface,
+              child: videoDetailController.isOffline
+                  ? pullToFullScreen(
+                      CustomScrollView(
+                        cacheExtent: 3500,
+                        key: const PageStorageKey<String>('离线简介'),
+                        slivers: <Widget>[
+                          OfflineVideoIntroPanel(heroTag: heroTag),
+                        ],
                       ),
+                    )
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: TabBarView(
+                            physics: const CustomTabBarViewScrollPhysics(),
+                            controller: videoDetailController.tabCtr,
+                            children: <Widget>[
+                              pullToFullScreen(
+                                CustomScrollView(
+                                  cacheExtent: 3500,
+                                  key: const PageStorageKey<String>('简介'),
+                                  slivers: <Widget>[
+                                    videoIntro,
+                                    if (!videoDetailController
+                                        .sourceType
+                                        .isPgc) ...[
+                                      divider,
+                                      relatedVideo,
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              videoReply,
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    Expanded(child: videoReply),
-                  ],
-                ),
-        ),
+            ),
+          ),
       ],
     );
-  });
-  Widget get childWhenDisabledLandscapeInner => Obx(() {
-    plPlayerController?.direction.value;
-    isFullScreen.value;
-    if (enableVerticalExpand &&
-        plPlayerController?.direction.value == 'vertical') {
-      final double videoHeight =
-          context.height -
-          (removeSafeArea ? 0 : MediaQuery.of(context).padding.top);
-      final double videoWidth = videoHeight * 9 / 16;
-      return Row(
-        children: [
-          Expanded(
-            child: pullToFullScreen(
-              CustomScrollView(
-                cacheExtent: 3500,
-                key: PageStorageKey<String>(
-                  videoDetailController.isOffline
-                      ? '离线简介${videoDetailController.bvid}'
-                      : '简介${videoDetailController.bvid}',
-                ),
-                slivers: <Widget>[
-                  if (videoDetailController.isOffline)
-                    OfflineVideoIntroPanel(heroTag: heroTag)
-                  else ...[
-                    videoIntro,
-                    if (!videoDetailController.sourceType.isPgc) relatedVideo,
-                  ],
-                ],
-              ),
-            ),
-          ),
-          SizedBox(
-            height: videoHeight,
-            width: isFullScreen.value == true ? context.width : videoWidth,
-            child: playerPopScope(videoWidth, videoHeight),
-          ),
-          if (!videoDetailController.isOffline) Expanded(child: videoReply),
-        ],
-      );
-    }
-    final double videoWidth =
-        max(context.height / context.width * 1.04, 1 / 2) * context.width;
-    final double videoHeight = videoWidth * 9 / 16;
+  }
 
-    if (videoDetailController.isOffline) {
-      return Row(
-        children: [
-          Container(
-            width: videoWidth,
-            height: context.height,
-            color: Colors.black,
-            child: Center(
-              child: SizedBox(
-                width: videoWidth,
-                height: min(videoHeight, context.height),
-                child: playerPopScope(
-                  videoWidth,
-                  min(videoHeight, context.height),
+  Widget _buildSquarishLayout(
+    BuildContext context,
+    BoxConstraints constraints,
+  ) {
+    return SafeArea(
+      left: !removeSafeArea && !isFullScreen.value,
+      right: !removeSafeArea && !isFullScreen.value,
+      top: !removeSafeArea,
+      bottom: false,
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints safeConstraints) {
+          if (enableVerticalExpand &&
+              plPlayerController?.direction.value == 'vertical') {
+            final double videoHeight = safeConstraints.maxHeight;
+            final double videoWidth = videoHeight * 9 / 16;
+            return Row(
+              children: [
+                SizedBox(
+                  height: videoHeight,
+                  width: videoWidth,
+                  child: playerPopScope(videoWidth, videoHeight),
                 ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              color: Theme.of(context).colorScheme.surface,
-              child: SafeArea(
-                top: false,
-                bottom: false,
-                left: false,
-                right: !removeSafeArea && isFullScreen.value != true,
-                child: pullToFullScreen(
-                  CustomScrollView(
-                    cacheExtent: 3500,
-                    key: PageStorageKey<String>(
-                      '离线简介${videoDetailController.bvid}',
-                    ),
-                    slivers: <Widget>[OfflineVideoIntroPanel(heroTag: heroTag)],
-                  ),
+                Expanded(
+                  child: videoDetailController.isOffline
+                      ? pullToFullScreen(
+                          CustomScrollView(
+                            cacheExtent: 3500,
+                            key: const PageStorageKey<String>('离线简介'),
+                            slivers: <Widget>[
+                              OfflineVideoIntroPanel(heroTag: heroTag),
+                            ],
+                          ),
+                        )
+                      : TabBarView(
+                          physics: const CustomTabBarViewScrollPhysics(),
+                          controller: videoDetailController.tabCtr,
+                          children: <Widget>[
+                            pullToFullScreen(
+                              CustomScrollView(
+                                cacheExtent: 3500,
+                                key: const PageStorageKey<String>('简介'),
+                                slivers: <Widget>[
+                                  videoIntro,
+                                  if (!videoDetailController
+                                      .sourceType
+                                      .isPgc) ...[
+                                    divider,
+                                    relatedVideo,
+                                  ],
+                                ],
+                              ),
+                            ),
+                            videoReply,
+                          ],
+                        ),
                 ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
+              ],
+            );
+          }
 
-    return Row(
-      children: [
-        SizedBox(
-          width: videoWidth,
-          height: context.height,
-          child: Column(
+          final double videoHeight = safeConstraints.maxHeight / 2.5;
+          final double videoWidth = safeConstraints.maxWidth;
+          return Column(
             children: [
               SizedBox(
                 width: videoWidth,
@@ -1112,121 +953,252 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                 child: playerPopScope(videoWidth, videoHeight),
               ),
               Expanded(
-                child: pullToFullScreen(
-                  CustomScrollView(
+                child: videoDetailController.isOffline
+                    ? pullToFullScreen(
+                        CustomScrollView(
+                          cacheExtent: 3500,
+                          key: PageStorageKey<String>(
+                            '离线简介${videoDetailController.bvid}',
+                          ),
+                          slivers: <Widget>[
+                            OfflineVideoIntroPanel(heroTag: heroTag),
+                          ],
+                        ),
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                            child: pullToFullScreen(
+                              CustomScrollView(
+                                cacheExtent: 3500,
+                                key: PageStorageKey<String>(
+                                  '简介${videoDetailController.bvid}',
+                                ),
+                                slivers: <Widget>[
+                                  videoIntro,
+                                  if (!videoDetailController
+                                      .sourceType
+                                      .isPgc) ...[
+                                    divider,
+                                    relatedVideo,
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                          VerticalDivider(
+                            width: 1,
+                            thickness: 1,
+                            color: Theme.of(
+                              context,
+                            ).dividerColor.withValues(alpha: 0.06),
+                          ),
+                          Expanded(child: videoReply),
+                        ],
+                      ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDualColumnLayout(
+    BuildContext context,
+    BoxConstraints constraints,
+  ) {
+    return SafeArea(
+      left:
+          !videoDetailController.isOffline &&
+          !removeSafeArea &&
+          isFullScreen.value != true,
+      right:
+          !videoDetailController.isOffline &&
+          !removeSafeArea &&
+          isFullScreen.value != true,
+      top: !removeSafeArea,
+      bottom: false,
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints safeConstraints) {
+          final double leftWidth =
+              VideoDetailLayoutCoordinator.computeLeftColumnWidth(
+                safeConstraints.maxWidth,
+              );
+          final double clampedPlayerHeight =
+              VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
+                maxHeight: safeConstraints.maxHeight,
+                leftWidth: leftWidth,
+              );
+
+          final double rawKeyboardHeight = MediaQuery.viewInsetsOf(
+            context,
+          ).bottom;
+          final double clampedKeyboardHeight =
+              VideoDetailLayoutCoordinator.computeClampedKeyboardHeight(
+                rawKeyboardHeight: rawKeyboardHeight,
+                maxHeight: safeConstraints.maxHeight,
+              );
+
+          if (enableVerticalExpand &&
+              plPlayerController?.direction.value == 'vertical') {
+            final double videoHeight = safeConstraints.maxHeight;
+            final double videoWidth = videoHeight * 9 / 16;
+            return Row(
+              children: [
+                Expanded(
+                  child: CustomScrollView(
                     cacheExtent: 3500,
                     key: PageStorageKey<String>(
-                      '简介${videoDetailController.bvid}',
+                      videoDetailController.isOffline
+                          ? '离线简介${videoDetailController.bvid}'
+                          : '简介${videoDetailController.bvid}',
                     ),
-                    slivers: <Widget>[videoIntro],
+                    slivers: <Widget>[
+                      if (videoDetailController.isOffline)
+                        OfflineVideoIntroPanel(heroTag: heroTag)
+                      else ...[
+                        videoIntro,
+                        if (!videoDetailController.sourceType.isPgc)
+                          relatedVideo,
+                      ],
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  height: videoHeight,
+                  width: videoWidth,
+                  child: playerPopScope(videoWidth, videoHeight),
+                ),
+                if (!videoDetailController.isOffline)
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: clampedKeyboardHeight),
+                      child: MediaQuery.removeViewInsets(
+                        removeBottom: true,
+                        context: context,
+                        child: videoReply,
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          }
+
+          if (videoDetailController.isOffline) {
+            return Row(
+              children: [
+                Container(
+                  width: leftWidth,
+                  height: safeConstraints.maxHeight,
+                  color: Colors.black,
+                  child: Center(
+                    child: SizedBox(
+                      width: leftWidth,
+                      height: clampedPlayerHeight,
+                      child: playerPopScope(leftWidth, clampedPlayerHeight),
+                    ),
+                  ),
+                ),
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: Theme.of(context).dividerColor.withValues(alpha: 0.06),
+                ),
+                Expanded(
+                  child: Container(
+                    color: Theme.of(context).colorScheme.surface,
+                    child: CustomScrollView(
+                      cacheExtent: 3500,
+                      key: PageStorageKey<String>(
+                        '离线简介${videoDetailController.bvid}',
+                      ),
+                      slivers: <Widget>[
+                        OfflineVideoIntroPanel(heroTag: heroTag),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }
+
+          return Row(
+            children: [
+              SizedBox(
+                width: leftWidth,
+                height: safeConstraints.maxHeight,
+                child: Column(
+                  children: [
+                    SizedBox(
+                      width: leftWidth,
+                      height: clampedPlayerHeight,
+                      child: playerPopScope(leftWidth, clampedPlayerHeight),
+                    ),
+                    Expanded(
+                      child: CustomScrollView(
+                        cacheExtent: 3500,
+                        key: PageStorageKey<String>(
+                          '简介${videoDetailController.bvid}',
+                        ),
+                        slivers: <Widget>[videoIntro],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.06),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: clampedKeyboardHeight),
+                  child: MediaQuery.removeViewInsets(
+                    removeBottom: true,
+                    context: context,
+                    child: Column(
+                      children: [
+                        Material(
+                          color: Theme.of(context).colorScheme.surface,
+                          child: TabBar(
+                            controller: videoDetailController.tabCtr,
+                            dividerColor: Colors.transparent,
+                            indicatorColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
+                            tabs: const <Widget>[
+                              Tab(text: '相关推荐'),
+                              Tab(text: '评论交流'),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          child: TabBarView(
+                            physics: const CustomTabBarViewScrollPhysics(),
+                            controller: videoDetailController.tabCtr,
+                            children: <Widget>[
+                              CustomScrollView(
+                                cacheExtent: 3500,
+                                slivers: [relatedVideo],
+                              ),
+                              videoReply,
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ],
-          ),
-        ),
-        Expanded(
-          child: Column(
-            children: [
-              Material(
-                color: Theme.of(context).colorScheme.surface,
-                child: TabBar(
-                  controller: videoDetailController.tabCtr,
-                  dividerColor: Colors.transparent,
-                  indicatorColor: Theme.of(context).colorScheme.primary,
-                  tabs: const <Widget>[
-                    Tab(text: '相关推荐'),
-                    Tab(text: '评论交流'),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: TabBarView(
-                  physics: const CustomTabBarViewScrollPhysics(),
-                  controller: videoDetailController.tabCtr,
-                  children: <Widget>[
-                    CustomScrollView(
-                      cacheExtent: 3500,
-                      slivers: [relatedVideo],
-                    ),
-                    videoReply,
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+          );
+        },
+      ),
     );
-  });
-  Widget get childWhenDisabledLandscape => Scaffold(
-    resizeToAvoidBottomInset: false,
-    key: scaffoldKey,
-    // backgroundColor: Colors.black,
-    appBar: removeSafeArea
-        ? null
-        : AppBar(
-            backgroundColor: showStatusBarBackgroundColor ? null : Colors.black,
-            elevation: 0,
-            toolbarHeight: 0,
-            systemOverlayStyle: SystemUiOverlayStyle(
-              statusBarIconBrightness:
-                  Theme.of(context).brightness == Brightness.dark ||
-                      !showStatusBarBackgroundColor
-                  ? Brightness.light
-                  : Brightness.dark,
-              systemNavigationBarColor: Colors.transparent,
-            ),
-          ),
-    body: Container(
-      color: videoDetailController.isOffline
-          ? Colors.black
-          : Theme.of(context).colorScheme.surface,
-      child: SafeArea(
-        left:
-            !videoDetailController.isOffline &&
-            !removeSafeArea &&
-            isFullScreen.value != true,
-        right:
-            !videoDetailController.isOffline &&
-            !removeSafeArea &&
-            isFullScreen.value != true,
-        top: !removeSafeArea,
-        bottom: false, //!removeSafeArea,
-        child: childWhenDisabledLandscapeInner,
-      ),
-    ),
-  );
-  Widget get childWhenDisabledAlmostSquare => Scaffold(
-    resizeToAvoidBottomInset: false,
-    key: scaffoldKey,
-    // backgroundColor: Colors.black,
-    appBar: removeSafeArea
-        ? null
-        : AppBar(
-            backgroundColor: showStatusBarBackgroundColor ? null : Colors.black,
-            elevation: 0,
-            toolbarHeight: 0,
-            systemOverlayStyle: SystemUiOverlayStyle(
-              statusBarIconBrightness:
-                  Theme.of(context).brightness == Brightness.dark ||
-                      !showStatusBarBackgroundColor
-                  ? Brightness.light
-                  : Brightness.dark,
-              systemNavigationBarColor: Colors.transparent,
-            ),
-          ),
-    body: Container(
-      color: Theme.of(context).colorScheme.surface,
-      child: SafeArea(
-        left: !removeSafeArea && isFullScreen.value != true,
-        right: !removeSafeArea && isFullScreen.value != true,
-        top: !removeSafeArea,
-        bottom: false, //!removeSafeArea,
-        child: childWhenDisabledAlmostSquareInner,
-      ),
-    ),
-  );
+  }
+
   Widget get childWhenEnabled => Obx(
     () => !videoDetailController.autoPlay.value
         ? const SizedBox()
@@ -1280,44 +1252,83 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     );
   }
 
-  Widget get fullScreenPlayer => Scaffold(
-    resizeToAvoidBottomInset: false,
-    backgroundColor: Colors.black,
-    body: SizedBox.expand(
-      child: playerPopScope(
-        MediaQuery.sizeOf(context).width,
-        MediaQuery.sizeOf(context).height,
-      ),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      if (isFullScreen.value == true) {
-        return autoChoose(fullScreenPlayer);
-      }
+      final bool phoneLandscape =
+          MediaQuery.orientationOf(context) == Orientation.landscape &&
+          !ScreenUtils.isTablet(context) &&
+          !horizontalScreen;
+      final bool canPop = isFullScreen.value != true && !phoneLandscape;
 
-      return LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-          isShowing = Get.currentRoute == myRouteName;
-          if (!isShowing && Get.previousRoute != myRouteName) {
-            return ColoredBox(color: Theme.of(context).colorScheme.surface);
+      return PopScope(
+        canPop: canPop,
+        onPopInvokedWithResult: (bool didPop, Object? result) {
+          if (didPop) {
+            triggerFloatingWindowWhenLeaving();
+            return;
           }
-          if (ScreenUtils.shouldUseLandscapeDualColumn(context, constraints)) {
-            return autoChoose(childWhenDisabledLandscape);
-          } else if (ScreenUtils.isSquarish(constraints)) {
-            if (!removeSafeArea && isShowing) {
-              showStatusBar();
-            }
-            return autoChoose(childWhenDisabledAlmostSquare);
-          } else {
-            if (!removeSafeArea && isShowing) {
-              showStatusBar();
-            }
-            return autoChoose(childWhenDisabled);
+          if (isFullScreen.value == true) {
+            plPlayerController?.triggerFullScreen(status: false);
+            return;
+          }
+          if (phoneLandscape) {
+            verticalScreenForTwoSeconds();
+            return;
           }
         },
+        child: autoChoose(
+          Scaffold(
+            key: scaffoldKey,
+            resizeToAvoidBottomInset: false,
+            backgroundColor: isFullScreen.value == true
+                ? Colors.black
+                : (videoDetailController.isOffline
+                      ? Colors.black
+                      : Theme.of(context).colorScheme.surface),
+            appBar: _buildAppBar(context),
+            body: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                isShowing = Get.currentRoute == myRouteName;
+                if (!isShowing && Get.previousRoute != myRouteName) {
+                  return ColoredBox(
+                    color: Theme.of(context).colorScheme.surface,
+                  );
+                }
+
+                if (isFullScreen.value == true) {
+                  return SizedBox.expand(
+                    child: playerPopScope(
+                      constraints.maxWidth,
+                      constraints.maxHeight,
+                    ),
+                  );
+                }
+
+                if (VideoDetailLayoutCoordinator.canUseDualColumn(
+                  isDualColumnFromScreenUtils:
+                      ScreenUtils.shouldUseLandscapeDualColumn(
+                        context,
+                        constraints,
+                      ),
+                  maxWidth: constraints.maxWidth,
+                )) {
+                  return _buildDualColumnLayout(context, constraints);
+                } else if (ScreenUtils.isSquarish(constraints)) {
+                  if (!removeSafeArea && isShowing) {
+                    showStatusBar();
+                  }
+                  return _buildSquarishLayout(context, constraints);
+                } else {
+                  if (!removeSafeArea && isShowing) {
+                    showStatusBar();
+                  }
+                  return _buildPortraitLayout(context, constraints);
+                }
+              },
+            ),
+          ),
+        ),
       );
     });
   }

@@ -33,7 +33,12 @@
   - 严密状态机守卫与自愈防线：仅在视频处于播放中（`PlayerStatus.playing`）且控件未锁定、非直播模式下响应长按；补齐 `onLongPressCancel` 手势取消监听，彻底根除系统手势中断、通知栏下拉或来电打断造成的“永久高倍速锁死”问题；
   - 异步竞态防御与平滑还原：引入单调自增 `_speedSessionToken`，杜绝急速连续点按产生的平台通道时序竞争与定时器复活；长按结束后 100% 精确还原用户先前的基准播放倍速（如 1.25x 或 1.5x）；
   - 累进加速硬件保护与多层次触觉反馈：将自动递增倍速上限收敛钳制为 4.0x，防范移动端硬解码器掉帧与音频缓冲区溢出；长按起速触发 `selectionClick`、松手回弹触发 `lightImpact`、封顶触发 `mediumImpact`，提供层次丰富的细腻触感。
-
+- 普通视频详情页（VideoDetailPage）大屏/平板横屏双栏与响应式重构（Tablet & Responsive Dual-Column Excellence）：
+  - 打造高内聚大屏几何与约束协调器（`VideoDetailLayoutCoordinator`）：设立 640dp 物理宽度门槛，低于门槛或分屏塌陷时自适应平滑降级；实现黄金分割比例切分（左栏 ~62%，右栏 Expanded）与播放器 16:9 视高安全钳制（`maxHeight * 0.62`），确保大屏下播放器下方简介与选集卡片拥有充裕视口；
+  - 架构重构与单一 Scaffold 容器：彻底废除原系统针对全屏、平板双栏、近方屏与竖屏分散实例化的 4 个独立 Scaffold 反模式，收敛为根节点唯一的单一 Scaffold 容器，彻底消除设备旋转、分屏尺寸拉伸时的组件重建闪烁、白屏跳动与状态丢失；
+  - 软键盘单侧消费与 Inset 隔离（SPEC-02）：根 Scaffold 启用 `resizeToAvoidBottomInset: false`，杜绝软键盘弹起时挤压左侧播放器引发的变形与 `RenderFlex overflow`；右栏通过 `clampedKeyboardHeight` 动态预留至少 120dp 视口高度，并通过 `MediaQuery.removeViewInsets(removeBottom: true)` 彻底切断内层组件二次 Inset 重复消费；
+  - 根 PopScope 导航防死锁与画中画联动（SPEC-03）：将返回监听提升至根节点，`didPop == false` 时仅精准消费全屏退出与手机横屏旋转，杜绝深层 child PopScopes 递归导致的无限死锁；平板横屏模式放行返回事件并平滑联动画中画小窗；
+  - 平板大屏横屏观影与交互净化（SPEC-05）：修复 `HeaderControl` 顶栏返回键在平板横屏下误触强制转竖屏的缺陷；在双栏模式下移除左栏下划全屏（`pullToFullScreen`）手势包装，杜绝大屏滑动浏览简介时的误触全屏。
 
 ## [1.5.0] - 2026-10-05
 

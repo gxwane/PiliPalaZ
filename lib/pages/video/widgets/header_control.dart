@@ -20,6 +20,7 @@ import 'package:pilipalaz/pages/video/video_playback_selection.dart';
 import 'package:pilipalaz/pages/video/introduction/widgets/menu_row.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
 import 'package:pilipalaz/plugin/pl_player/models/play_repeat.dart';
+import 'package:pilipalaz/utils/screen_utils.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:pilipalaz/http/danmaku.dart';
 import 'package:pilipalaz/http/api_result.dart';
@@ -1497,10 +1498,11 @@ class _HeaderControlState extends State<HeaderControl> {
                       widget.controller!.triggerFullScreen(status: false);
                     } else if (MediaQuery.of(context).orientation ==
                             Orientation.landscape &&
+                        !ScreenUtils.isTablet(context) &&
                         !horizontalScreen) {
                       verticalScreenForTwoSeconds();
                     } else {
-                      Get.back();
+                      Navigator.of(context).maybePop();
                     }
                   },
                 ),
