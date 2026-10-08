@@ -14,6 +14,27 @@ import 'package:pilipalaz/services/download/download_storage_manager.dart';
 import 'package:pilipalaz/services/download/download_task_executor.dart';
 import 'package:pilipalaz/utils/video_utils.dart';
 
+/// 解析视频/音频下载地址函数类型，便于依赖注入与测试。
+typedef DownloadUrlResolver =
+    Future<ResolvedDownloadUrls?> Function(DownloadTask task);
+
+/// 下载执行器构建工厂函数类型，便于依赖注入与测试。
+typedef DownloadExecutorFactory =
+    DownloadTaskExecutor Function({
+      required DownloadTask task,
+      required DownloadStorageManager storageManager,
+      required String videoUrl,
+      required String audioUrl,
+      void Function(int downloaded, int total, int speed)? onProgress,
+    });
+
+/// 解析完成的音视频下载直链地址。
+class ResolvedDownloadUrls {
+  const ResolvedDownloadUrls({required this.videoUrl, required this.audioUrl});
+  final String videoUrl;
+  final String audioUrl;
+}
+
 /// 默认最大并发下载数。
 const int kDefaultMaxConcurrent = 2;
 
@@ -23,9 +44,13 @@ class DownloadService {
     required DownloadDao dao,
     required DownloadStorageManager storageManager,
     int maxConcurrent = kDefaultMaxConcurrent,
+    DownloadUrlResolver? urlResolver,
+    DownloadExecutorFactory? executorFactory,
   }) : _dao = dao,
        _storageManager = storageManager,
-       _maxConcurrent = maxConcurrent;
+       _maxConcurrent = maxConcurrent.clamp(1, 4),
+       _urlResolver = urlResolver,
+       _executorFactory = executorFactory;
 
   static DownloadService? _instance;
 
@@ -40,11 +65,16 @@ class DownloadService {
 
   final DownloadDao _dao;
   final DownloadStorageManager _storageManager;
-  final int _maxConcurrent;
+  int _maxConcurrent;
+  final DownloadUrlResolver? _urlResolver;
+  final DownloadExecutorFactory? _executorFactory;
 
   /// 活跃执行器映射。
   final Map<String, DownloadTaskExecutor> _executors =
       <String, DownloadTaskExecutor>{};
+
+  /// 正在启动（解析 URL / 初始化）的任务 ID 集合，用于排队并发槽位即时锁定。
+  final Set<String> _startingTaskIds = <String>{};
 
   /// 任务状态变更广播流。
   final StreamController<DownloadTask> _taskUpdatesController =
@@ -60,11 +90,15 @@ class DownloadService {
     required DownloadDao dao,
     required DownloadStorageManager storageManager,
     int maxConcurrent = kDefaultMaxConcurrent,
+    DownloadUrlResolver? urlResolver,
+    DownloadExecutorFactory? executorFactory,
   }) async {
     final DownloadService service = DownloadService._(
       dao: dao,
       storageManager: storageManager,
       maxConcurrent: maxConcurrent,
+      urlResolver: urlResolver,
+      executorFactory: executorFactory,
     );
     await service._healZombieTasks();
     _instance = service;
@@ -89,45 +123,74 @@ class DownloadService {
 
   // ── 公开接口 ──
 
-  /// 创建并启动新下载任务。
-  ///
-  /// 1. 前置磁盘水位检查
-  /// 2. 获取播放地址
-  /// 3. 分配本地路径
-  /// 4. 持久化任务
-  /// 5. 加入执行队列
-  Future<DownloadTask?> startTask(DownloadTask task) async {
-    // 若任务已存在则直接返回
-    final DownloadTask? existing = _dao.getTask(task.id);
-    if (existing != null) {
-      if (existing.isResumable) {
-        await resumeTask(existing.id);
+  /// 批量创建并启动新下载任务（原子入库与统一调度）。
+  Future<List<DownloadTask>> startTasks(List<DownloadTask> tasks) async {
+    if (tasks.isEmpty) return <DownloadTask>[];
+
+    // 前置服务层磁盘水位安全红线强检
+    if (await _storageManager.isBelowSafetyThreshold()) {
+      final List<DownloadTask> failedTasks = <DownloadTask>[];
+      for (final DownloadTask task in tasks) {
+        task
+          ..status = DownloadTaskStatus.failed
+          ..errorMessage = '存储空间不足 (低于安全水位 200MB)';
+        failedTasks.add(task);
       }
-      return existing;
+      await _dao.saveTasks(failedTasks);
+      for (final DownloadTask task in failedTasks) {
+        _emit(task);
+      }
+      return failedTasks;
     }
 
-    // 分配本地路径
-    final DownloadPaths paths = _storageManager.pathsForTask(task);
-    task
-      ..videoRelativePath = paths.videoRelativePath
-      ..audioRelativePath = paths.audioRelativePath
-      ..danmakuRelativePath = paths.danmakuRelativePath
-      ..coverRelativePath = paths.coverRelativePath
-      ..subtitlesRelativePath = paths.subtitlesRelativePath
-      ..chaptersRelativePath = paths.chaptersRelativePath
-      ..status = DownloadTaskStatus.pending;
+    final List<DownloadTask> toSave = <DownloadTask>[];
 
-    await _dao.saveTask(task);
-    _emit(task);
+    for (final DownloadTask task in tasks) {
+      final DownloadTask? existing = _dao.getTask(task.id);
+      if (existing != null) {
+        if (existing.isResumable) {
+          existing
+            ..status = DownloadTaskStatus.pending
+            ..errorMessage = null
+            ..resetRetry();
+          toSave.add(existing);
+        }
+      } else {
+        final DownloadPaths paths = _storageManager.pathsForTask(task);
+        task
+          ..videoRelativePath = paths.videoRelativePath
+          ..audioRelativePath = paths.audioRelativePath
+          ..danmakuRelativePath = paths.danmakuRelativePath
+          ..coverRelativePath = paths.coverRelativePath
+          ..subtitlesRelativePath = paths.subtitlesRelativePath
+          ..chaptersRelativePath = paths.chaptersRelativePath
+          ..status = DownloadTaskStatus.pending
+          ..errorMessage = null
+          ..resetRetry();
+        toSave.add(task);
+      }
+    }
 
-    // 尝试立即调度
-    _scheduleNext();
+    if (toSave.isNotEmpty) {
+      await _dao.saveTasks(toSave);
+      for (final DownloadTask task in toSave) {
+        _emit(task);
+      }
+      _scheduleNext();
+    }
 
-    return task;
+    return toSave;
+  }
+
+  /// 创建并启动新下载任务。
+  Future<DownloadTask?> startTask(DownloadTask task) async {
+    final List<DownloadTask> result = await startTasks(<DownloadTask>[task]);
+    return result.isNotEmpty ? result.first : _dao.getTask(task.id);
   }
 
   /// 暂停指定任务。
   Future<void> pauseTask(String id) async {
+    _startingTaskIds.remove(id);
     final DownloadTaskExecutor? executor = _executors.remove(id);
     executor?.cancel();
 
@@ -147,7 +210,19 @@ class DownloadService {
     final DownloadTask? task = _dao.getTask(id);
     if (task == null || !task.isResumable) return;
 
-    task.status = DownloadTaskStatus.pending;
+    if (await _storageManager.isBelowSafetyThreshold()) {
+      task
+        ..status = DownloadTaskStatus.failed
+        ..errorMessage = '存储空间不足 (低于安全水位 200MB)';
+      await _dao.saveTask(task);
+      _emit(task);
+      return;
+    }
+
+    task
+      ..status = DownloadTaskStatus.pending
+      ..errorMessage = null
+      ..resetRetry();
     await _dao.saveTask(task);
     _emit(task);
 
@@ -156,6 +231,7 @@ class DownloadService {
 
   /// 取消并删除任务。
   Future<void> cancelTask(String id, {bool deleteFiles = true}) async {
+    _startingTaskIds.remove(id);
     // 停止执行
     final DownloadTaskExecutor? executor = _executors.remove(id);
     executor?.cancel();
@@ -177,6 +253,7 @@ class DownloadService {
 
   /// 暂停所有正在下载或等待中的任务。
   Future<void> pauseAll() async {
+    _startingTaskIds.clear();
     // 停止所有活跃执行器
     final List<String> executorIds = _executors.keys.toList();
     for (final String id in executorIds) {
@@ -202,13 +279,35 @@ class DownloadService {
 
   /// 恢复所有可恢复的任务。
   Future<void> resumeAll() async {
+    if (await _storageManager.isBelowSafetyThreshold()) {
+      final List<DownloadTask> resumable = _dao
+          .getAllTasks()
+          .where((DownloadTask t) => t.isResumable)
+          .toList();
+      for (final DownloadTask task in resumable) {
+        task
+          ..status = DownloadTaskStatus.failed
+          ..errorMessage = '存储空间不足 (低于安全水位 200MB)';
+      }
+      await _dao.saveTasks(resumable);
+      for (final DownloadTask task in resumable) {
+        _emit(task);
+      }
+      return;
+    }
+
     final List<DownloadTask> resumable = _dao
         .getAllTasks()
         .where((DownloadTask t) => t.isResumable)
         .toList();
     for (final DownloadTask task in resumable) {
-      task.status = DownloadTaskStatus.pending;
-      await _dao.saveTask(task);
+      task
+        ..status = DownloadTaskStatus.pending
+        ..errorMessage = null
+        ..resetRetry();
+    }
+    await _dao.saveTasks(resumable);
+    for (final DownloadTask task in resumable) {
       _emit(task);
     }
     _scheduleNext();
@@ -220,56 +319,92 @@ class DownloadService {
   /// 获取指定任务。
   DownloadTask? getTask(String id) => _dao.getTask(id);
 
-  /// 当前活跃下载数量。
-  int get activeCount => _executors.length;
+  /// 当前活跃下载数量（含正在启动解析与已挂载执行器）。
+  int get activeCount => _executors.length + _startingTaskIds.length;
+
+  /// 当前最大并发数。
+  int get maxConcurrent => _maxConcurrent;
+
+  /// 动态修改最大并发下载数（支持 1~4）。
+  void updateMaxConcurrent(int slots) {
+    final int clamped = slots.clamp(1, 4);
+    if (_maxConcurrent == clamped) return;
+    _maxConcurrent = clamped;
+    _scheduleNext();
+  }
 
   // ── 调度器 ──
 
   /// 尝试调度下一个 pending 任务。
   void _scheduleNext() {
-    if (_executors.length >= _maxConcurrent) return;
+    if (activeCount >= _maxConcurrent) return;
 
     final List<DownloadTask> pending =
         _dao
             .getAllTasks()
             .where((DownloadTask t) => t.status == DownloadTaskStatus.pending)
             .toList()
-          ..sort(
-            (DownloadTask a, DownloadTask b) =>
-                a.createdAt.compareTo(b.createdAt),
-          );
+          ..sort((DownloadTask a, DownloadTask b) {
+            final int timeDiff = a.createdAt
+                .difference(b.createdAt)
+                .inMilliseconds;
+            // 若创建时间差在 2 秒内（同一批次任务），按分 P (cid) 正序调度保序
+            if (timeDiff.abs() < 2000 && a.bvid == b.bvid) {
+              return a.cid.compareTo(b.cid);
+            }
+            return a.createdAt.compareTo(b.createdAt);
+          });
 
     for (final DownloadTask task in pending) {
-      if (_executors.length >= _maxConcurrent) break;
-      if (_executors.containsKey(task.id)) continue;
+      if (activeCount >= _maxConcurrent) break;
+      if (_executors.containsKey(task.id) ||
+          _startingTaskIds.contains(task.id)) {
+        continue;
+      }
+      _startingTaskIds.add(task.id);
       _executeTask(task);
     }
   }
 
   /// 启动单个任务的下载执行。
   Future<void> _executeTask(DownloadTask task) async {
-    // 获取播放地址
-    final urls = await _resolveUrls(task);
-    if (urls == null) {
-      task
-        ..status = DownloadTaskStatus.failed
-        ..errorMessage = '无法获取下载地址';
+    try {
+      // 调度前磁盘安全水位检测
+      if (await _storageManager.isBelowSafetyThreshold()) {
+        task
+          ..status = DownloadTaskStatus.failed
+          ..errorMessage = '存储空间不足 (低于安全水位 200MB)';
+        await _dao.saveTask(task);
+        _emit(task);
+        _scheduleNext();
+        return;
+      }
+
+      // 获取播放地址
+      final ResolvedDownloadUrls? urls = _urlResolver != null
+          ? await _urlResolver(task)
+          : await _resolveUrls(task);
+      if (urls == null) {
+        task
+          ..status = DownloadTaskStatus.failed
+          ..errorMessage = '无法获取下载地址';
+        await _dao.saveTask(task);
+        _emit(task);
+        _scheduleNext();
+        return;
+      }
+
+      // 若在异步等待期间任务已被暂停或取消，则退出并尝试调度后续任务
+      if (!_startingTaskIds.contains(task.id)) {
+        _scheduleNext();
+        return;
+      }
+
+      task.status = DownloadTaskStatus.downloading;
       await _dao.saveTask(task);
       _emit(task);
-      _scheduleNext();
-      return;
-    }
 
-    task.status = DownloadTaskStatus.downloading;
-    await _dao.saveTask(task);
-    _emit(task);
-
-    final DownloadTaskExecutor executor = DownloadTaskExecutor(
-      task: task,
-      storageManager: _storageManager,
-      videoUrl: urls.videoUrl,
-      audioUrl: urls.audioUrl,
-      onProgress: (int downloaded, int total, int speed) {
+      void onProgress(int downloaded, int total, int speed) {
         task
           ..downloadedBytes = downloaded
           ..totalBytes = total
@@ -283,38 +418,57 @@ class DownloadService {
           _dao.saveTask(task);
         }
         _emit(task);
-      },
-    );
-
-    _executors[task.id] = executor;
-
-    try {
-      final DownloadTaskStatus result = await executor.execute();
-
-      if (result == DownloadTaskStatus.completed) {
-        task
-          ..status = DownloadTaskStatus.completed
-          ..downloadedBytes = task.totalBytes
-          ..completedAt = DateTime.now();
-      } else {
-        task.status = result;
       }
-    } on Object catch (e) {
-      task
-        ..status = DownloadTaskStatus.failed
-        ..errorMessage = e.toString();
-    } finally {
-      _executors.remove(task.id);
-      executor.dispose();
-    }
 
-    await _dao.saveTask(task);
-    _emit(task);
-    _scheduleNext();
+      final DownloadTaskExecutor executor = _executorFactory != null
+          ? _executorFactory(
+              task: task,
+              storageManager: _storageManager,
+              videoUrl: urls.videoUrl,
+              audioUrl: urls.audioUrl,
+              onProgress: onProgress,
+            )
+          : DownloadTaskExecutor(
+              task: task,
+              storageManager: _storageManager,
+              videoUrl: urls.videoUrl,
+              audioUrl: urls.audioUrl,
+              onProgress: onProgress,
+            );
+
+      _executors[task.id] = executor;
+      _startingTaskIds.remove(task.id);
+
+      try {
+        final DownloadTaskStatus result = await executor.execute();
+
+        if (result == DownloadTaskStatus.completed) {
+          task
+            ..status = DownloadTaskStatus.completed
+            ..downloadedBytes = task.totalBytes
+            ..completedAt = DateTime.now();
+        } else {
+          task.status = result;
+        }
+      } on Object catch (e) {
+        task
+          ..status = DownloadTaskStatus.failed
+          ..errorMessage = e.toString();
+      } finally {
+        _executors.remove(task.id);
+        executor.dispose();
+      }
+
+      await _dao.saveTask(task);
+      _emit(task);
+      _scheduleNext();
+    } finally {
+      _startingTaskIds.remove(task.id);
+    }
   }
 
   /// 解析视频/音频下载 URL。
-  Future<_ResolvedUrls?> _resolveUrls(DownloadTask task) async {
+  Future<ResolvedDownloadUrls?> _resolveUrls(DownloadTask task) async {
     final result = await VideoApi.instance.playUrl(
       bvid: task.bvid,
       cid: task.cid,
@@ -338,7 +492,7 @@ class DownloadService {
           task.volumeMetadata = data.volume!.toJson();
         }
 
-        return _ResolvedUrls(
+        return ResolvedDownloadUrls(
           videoUrl: VideoUtils.getCdnUrl(videoItem),
           audioUrl: VideoUtils.getCdnUrl(audioItem),
         );
@@ -392,13 +546,8 @@ class DownloadService {
       executor.dispose();
     }
     _executors.clear();
+    _startingTaskIds.clear();
     await _taskUpdatesController.close();
     _instance = null;
   }
-}
-
-class _ResolvedUrls {
-  const _ResolvedUrls({required this.videoUrl, required this.audioUrl});
-  final String videoUrl;
-  final String audioUrl;
 }

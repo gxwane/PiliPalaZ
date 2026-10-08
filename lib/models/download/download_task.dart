@@ -58,6 +58,8 @@ class DownloadTask {
     this.totalBytes = 0,
     this.downloadedBytes = 0,
     this.downloadSpeed = 0,
+    this.retryCount = 0,
+    this.retryMessage,
     this.errorMessage,
     DateTime? createdAt,
     this.completedAt,
@@ -78,6 +80,7 @@ class DownloadTask {
     required String videoQualityDesc,
     required String videoCodec,
     required int audioQuality,
+    DateTime? createdAt,
   }) {
     return DownloadTask(
       id: '${bvid}_$cid',
@@ -93,6 +96,7 @@ class DownloadTask {
       videoQualityDesc: videoQualityDesc,
       videoCodec: videoCodec,
       audioQuality: audioQuality,
+      createdAt: createdAt,
     );
   }
 
@@ -168,6 +172,18 @@ class DownloadTask {
 
   /// 瞬时下载速率（bytes/s），仅内存态，不持久化。
   int downloadSpeed;
+
+  /// 瞬态重试计数器（0 为首试，1~3 为重试中），仅内存态，不持久化。
+  int retryCount;
+
+  /// 瞬态重试状态提示（如 "网络波动，重试中 (1/3)..."），仅内存态，不持久化。
+  String? retryMessage;
+
+  /// 重置重试状态。
+  void resetRetry() {
+    retryCount = 0;
+    retryMessage = null;
+  }
 
   /// 失败原因。
   String? errorMessage;
@@ -286,7 +302,10 @@ class DownloadTask {
     int? totalBytes,
     int? downloadedBytes,
     int? downloadSpeed,
+    int? retryCount,
+    String? retryMessage,
     String? errorMessage,
+    DateTime? createdAt,
     DateTime? completedAt,
     Map<String, dynamic>? volumeMetadata,
   }) {
@@ -315,8 +334,10 @@ class DownloadTask {
       totalBytes: totalBytes ?? this.totalBytes,
       downloadedBytes: downloadedBytes ?? this.downloadedBytes,
       downloadSpeed: downloadSpeed ?? this.downloadSpeed,
+      retryCount: retryCount ?? this.retryCount,
+      retryMessage: retryMessage ?? this.retryMessage,
       errorMessage: errorMessage,
-      createdAt: createdAt,
+      createdAt: createdAt ?? this.createdAt,
       completedAt: completedAt ?? this.completedAt,
       volumeMetadata: volumeMetadata ?? this.volumeMetadata,
     );

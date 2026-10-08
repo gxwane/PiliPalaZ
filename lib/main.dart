@@ -66,9 +66,17 @@ void main() async {
   try {
     final downloadDao = await DownloadDao.init();
     final downloadStorage = DownloadStorageManager();
+    final int maxConcurrent =
+        (GStorage.setting.get(
+                  SettingBoxKey.downloadMaxConcurrent,
+                  defaultValue: kDefaultMaxConcurrent,
+                )
+                as num)
+            .toInt();
     await DownloadService.init(
       dao: downloadDao,
       storageManager: downloadStorage,
+      maxConcurrent: maxConcurrent,
     );
   } catch (error, stackTrace) {
     debugPrint('Failed to initialize DownloadService: $error');

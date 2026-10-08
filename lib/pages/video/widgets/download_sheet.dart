@@ -311,6 +311,7 @@ class DownloadSheetState extends State<DownloadSheet> {
     final String cover = widget.videoDetail.pic ?? '';
     final String ownerName = widget.videoDetail.owner?.name ?? '';
 
+    final List<DownloadTask> tasksToStart = <DownloadTask>[];
     for (final int cid in toStartCids) {
       Part? part;
       if (_pages.isNotEmpty) {
@@ -336,9 +337,12 @@ class DownloadSheetState extends State<DownloadSheet> {
         videoCodec: 'avc1',
         audioQuality: 30280,
       );
+      tasksToStart.add(task);
+    }
 
-      await service.startTask(task);
-      _tasksMap[cid] = task;
+    final List<DownloadTask> started = await service.startTasks(tasksToStart);
+    for (final DownloadTask task in started) {
+      _tasksMap[task.cid] = task;
     }
 
     // 精确反馈

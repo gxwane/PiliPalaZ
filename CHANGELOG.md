@@ -6,6 +6,14 @@
 
 ### 新增
 
+- 批量下载与多 P 队列调度治理体系（Phase 3.2: Batch Download & Queue Resilience）：
+  - 打造指数退避网络韧性重试引擎（`DownloadTaskExecutor`）：集成 Full Jitter 指数退避模型（1s -> 2s -> 4s），精准区分致命错误（404、401/403 鉴权失败、磁盘空间不足）与瞬态抖动网络异常（超时、连接重置、SocketException、502/503/504 等）；重试期间任务状态保持 `downloading` 并通过琥珀色文字感知提示（如 `断点校验异常，重试中 (1/3)...`），消除因弱网或网络切换导致的成批报错飘红；
+  - HTTP 416 损坏断点单流自愈与 403 续期防死循环单次熔断：隔离针对单流（Video/Audio）的 HTTP 416 捕获与自愈机制，自动删除损坏的 `.part` 临时文件并重置断点从 0 字节重新拉取；增加 `renewAttempts <= 1` 熔断守卫，杜绝因账号权限或 CDN 失效导致的死循环流量损耗；
+  - 原生原子批量提交接口与排队公平调度（`DownloadService.startTasks`）：支持一键批量入库与原子持久化（`_dao.saveTasks`），统一触发单次任务调度，消除多 P 批量下载时重复写库与事件轰炸性能损耗；
+  - 动态并发槽位与瞬时槽位预留（Slot Reservation）：支持 1~4 个下载并发槽位（默认 2 个）并对接本地配置，支持热更新（`updateMaxConcurrent`）即时扩缩容调度；引入 `_startingTaskIds` 瞬时槽位锁定机制，彻底解决异步 URL 解析过程中的并发超分配与竞态漏洞；
+  - 多 P 选集同批次有序调度：智能识别同批次多 P 任务，调度器自动按分 P 序号（`cid`）单调递增正序下载，避免分 P 倒序或无序轰炸；
+  - 三级磁盘水位强检防御架构：确立 UI 层提交前预检、Service 层拉起/恢复前拦截（`200MB`）与 Executor 运行时流式监控（`2MB`）三级纵深防御体系，磁盘不足时友好拦截并提示清理空间；
+  - 选集缓存弹窗与交互感知优化：缓存弹窗（`DownloadSheet`）智能识别已缓存清晰度分 P 并展示专属徽标，“全选”按钮智能切为“全选未缓存”；下载管理页卡片独立展示瞬态重试信息与细粒度实时速率。
 - 视频分段章节元数据（view_points）离线持久化与离线播放一致性体系（Phase 3.1: Offline Chapters & Audiovisual Parity）：
   - 打造高内聚离线章节领域服务（`OfflineChapterService`）：接入 B 站 `VideoHttp.videoPlayerMetadata` 接口，支持纯函数依赖注入（`ChapterFetcher`）与零网络本地加载；采用临时文件原子写入（`.tmp` -> `flush: true` -> `rename`），杜绝因进程意外中断导致的损坏文件；智能跳过无分段视频，避免生成 0 字节无效孤儿文件；
   - 扩展离线下载任务与持久化存储（`DownloadTask` / `DownloadStorageManager`）：增加 `chaptersRelativePath` 字段并全向兼容 Hive 历史遗留存量任务；在创建任务与路径解析时自动规划 `${taskDir}/chapters.json`，并在任务删除时由 `deleteTaskFiles` 级联清理；

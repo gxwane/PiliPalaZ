@@ -7,8 +7,10 @@ library;
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/http/video_api.dart';
@@ -31,6 +33,122 @@ class RenewedUrls {
 typedef DownloadProgressCallback =
     void Function(int downloadedBytes, int totalBytes, int speed);
 
+/// 下载异常类型分类。
+enum DownloadErrorType {
+  /// 可恢复的瞬态网络异常（超时、连接中断、502/503/504 等）。
+  transientNetwork,
+
+  /// 协议可自愈异常（403/410 Token 过期）。
+  expiredToken,
+
+  /// 损坏断点异常（HTTP 416 Range Not Satisfiable）。
+  corruptedRange,
+
+  /// 物理磁盘空间不足。
+  insufficientSpace,
+
+  /// 用户取消操作。
+  cancelled,
+
+  /// 不可恢复的致命错误（404、401 等）。
+  fatal,
+}
+
+/// 下载异常分类路由器。
+class DownloadErrorClassifier {
+  DownloadErrorClassifier._();
+
+  static DownloadErrorType classify(Object error) {
+    if (error is DioException) {
+      if (error.type == DioExceptionType.cancel) {
+        return DownloadErrorType.cancelled;
+      }
+      if (error.message == 'insufficient_disk_space') {
+        return DownloadErrorType.insufficientSpace;
+      }
+      final int? statusCode = error.response?.statusCode;
+      if (statusCode != null) {
+        if (statusCode == 403 || statusCode == 410) {
+          return DownloadErrorType.expiredToken;
+        }
+        if (statusCode == 416) {
+          return DownloadErrorType.corruptedRange;
+        }
+        if (statusCode == 408 ||
+            statusCode == 429 ||
+            statusCode == 500 ||
+            statusCode == 502 ||
+            statusCode == 503 ||
+            statusCode == 504) {
+          return DownloadErrorType.transientNetwork;
+        }
+        if (statusCode == 400 || statusCode == 401 || statusCode == 404) {
+          return DownloadErrorType.fatal;
+        }
+      }
+      if (error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.sendTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.connectionError) {
+        return DownloadErrorType.transientNetwork;
+      }
+      final dynamic rawError = error.error;
+      if (rawError is SocketException ||
+          rawError is HttpException ||
+          rawError is HandshakeException) {
+        return DownloadErrorType.transientNetwork;
+      }
+    } else if (error is SocketException ||
+        error is HttpException ||
+        error is HandshakeException) {
+      return DownloadErrorType.transientNetwork;
+    } else if (error is FileSystemException) {
+      return DownloadErrorType.insufficientSpace;
+    }
+    return DownloadErrorType.fatal;
+  }
+}
+
+/// 可取消重试延时提供者类型，便于测试环境注入 0 延时。
+typedef RetryDelayProvider =
+    Future<void> Function(Duration delay, CancelToken? cancelToken);
+
+/// 默认可取消延时实现。
+Future<void> defaultRetryDelay(Duration delay, CancelToken? cancelToken) async {
+  if (cancelToken?.isCancelled ?? false) {
+    throw DioException(
+      requestOptions: RequestOptions(),
+      type: DioExceptionType.cancel,
+    );
+  }
+  if (delay == Duration.zero) return;
+
+  final Completer<void> completer = Completer<void>();
+  void onCancel() {
+    if (!completer.isCompleted) {
+      completer.completeError(
+        DioException(
+          requestOptions: RequestOptions(),
+          type: DioExceptionType.cancel,
+        ),
+      );
+    }
+  }
+
+  cancelToken?.whenCancel.then((_) => onCancel());
+  final Timer timer = Timer(delay, () {
+    if (!completer.isCompleted) {
+      completer.complete();
+    }
+  });
+
+  try {
+    await completer.future;
+  } finally {
+    timer.cancel();
+  }
+}
+
 /// 单任务双流断点续传下载执行器。
 ///
 /// 核心职责：
@@ -48,6 +166,8 @@ class DownloadTaskExecutor {
     OfflineDanmakuService? danmakuService,
     OfflineSubtitleService? subtitleService,
     OfflineChapterService? chapterService,
+    RetryDelayProvider? retryDelayProvider,
+    Random? random,
     this.onProgress,
     this.onUrlRenewed,
   }) : _videoUrl = videoUrl,
@@ -55,7 +175,9 @@ class DownloadTaskExecutor {
        _dio = dio ?? Dio(),
        _danmakuService = danmakuService ?? OfflineDanmakuService(),
        _subtitleService = subtitleService ?? OfflineSubtitleService(),
-       _chapterService = chapterService ?? OfflineChapterService();
+       _chapterService = chapterService ?? OfflineChapterService(),
+       _retryDelayProvider = retryDelayProvider ?? defaultRetryDelay,
+       _random = random ?? Random();
 
   final DownloadTask task;
   final DownloadStorageManager storageManager;
@@ -63,6 +185,8 @@ class DownloadTaskExecutor {
   final OfflineDanmakuService _danmakuService;
   final OfflineSubtitleService _subtitleService;
   final OfflineChapterService _chapterService;
+  final RetryDelayProvider _retryDelayProvider;
+  final Random _random;
 
   /// URL 续期成功后回调，让上层缓存新 URL。
   final void Function(RenewedUrls urls)? onUrlRenewed;
@@ -145,8 +269,8 @@ class DownloadTaskExecutor {
           );
         }
       }
-    } catch (_) {
-      // 辅助资产非致命降级
+    } on Exception catch (e) {
+      debugPrint('Auxiliary danmaku download non-fatal: $e');
     }
 
     // 2. 离线封面
@@ -168,8 +292,8 @@ class DownloadTaskExecutor {
           );
         }
       }
-    } catch (_) {
-      // 辅助资产非致命降级
+    } on Exception catch (e) {
+      debugPrint('Auxiliary cover download non-fatal: $e');
     }
 
     // 3. 离线字幕
@@ -188,8 +312,8 @@ class DownloadTaskExecutor {
           );
         }
       }
-    } on Exception {
-      // 辅助资产非致命降级
+    } on Exception catch (e) {
+      debugPrint('Auxiliary subtitle download non-fatal: $e');
     }
 
     // 4. 离线章节 (BAC-31 / Phase 3.1)
@@ -209,8 +333,8 @@ class DownloadTaskExecutor {
           );
         }
       }
-    } on Exception {
-      // 辅助资产非致命降级
+    } on Exception catch (e) {
+      debugPrint('Auxiliary chapter download non-fatal: $e');
     }
   }
 
@@ -232,39 +356,97 @@ class DownloadTaskExecutor {
     required String partFilePath,
     required bool isVideo,
   }) async {
-    final File partFile = File(partFilePath);
-    int existingBytes = 0;
-    if (await partFile.exists()) {
-      existingBytes = await partFile.length();
-    }
+    int attempt = 0;
+    const int maxRetries = 3;
+    int renewAttempts = 0;
+    const int maxTokenRenewRetries = 1;
+    bool hasHealedHttp416 = false;
+    String currentUrl = url;
 
-    // 首次尝试
-    try {
-      await _doRangeDownload(
-        url: url,
-        partFile: partFile,
-        existingBytes: existingBytes,
-        isVideo: isVideo,
-      );
-    } on DioException catch (e) {
-      if (e.type == DioExceptionType.cancel) rethrow;
+    while (true) {
+      if (isCancelled) {
+        throw DioException(
+          requestOptions: RequestOptions(path: currentUrl),
+          type: DioExceptionType.cancel,
+        );
+      }
 
-      // 403/410 → URL 续期后重试
-      if (_isUrlExpired(e)) {
-        await _renewUrls();
-        final String newUrl = isVideo ? _videoUrl : _audioUrl;
-        // 重新读取已有字节数（可能在之前的下载中有增长）
-        if (await partFile.exists()) {
-          existingBytes = await partFile.length();
-        }
+      final File partFile = File(partFilePath);
+      int existingBytes = 0;
+      if (await partFile.exists()) {
+        existingBytes = await partFile.length();
+      }
+
+      try {
         await _doRangeDownload(
-          url: newUrl,
+          url: currentUrl,
           partFile: partFile,
           existingBytes: existingBytes,
           isVideo: isVideo,
         );
-      } else {
-        rethrow;
+        task.resetRetry();
+        break;
+      } on Object catch (e) {
+        if (e is DioException && e.type == DioExceptionType.cancel) {
+          rethrow;
+        }
+
+        final DownloadErrorType errorType = DownloadErrorClassifier.classify(e);
+        switch (errorType) {
+          case DownloadErrorType.cancelled:
+            rethrow;
+
+          case DownloadErrorType.insufficientSpace:
+            rethrow;
+
+          case DownloadErrorType.expiredToken:
+            renewAttempts++;
+            if (renewAttempts > maxTokenRenewRetries) {
+              task.errorMessage = '下载链接已失效且续期失败 (HTTP 403/410)';
+              rethrow;
+            }
+            await _renewUrls();
+            currentUrl = isVideo ? _videoUrl : _audioUrl;
+            continue;
+
+          case DownloadErrorType.corruptedRange:
+            if (!hasHealedHttp416) {
+              hasHealedHttp416 = true;
+              if (await partFile.exists()) {
+                await partFile.delete();
+              }
+              if (isVideo) {
+                _videoDownloaded = 0;
+              } else {
+                _audioDownloaded = 0;
+              }
+              task.retryMessage = '断点校验异常，重新拉取中...';
+              _emitProgress();
+              continue;
+            }
+            rethrow;
+
+          case DownloadErrorType.transientNetwork:
+            attempt++;
+            if (attempt > maxRetries) {
+              task.errorMessage = '网络连接超时，已尝试 $maxRetries 次重试';
+              rethrow;
+            }
+            task.retryCount = attempt;
+            task.retryMessage = '网络波动，重试中 ($attempt/$maxRetries)...';
+            _emitProgress();
+
+            final int capMs = 1000 * (1 << (attempt - 1));
+            final int delayMs = _random.nextInt(capMs + 1);
+            await _retryDelayProvider(
+              Duration(milliseconds: delayMs),
+              _cancelToken,
+            );
+            continue;
+
+          case DownloadErrorType.fatal:
+            rethrow;
+        }
       }
     }
   }
@@ -349,12 +531,7 @@ class DownloadTaskExecutor {
     }
   }
 
-  // ── URL 过期检测与续期 ──
-
-  bool _isUrlExpired(DioException e) {
-    final int? statusCode = e.response?.statusCode;
-    return statusCode == 403 || statusCode == 410;
-  }
+  // ── URL 过期续期 ──
 
   /// 调用 B 站 API 刷新同编码规格的 CDN 地址。
   Future<void> _renewUrls() async {

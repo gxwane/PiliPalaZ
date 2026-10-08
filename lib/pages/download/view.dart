@@ -382,7 +382,22 @@ class _DownloadPageState extends State<DownloadPage> {
                             ),
                           ),
                         ),
-                        if (isDownloading && task.downloadSpeed > 0)
+                        if (isDownloading && task.retryMessage != null)
+                          Flexible(
+                            flex: 3,
+                            child: Text(
+                              task.retryMessage!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.end,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.tertiary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                              ),
+                            ),
+                          )
+                        else if (isDownloading && task.downloadSpeed > 0)
                           Flexible(
                             flex: 2,
                             child: Text(
