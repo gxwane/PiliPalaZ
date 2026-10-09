@@ -65,6 +65,43 @@ void main() {
     expect(calls, 2);
     expect(delays, 1);
   });
+
+  group('shootDanmaku character limit tests', () {
+    test('rejects message exceeding 100 characters', () async {
+      final api = DanmakuApi(
+        client: _clientWith((_) => ResponseBody.fromString('{}', 200)),
+      );
+
+      final message101 = 'a' * 101;
+      final result = await api.shootDanmaku(
+        oid: 123,
+        bvid: 'BV1test',
+        message: message101,
+      );
+
+      expect(result, isA<ApiFailure<DanmakuSendReceipt>>());
+      final failure = result as ApiFailure<DanmakuSendReceipt>;
+      expect(failure.kind, equals(ApiFailureKind.apiRejected));
+      expect(failure.message, contains('100'));
+    });
+
+    test('accepts message with exactly 100 characters', () async {
+      RequestOptions? capturedOptions;
+      final api = DanmakuApi(
+        client: _clientWith((options) {
+          capturedOptions = options;
+          return ResponseBody.fromString('{"code": 0, "data": {}}', 200);
+        }),
+        csrfProvider: () async => 'mock_csrf_token',
+      );
+
+      final message100 = 'a' * 100;
+      await api.shootDanmaku(oid: 123, bvid: 'BV1test', message: message100);
+
+      expect(capturedOptions, isNotNull);
+      expect((capturedOptions!.data as Map)['msg'], equals(message100));
+    });
+  });
 }
 
 ApiClient _clientWith(ResponseBody Function(RequestOptions options) responder) {

@@ -420,6 +420,8 @@ class PlPlayerController with WidgetsBindingObserver {
   Rx<bool> isOpenDanmu = false.obs;
   // 关联弹幕控制器
   DanmakuController? danmakuController;
+  // 关联分片弹幕数据控制器
+  PlDanmakuController? plDanmakuController;
   // 弹幕相关配置
   late List blockTypes;
   late double showArea;

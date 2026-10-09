@@ -19,8 +19,10 @@ final class DanmakuApi {
   DanmakuApi({
     ApiClient? client,
     Future<void> Function(Duration duration)? delay,
+    Future<String> Function()? csrfProvider,
   }) : _client = client ?? HttpRuntime.instance.client,
-       _delay = delay ?? Future<void>.delayed;
+       _delay = delay ?? Future<void>.delayed,
+       _csrfProvider = csrfProvider;
 
   static DanmakuApi? _instance;
 
@@ -28,6 +30,7 @@ final class DanmakuApi {
 
   final ApiClient _client;
   final Future<void> Function(Duration duration) _delay;
+  final Future<String> Function()? _csrfProvider;
 
   Future<ApiResult<DmSegMobileReply>> queryDanmaku({
     required int cid,
@@ -89,10 +92,10 @@ final class DanmakuApi {
     int? colorful,
     int? checkboxType,
   }) async {
-    if (message.length >= 100) {
+    if (message.length > 100) {
       return const ApiFailure<DanmakuSendReceipt>(
         kind: ApiFailureKind.apiRejected,
-        message: '弹幕内容不能超过 99 个字符',
+        message: '弹幕内容不能超过 100 个字符',
         endpoint: 'danmaku.shoot',
       );
     }
@@ -109,7 +112,9 @@ final class DanmakuApi {
       'rnd': DateTime.now().microsecondsSinceEpoch,
       'colorful': colorful,
       'checkbox_type': checkboxType,
-      'csrf': await HttpRuntime.instance.getCsrf(),
+      'csrf': await (_csrfProvider != null
+          ? _csrfProvider()
+          : HttpRuntime.instance.getCsrf()),
     }..removeWhere((_, value) => value == null);
 
     return _client.postJson<DanmakuSendReceipt>(

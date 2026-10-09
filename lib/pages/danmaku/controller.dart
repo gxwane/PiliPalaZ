@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:fixnum/fixnum.dart';
 import 'package:pilipalaz/http/danmaku.dart';
 import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/models/danmaku/dm.pb.dart';
@@ -22,6 +23,12 @@ class PlDanmakuController {
   // 已请求的段落标记
   List<bool> requestedSeg = [];
   bool _disposed = false;
+
+  /// 本地已即时发射/渲染过的弹幕 ID 集合，避免帧监听二次重复渲染
+  final Set<String> renderedLocalDanmakuIds = <String>{};
+
+  /// 暂停状态下自发待发射的弹幕队列（起播瞬间即刻推流）
+  final List<DanmakuElem> pendingLocalDanmakus = <DanmakuElem>[];
 
   bool get initiated => requestedSeg.isNotEmpty;
 
@@ -97,11 +104,56 @@ class PlDanmakuController {
     return true;
   }
 
+  /// 本地自发弹幕注入方法：写入分片 Map，保证重播与 Seek 可回溯
+  DanmakuElem addLocalDanmaku({
+    required String message,
+    required int color,
+    required int mode,
+    required int progress,
+    int fontsize = 25,
+    bool markAsRendered = false,
+  }) {
+    final String localId = 'local_${DateTime.now().microsecondsSinceEpoch}';
+    final elem = DanmakuElem(
+      idStr: localId,
+      content: message,
+      color: color,
+      mode: mode,
+      progress: progress,
+      fontsize: fontsize,
+      weight: 100, // 高权重确保不被权重过滤拦截
+      ctime: Int64(DateTime.now().millisecondsSinceEpoch ~/ 1000),
+    );
+    final int pos = progress ~/ 100;
+    dmSegMap[pos] ??= [];
+    dmSegMap[pos]!.insert(0, elem);
+
+    if (markAsRendered) {
+      renderedLocalDanmakuIds.add(localId);
+    } else {
+      pendingLocalDanmakus.add(elem);
+    }
+    return elem;
+  }
+
+  /// 消费并清空所有待发射的暂停自发弹幕，并将其标记为已渲染以防止随后的帧监听重复发射
+  List<DanmakuElem> drainPendingLocalDanmakus() {
+    if (pendingLocalDanmakus.isEmpty) return const [];
+    final items = List<DanmakuElem>.from(pendingLocalDanmakus);
+    pendingLocalDanmakus.clear();
+    for (final e in items) {
+      renderedLocalDanmakuIds.add(e.idStr);
+    }
+    return items;
+  }
+
   void dispose() {
     _disposed = true;
     danmakuFilter.clear();
     dmSegMap.clear();
     requestedSeg.clear();
+    renderedLocalDanmakuIds.clear();
+    pendingLocalDanmakus.clear();
   }
 
   int calcSegment(int progress) {

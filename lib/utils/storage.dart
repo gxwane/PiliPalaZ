@@ -163,7 +163,7 @@ class SettingBoxKey {
   /// 其他
   autoUpdate = 'autoUpdate', autoClearCache = 'autoClearCache', defaultShowComment = 'defaultShowComment', defaultExpandIntroduction = 'defaultExpandIntroduction', replySortType = 'replySortType', defaultDynamicType = 'defaultDynamicType', enableHotKey = 'enableHotKey', enableQuickFav = 'enableQuickFav', enableWordRe = 'enableWordRe', enableSearchWord = 'enableSearchWord', enableSystemProxy = 'enableSystemProxy', enableAi = 'enableAi', disableLikeMsg = 'disableLikeMsg', defaultHomePage = 'defaultHomePage', downloadMaxConcurrent = 'downloadMaxConcurrent',
   // 弹幕相关设置 权重（云屏蔽） 屏蔽类型 显示区域 透明度 字体大小 弹幕时间 描边粗细 字体粗细 海量模式
-  danmakuWeight = 'danmakuWeight', danmakuBlockType = 'danmakuBlockType', danmakuShowArea = 'danmakuShowArea', danmakuOpacity = 'danmakuOpacity', danmakuFontScale = 'danmakuFontScale', danmakuDuration = 'danmakuDuration', strokeWidth = 'strokeWidth', fontWeight = 'fontWeight', danmakuMassiveMode = 'danmakuMassiveMode', convertToScrollDanmaku = 'convertToScrollDanmaku',
+  danmakuWeight = 'danmakuWeight', danmakuBlockType = 'danmakuBlockType', danmakuShowArea = 'danmakuShowArea', danmakuOpacity = 'danmakuOpacity', danmakuFontScale = 'danmakuFontScale', danmakuDuration = 'danmakuDuration', strokeWidth = 'strokeWidth', fontWeight = 'fontWeight', danmakuMassiveMode = 'danmakuMassiveMode', convertToScrollDanmaku = 'convertToScrollDanmaku', danmakuLastMode = 'danmakuLastMode', danmakuLastColor = 'danmakuLastColor',
   // 代理host port
   systemProxyHost = 'systemProxyHost', systemProxyPort = 'systemProxyPort';
 

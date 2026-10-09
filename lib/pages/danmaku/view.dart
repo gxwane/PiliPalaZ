@@ -62,6 +62,7 @@ class _PlDanmakuState extends State<PlDanmaku> {
     );
     if (mounted) {
       playerController = widget.playerController;
+      playerController.plDanmakuController = _plDanmakuController;
       if (enableShowDanmaku || playerController.isOpenDanmu.value) {
         _plDanmakuController.initiate(
           playerController.duration.value.inMilliseconds,
@@ -107,8 +108,38 @@ class _PlDanmakuState extends State<PlDanmaku> {
   void playerListener(PlayerStatus? status) {
     if (status == PlayerStatus.playing) {
       _controller?.onResume();
+      _flushPendingLocalDanmakus();
     } else {
       _controller?.pause();
+    }
+  }
+
+  /// 恢复起播时将暂停期间发射的自发弹幕即刻推流，保证起播瞬间准时呈现且不跑飞
+  void _flushPendingLocalDanmakus() {
+    final pending = _plDanmakuController.drainPendingLocalDanmakus();
+    if (pending.isNotEmpty && _controller != null) {
+      Color? defaultColor = playerController.blockTypes.contains(6)
+          ? Colors.white
+          : null;
+      DanmakuItemType convertType(int type) {
+        if (PlDanmakuController.convertToScrollDanmaku &&
+            playerController.blockTypes.contains(type)) {
+          return DanmakuItemType.scroll;
+        } else {
+          return DmUtils.getPosition(type);
+        }
+      }
+
+      for (final e in pending) {
+        _controller!.addDanmaku(
+          DanmakuContentItem(
+            e.content,
+            color: defaultColor ?? DmUtils.decimalToColor(e.color),
+            type: convertType(e.mode),
+            selfSend: true,
+          ),
+        );
+      }
     }
   }
 
@@ -141,17 +172,21 @@ class _PlDanmakuState extends State<PlDanmaku> {
         }
       }
 
-      currentDanmakuList
-          .map(
-            (e) => _controller!.addDanmaku(
-              DanmakuContentItem(
-                e.content,
-                color: defaultColor ?? DmUtils.decimalToColor(e.color),
-                type: convertType(e.mode),
-              ),
-            ),
-          )
-          .toList();
+      for (final e in currentDanmakuList) {
+        // 如果是刚刚在播放中即时发射并已渲染的自发弹幕，跳过本次帧监听的重复渲染
+        if (_plDanmakuController.renderedLocalDanmakuIds.remove(e.idStr)) {
+          continue;
+        }
+        final bool isSelfSend = e.idStr.startsWith('local_') || e.weight >= 100;
+        _controller!.addDanmaku(
+          DanmakuContentItem(
+            e.content,
+            color: defaultColor ?? DmUtils.decimalToColor(e.color),
+            type: convertType(e.mode),
+            selfSend: isSelfSend,
+          ),
+        );
+      }
     }
   }
 
@@ -161,6 +196,9 @@ class _PlDanmakuState extends State<PlDanmaku> {
     _durationSub?.cancel();
     playerController.removePositionListener(videoPositionListen);
     playerController.removeStatusLister(playerListener);
+    if (playerController.plDanmakuController == _plDanmakuController) {
+      playerController.plDanmakuController = null;
+    }
     _plDanmakuController.dispose();
     super.dispose();
   }

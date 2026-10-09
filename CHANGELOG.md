@@ -6,6 +6,13 @@
 
 ### 新增
 
+- 弹幕高级类型、色彩与发射交互加固体系（Phase 4.1: Danmaku Advanced Types, Colors & Shoot UX）：
+  - 打造 Material 3 独立弹幕发射面板（`ShootDanmakuSheet`）：将发射弹幕逻辑从播控顶栏彻底解耦为高内聚底部抽屉组件；圆角底栏设计、顶部拖拽手柄、字数实时统计（100 字符限制）与清空按钮；
+  - 12 种标准色彩调色板与位运算色彩修复：接入 B 站官方 12 种标准色彩预设，修复 24 位 RGB 颜色传入 Flutter 时 Alpha 丢失为 0 导致透明的底层缺陷（`DmUtils.decimalToColor` 补全 `0xFF000000 | (color & 0xFFFFFF)`）；调色盘支持横向平滑滚动、微动效聚焦环、自适应发光投影与明暗反差勾号（浅色显黑勾、深色显白勾）；
+  - 丰富弹幕模式选择：支持滚动（Mode 1）、顶部固定（Mode 5）、底部固定（Mode 4）三种标准模式，采用 Material 3 `SegmentedButton` 提供清晰直观的切换与点选触觉反馈；
+  - 播放与暂停双态时钟对齐注入与回溯时序加固：播放状态下发射弹幕即刻向画布喷出并登记去重 ID 杜绝跳帧重复；暂停状态下引入 `pendingLocalDanmakus` 缓冲队列，既不触发动画跑飞漂移，又在起播瞬间由 `_flushPendingLocalDanmakus` 毫秒级喷出，同时注入本地分段字典（`dmSegMap`），保证 Seek 与循环回放时准时回放；
+  - 横屏全屏并排紧凑工具栏与软键盘自适应：横屏状态下自动转换为左侧模式选择器（40%）与右侧调色板（60%）并排工具栏；采用 `SingleChildScrollView` 与 `MediaQuery.viewInsetsOf(context).bottom` 动态避让软键盘，杜绝任何 `RenderFlex overflow` 溢出红黄条纹；
+  - 偏好持久化与登录态守卫：记忆用户上次选取的弹幕模式与颜色（`danmakuLastMode` / `danmakuLastColor`），未登录账号发射时友好拦截并提示。
 - 批量下载与多 P 队列调度治理体系（Phase 3.2: Batch Download & Queue Resilience）：
   - 打造指数退避网络韧性重试引擎（`DownloadTaskExecutor`）：集成 Full Jitter 指数退避模型（1s -> 2s -> 4s），精准区分致命错误（404、401/403 鉴权失败、磁盘空间不足）与瞬态抖动网络异常（超时、连接重置、SocketException、502/503/504 等）；重试期间任务状态保持 `downloading` 并通过琥珀色文字感知提示（如 `断点校验异常，重试中 (1/3)...`），消除因弱网或网络切换导致的成批报错飘红；
   - HTTP 416 损坏断点单流自愈与 403 续期防死循环单次熔断：隔离针对单流（Video/Audio）的 HTTP 416 捕获与自愈机制，自动删除损坏的 `.part` 临时文件并重置断点从 0 字节重新拉取；增加 `renewAttempts <= 1` 熔断守卫，杜绝因账号权限或 CDN 失效导致的死循环流量损耗；
