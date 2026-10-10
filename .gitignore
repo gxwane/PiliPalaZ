@@ -137,3 +137,7 @@ app.*.symbols
 
 # FVM Version Cache
 .fvm/
+
+# QA and Real-Device Test Artifacts
+qa_screenshots/
+qa_screenshots_gate10/
