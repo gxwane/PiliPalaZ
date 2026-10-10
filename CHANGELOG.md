@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.6.0-beta.1] - 2026-10-10
+
 ### 新增
 
 - 动态多类型流沉浸排版与九宫格手势打磨体系（Phase 4.2: Dynamic Feeds & Grid Gallery Gesture Polish）：
