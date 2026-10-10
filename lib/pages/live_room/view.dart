@@ -318,7 +318,7 @@ class _LiveRoomPageState extends State<LiveRoomPage> {
               if (isFullScreen) {
                 plPlayerController?.triggerFullScreen(status: false);
               } else if (isPhoneLandscape) {
-                unawaited(verticalScreenForTwoSeconds());
+                unawaited(verticalScreen());
               } else {
                 Navigator.of(context).maybePop();
               }

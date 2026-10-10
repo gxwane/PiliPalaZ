@@ -2865,12 +2865,15 @@ class PlPlayerController with WidgetsBindingObserver {
         await fullAutoModeForceSensor();
         return;
       }
+      if (ScreenUtils.isTabletDevice()) {
+        return;
+      }
       if (mode == FullScreenMode.vertical ||
           (mode == FullScreenMode.auto && direction.value == 'vertical') ||
           (mode == FullScreenMode.ratio &&
               (Get.height / Get.width < 1.25 ||
                   direction.value == 'vertical'))) {
-        await verticalScreenForTwoSeconds();
+        await verticalScreen();
       } else {
         await landScape();
       }
@@ -2882,8 +2885,11 @@ class PlPlayerController with WidgetsBindingObserver {
       if (mode == FullScreenMode.none) {
         return;
       }
-      if (!ScreenUtils.isTabletDevice() && !horizontalScreen) {
-        await verticalScreenForTwoSeconds();
+      if (ScreenUtils.isTabletDevice()) {
+        return;
+      }
+      if (direction.value == 'vertical' || !horizontalScreen) {
+        await verticalScreen();
       } else {
         await autoScreen();
       }

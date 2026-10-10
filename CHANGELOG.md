@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### 修复
+
+- 视频详情大屏下拉放大防误触与直播横竖屏状态机竞态修复：
+  - 大屏/平板双栏下拉全屏体验重构（`VideoDetailLayoutCoordinator`）：为 `pullToFullScreen` 建立自适应防误触门槛，双栏大屏提升至 80.0dp 并辅以 `HapticFeedback.mediumImpact` 临界触感震动，在左栏简介所有变体重新挂载下拉放大，彻底解决横屏大屏无法下拉放大的心智模型割裂；
+  - 彻底根除屏幕旋转 2 秒延时定时器竞态（`verticalScreenForTwoSeconds`）：废除延时解除朝向锁的定时器，重构 `PlPlayerController.triggerFullScreen` 针对竖屏流（`direction == 'vertical'`）的朝向状态机，手机端进退全屏确定性锁定与恢复竖屏半屏模式，杜绝竖屏直播在横屏设备上进出全屏时发生的反向二度翻转与死锁缺陷。
+
 ## [1.6.0-beta.1] - 2026-10-10
 
 ### 新增

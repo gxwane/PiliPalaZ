@@ -750,8 +750,15 @@ class _VideoDetailPageState extends State<VideoDetailPage>
           ),
         );
 
-  Widget pullToFullScreen(Widget child) => CustomMaterialIndicator(
-    onRefresh: () => plPlayerController!.triggerFullScreen(status: true),
+  Widget pullToFullScreen(
+    Widget child, {
+    double displacement = 40.0,
+  }) => CustomMaterialIndicator(
+    displacement: displacement,
+    onRefresh: () async {
+      HapticFeedback.mediumImpact();
+      await plPlayerController?.triggerFullScreen(status: true);
+    },
     indicatorBuilder: (BuildContext context, IndicatorController controller) {
       double progress = min(controller.value, 1.0);
       Color color = Theme.of(context).primaryColor.withValues(alpha: progress);
@@ -1043,22 +1050,26 @@ class _VideoDetailPageState extends State<VideoDetailPage>
             return Row(
               children: [
                 Expanded(
-                  child: CustomScrollView(
-                    cacheExtent: 3500,
-                    key: PageStorageKey<String>(
-                      videoDetailController.isOffline
-                          ? '离线简介${videoDetailController.bvid}'
-                          : '简介${videoDetailController.bvid}',
-                    ),
-                    slivers: <Widget>[
-                      if (videoDetailController.isOffline)
-                        OfflineVideoIntroPanel(heroTag: heroTag)
-                      else ...[
-                        videoIntro,
-                        if (!videoDetailController.sourceType.isPgc)
-                          relatedVideo,
+                  child: pullToFullScreen(
+                    CustomScrollView(
+                      cacheExtent: 3500,
+                      key: PageStorageKey<String>(
+                        videoDetailController.isOffline
+                            ? '离线简介${videoDetailController.bvid}'
+                            : '简介${videoDetailController.bvid}',
+                      ),
+                      slivers: <Widget>[
+                        if (videoDetailController.isOffline)
+                          OfflineVideoIntroPanel(heroTag: heroTag)
+                        else ...[
+                          videoIntro,
+                          if (!videoDetailController.sourceType.isPgc)
+                            relatedVideo,
+                        ],
                       ],
-                    ],
+                    ),
+                    displacement: VideoDetailLayoutCoordinator
+                        .dualColumnPullToFullScreenDisplacement,
                   ),
                 ),
                 SizedBox(
@@ -1117,14 +1128,18 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                 Expanded(
                   child: Container(
                     color: Theme.of(context).colorScheme.surface,
-                    child: CustomScrollView(
-                      cacheExtent: 3500,
-                      key: PageStorageKey<String>(
-                        '离线简介${videoDetailController.bvid}',
+                    child: pullToFullScreen(
+                      CustomScrollView(
+                        cacheExtent: 3500,
+                        key: PageStorageKey<String>(
+                          '离线简介${videoDetailController.bvid}',
+                        ),
+                        slivers: <Widget>[
+                          OfflineVideoIntroPanel(heroTag: heroTag),
+                        ],
                       ),
-                      slivers: <Widget>[
-                        OfflineVideoIntroPanel(heroTag: heroTag),
-                      ],
+                      displacement: VideoDetailLayoutCoordinator
+                          .dualColumnPullToFullScreenDisplacement,
                     ),
                   ),
                 ),
@@ -1158,12 +1173,16 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                       );
                     }),
                     Expanded(
-                      child: CustomScrollView(
-                        cacheExtent: 3500,
-                        key: PageStorageKey<String>(
-                          '简介${videoDetailController.bvid}',
+                      child: pullToFullScreen(
+                        CustomScrollView(
+                          cacheExtent: 3500,
+                          key: PageStorageKey<String>(
+                            '简介${videoDetailController.bvid}',
+                          ),
+                          slivers: <Widget>[videoIntro],
                         ),
-                        slivers: <Widget>[videoIntro],
+                        displacement: VideoDetailLayoutCoordinator
+                            .dualColumnPullToFullScreenDisplacement,
                       ),
                     ),
                   ],
@@ -1302,7 +1321,7 @@ class _VideoDetailPageState extends State<VideoDetailPage>
             return;
           }
           if (phoneLandscape) {
-            verticalScreenForTwoSeconds();
+            verticalScreen();
             return;
           }
         },

@@ -69,4 +69,19 @@ class VideoDetailLayoutCoordinator {
   }) {
     return isDualColumnFromScreenUtils && maxWidth >= minDualColumnWidth;
   }
+
+  /// 默认单栏下拉全屏门槛（dp）
+  static const double defaultPullToFullScreenDisplacement = 40.0;
+
+  /// 双栏模式防误触下拉全屏门槛（dp）
+  static const double dualColumnPullToFullScreenDisplacement = 80.0;
+
+  /// 解析下拉放大全屏位移门槛，双栏大屏提高至 80dp 防误触，单栏保持 40dp 灵敏度
+  static double resolvePullToFullScreenDisplacement({
+    required bool isDualColumn,
+  }) {
+    return isDualColumn
+        ? dualColumnPullToFullScreenDisplacement
+        : defaultPullToFullScreenDisplacement;
+  }
 }

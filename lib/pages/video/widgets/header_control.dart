@@ -1431,7 +1431,7 @@ class _HeaderControlState extends State<HeaderControl> {
                             Orientation.landscape &&
                         !ScreenUtils.isTablet(context) &&
                         !horizontalScreen) {
-                      verticalScreenForTwoSeconds();
+                      verticalScreen();
                     } else {
                       Navigator.of(context).maybePop();
                     }
