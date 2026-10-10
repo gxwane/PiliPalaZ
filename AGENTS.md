@@ -42,6 +42,20 @@ flutter build apk --debug --no-pub
 - 调试 APK 输出路径为 `build\app\outputs\flutter-apk\app-debug.apk`。
 - 推送 `main` 后必须等待 GitHub Actions 的 Validation 工作流全部通过，才能宣称云端验证成功。
 
+### 平板与大屏设备独立质检规范
+
+当改动涉及响应式断点（sw600dp / 900dp）、双栏布局（`_buildDualColumnLayout`）、播放器视高钳制（62%）、软键盘单侧隔离避让、大屏手势防误触（80dp 下拉放大）或横竖屏状态机时，应指派独立 QA Agent 在平板视口下执行端到端黑盒实测：
+- **设备资产与降级阶梯**：
+  1. **物理平板设备**（`shortestSide >= 600dp`）；
+  2. **本地配置的平板 AVD 模拟器**：`PiliPalaTabletDev`（Google Pixel Tablet，2560x1600 @ 320dpi）；
+  3. **物理手机 ADB 动态拟真**：`adb shell wm size 2560x1600` 与 `adb shell wm density 280`。测试退出时（无论正常或异常）**必须执行强保障 Teardown 重置**：`adb shell wm size reset && adb shell wm density reset`。
+- **核心业务验收指标**：
+  - 大屏双栏排版对齐正常（左栏 ~62% : 右栏 ~38%），零 `RenderFlex overflow` 溢出；
+  - 右栏唤起软键盘输入时，左栏播放器零抖动、零形变，右栏保留可用滚动区；
+  - 极端画幅（2.40:1 宽银幕 / 4:3）播放器高度严格钳制在视高 62% 内，下方简介与选集完整可见；
+  - 大屏下拉全屏手势严格遵循 80dp 门槛；全屏返回时保持大屏双栏，杜绝误转竖屏。
+- 质检截图统一存放于临时目录（如 `qa_screenshots/`），严禁提交至版本库。
+
 ## 版本与发行
 
 - 尚未发布的用户可见变更记录在根目录 `CHANGELOG.md` 的 `[Unreleased]` 下。
