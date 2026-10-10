@@ -43,12 +43,22 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
   @override
   void initState() {
     super.initState();
-    title = Get.parameters['title']!;
+    title = Get.parameters['title'] ?? '';
     id = Get.parameters['id']!;
     url = Get.parameters['url']!;
     dynamicType = Get.parameters['dynamicType']!;
     type = dynamicType == 'picture' ? 11 : 12;
-    _futureBuilderFuture = _htmlRenderCtr.reqHtml(id);
+    _futureBuilderFuture = _htmlRenderCtr.reqHtml(id).then((result) {
+      if (mounted &&
+          title.isEmpty &&
+          result is ApiSuccess<HtmlArticleData> &&
+          result.data.title.isNotEmpty) {
+        setState(() {
+          title = result.data.title;
+        });
+      }
+      return result;
+    });
     fabAnimationCtr = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -312,12 +322,35 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
                 snapshot.hasData) {
               final result = snapshot.data;
               if (result is ApiSuccess<HtmlArticleData>) {
+                final articleData = result.data;
+                final displayTitle = articleData.title.isNotEmpty
+                    ? articleData.title
+                    : title;
                 slivers.addAll([
                   SliverPadding(
                     padding: outerPadding.add(
                       const EdgeInsets.fromLTRB(12, 12, 12, 8),
                     ),
-                    sliver: SliverToBoxAdapter(child: _articleAuthor(context)),
+                    sliver: SliverToBoxAdapter(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (displayTitle.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Text(
+                                displayTitle,
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      height: 1.35,
+                                    ),
+                              ),
+                            ),
+                          _articleAuthor(context),
+                        ],
+                      ),
+                    ),
                   ),
                   SliverPadding(
                     padding: outerPadding.add(

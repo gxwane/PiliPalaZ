@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:html/dom.dart';
 import 'package:html/parser.dart';
 
@@ -15,6 +16,7 @@ final class HtmlArticleData {
     required this.updateTime,
     required this.content,
     required this.commentId,
+    this.title = '',
   });
 
   final String avatar;
@@ -22,9 +24,13 @@ final class HtmlArticleData {
   final String updateTime;
   final String content;
   final int commentId;
+  final String title;
 }
 
 class HtmlHttp {
+  @visibleForTesting
+  static String contentFromModule(Object? value) => _contentFromModule(value);
+
   static Future<ApiResult<HtmlArticleData>> reqHtml(
     String id,
     String dynamicType,
@@ -98,6 +104,7 @@ class HtmlHttp {
       var userName = '';
       var updateTime = '';
       var content = '';
+      var title = '';
       final modules = detail['modules'];
       if (modules is List) {
         for (final moduleValue in modules) {
@@ -105,7 +112,12 @@ class HtmlHttp {
             continue;
           }
           final module = moduleValue;
-          if (module['module_type'] == 'MODULE_TYPE_AUTHOR') {
+          if (module['module_type'] == 'MODULE_TYPE_TITLE') {
+            final titleModule = module['module_title'];
+            if (titleModule is Map && titleModule['text'] is String) {
+              title = (titleModule['text'] as String).trim();
+            }
+          } else if (module['module_type'] == 'MODULE_TYPE_AUTHOR') {
             final author = module['module_author'];
             if (author is Map) {
               avatar = author['face'] as String? ?? '';
@@ -140,6 +152,15 @@ class HtmlHttp {
         content = _legacyCoverAndSummary(major, content);
       }
 
+      if (title.isEmpty) {
+        final dynamicModule = detail['module_dynamic'];
+        final major = dynamicModule is Map ? dynamicModule['major'] : null;
+        final opus = major is Map ? major['opus'] : null;
+        if (opus is Map && opus['title'] is String) {
+          title = (opus['title'] as String).trim();
+        }
+      }
+
       if (avatar.isNotEmpty) {
         avatar = avatar.replaceFirst('http:', 'https:');
       }
@@ -156,6 +177,7 @@ class HtmlHttp {
           updateTime: updateTime,
           content: content,
           commentId: commentId,
+          title: title,
         ),
       );
     } catch (_) {
@@ -217,6 +239,11 @@ class HtmlHttp {
         }
         return reqHtml(opusId, 'opus');
       }
+      final title =
+          document.querySelector('.title-container .title')?.text.trim() ??
+          document.querySelector('.article-title')?.text.trim() ??
+          document.querySelector('h1')?.text.trim() ??
+          '';
       final number = RegExp(r'\d+').firstMatch(id)?.group(0);
       if (number == null) {
         throw const FormatException('Invalid article id');
@@ -228,6 +255,7 @@ class HtmlHttp {
           updateTime: '',
           content: content,
           commentId: int.parse(number),
+          title: title,
         ),
       );
     } catch (_) {
@@ -239,6 +267,82 @@ class HtmlHttp {
     }
   }
 
+  static const HtmlEscape _htmlEscape = HtmlEscape(HtmlEscapeMode.attribute);
+  static String _escapeHtml(String text) => _htmlEscape.convert(text);
+
+  static String _renderNodes(Object? nodesValue) {
+    if (nodesValue is! List) {
+      return '';
+    }
+    final buffer = StringBuffer();
+    for (final nodeValue in nodesValue) {
+      if (nodeValue is! Map) {
+        continue;
+      }
+      final type = nodeValue['type'];
+      if (type == 'TEXT_NODE_TYPE_WORD') {
+        final word = nodeValue['word'];
+        if (word is Map && word['words'] is String) {
+          var text = _escapeHtml(word['words'] as String);
+          final style = word['style'];
+          if (style is Map) {
+            if (style['bold'] == true) text = '<strong>$text</strong>';
+            if (style['italic'] == true) text = '<em>$text</em>';
+            if (style['strikethrough'] == true) text = '<del>$text</del>';
+            if (style['underline'] == true) text = '<u>$text</u>';
+          }
+          final color = word['color'] as String?;
+          if (color != null &&
+              color.isNotEmpty &&
+              RegExp(r'^#[0-9a-fA-F]{3,8}$').hasMatch(color)) {
+            text = '<span style="color: $color;">$text</span>';
+          }
+          buffer.write(text);
+        }
+      } else if (type == 'TEXT_NODE_TYPE_WEB' ||
+          type == 'TEXT_NODE_TYPE_LINK' ||
+          type == 'TEXT_NODE_TYPE_OGV') {
+        final link = nodeValue['link'] ?? nodeValue['web'];
+        if (link is Map) {
+          final rawUrl = link['url'] as String? ?? '';
+          final text = link['text'] as String? ?? rawUrl;
+          final safeUrl = _escapeHtml(rawUrl);
+          buffer.write('<a href="$safeUrl">${_escapeHtml(text)}</a>');
+        }
+      } else if (type == 'TEXT_NODE_TYPE_EMOJI') {
+        final emoji = nodeValue['emoji'] ?? nodeValue['rich'];
+        if (emoji is Map) {
+          final url = emoji['url'] as String?;
+          final text = emoji['text'] as String? ?? '[表情]';
+          if (url != null && url.isNotEmpty) {
+            buffer.write(
+              '<img class="emoji" src="${_escapeHtml(url)}" alt="${_escapeHtml(text)}" style="width: 20px; height: 20px; vertical-align: middle;"/>',
+            );
+          } else {
+            buffer.write(_escapeHtml(text));
+          }
+        }
+      } else if (type == 'TEXT_NODE_TYPE_USER') {
+        final user = nodeValue['user'];
+        if (user is Map) {
+          final name = user['name'] as String? ?? '';
+          buffer.write(_escapeHtml('@$name'));
+        }
+      } else if (nodeValue['text'] is String) {
+        buffer.write(_escapeHtml(nodeValue['text'] as String));
+      }
+    }
+    return buffer.toString();
+  }
+
+  static String? _extractAlignment(Map paragraph) {
+    final format = paragraph['format'];
+    final align = format is Map ? format['align'] : paragraph['align'];
+    if (align == 1) return 'center';
+    if (align == 2) return 'right';
+    return null;
+  }
+
   static String _contentFromModule(Object? value) {
     if (value is! Map || value['paragraphs'] is! List) {
       return '';
@@ -248,29 +352,86 @@ class HtmlHttp {
       if (paragraphValue is! Map) {
         continue;
       }
-      if (paragraphValue['para_type'] == 1) {
-        final text = paragraphValue['text'];
-        final nodes = text is Map ? text['nodes'] : null;
-        if (nodes is List) {
-          for (final nodeValue in nodes) {
-            if (nodeValue is Map &&
-                nodeValue['type'] == 'TEXT_NODE_TYPE_WORD') {
-              final word = nodeValue['word'];
-              if (word is Map && word['words'] is String) {
-                buffer.write(word['words']);
-              }
-            }
+      final paraType = paragraphValue['para_type'];
+      if (paraType == 8) {
+        final heading = paragraphValue['heading'];
+        if (heading is Map) {
+          final level = (heading['level'] as num?)?.toInt() ?? 2;
+          final validLevel = (level >= 1 && level <= 6) ? level : 2;
+          final inner = _renderNodes(heading['nodes']);
+          if (inner.isNotEmpty) {
+            buffer.write('<h$validLevel>$inner</h$validLevel>');
           }
-          buffer.write('<br/>');
         }
-      } else if (paragraphValue['para_type'] == 2) {
+      } else if (paraType == 3) {
+        buffer.write('<hr/>');
+      } else if (paraType == 1) {
+        final text = paragraphValue['text'];
+        final inner = _renderNodes(text is Map ? text['nodes'] : null);
+        if (inner.isNotEmpty) {
+          final align = _extractAlignment(paragraphValue);
+          if (align != null) {
+            buffer.write('<p style="text-align: $align;">$inner</p>');
+          } else {
+            buffer.write('<p>$inner</p>');
+          }
+        }
+      } else if (paraType == 2) {
         final picture = paragraphValue['pic'];
         final pictures = picture is Map ? picture['pics'] : null;
         if (pictures is List) {
           for (final pictureValue in pictures) {
             if (pictureValue is Map && pictureValue['url'] is String) {
-              buffer.write('<img src="${pictureValue['url']}"><br/>');
+              buffer.write('<img src="${pictureValue['url']}"/>');
             }
+          }
+        }
+      } else if (paraType == 4) {
+        final quote = paragraphValue['blockquote'];
+        if (quote is Map) {
+          final nodes =
+              quote['nodes'] ??
+              (quote['text'] is Map ? quote['text']['nodes'] : null);
+          final inner = _renderNodes(nodes);
+          if (inner.isNotEmpty) {
+            buffer.write('<blockquote><p>$inner</p></blockquote>');
+          }
+        }
+      } else if (paraType == 5) {
+        final code = paragraphValue['code'];
+        if (code is Map) {
+          final raw = code['code'] ?? code['text'];
+          if (raw is String) {
+            buffer.write('<pre><code>${_escapeHtml(raw)}</code></pre>');
+          }
+        }
+      } else if (paraType == 6) {
+        final list = paragraphValue['list'];
+        if (list is Map) {
+          final items = list['items'] as List?;
+          final ordered = list['type'] == 1 || list['ordered'] == true;
+          final tag = ordered ? 'ol' : 'ul';
+          if (items != null && items.isNotEmpty) {
+            buffer.write('<$tag>');
+            for (final item in items) {
+              final itemNodes = item is Map
+                  ? (item['nodes'] ?? item['text']?['nodes'])
+                  : null;
+              final inner = _renderNodes(itemNodes);
+              buffer.write('<li>$inner</li>');
+            }
+            buffer.write('</$tag>');
+          }
+        }
+      } else if (paraType == 7) {
+        final card = paragraphValue['link_card'];
+        if (card is Map) {
+          final cardUrl = card['url'] ?? card['jump_url'];
+          final cardTitle = card['title'] ?? card['text'] ?? cardUrl;
+          if (cardUrl is String) {
+            final safeUrl = _escapeHtml(cardUrl);
+            final safeTitle = _escapeHtml(cardTitle.toString());
+            buffer.write('<p><a href="$safeUrl">$safeTitle</a></p>');
           }
         }
       }

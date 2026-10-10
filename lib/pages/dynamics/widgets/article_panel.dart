@@ -19,9 +19,14 @@ Widget articlePanel(item, context, {floor = 1}) {
   String summary = '';
   if (major.opus != null) {
     title = major.opus!.title ?? '';
-    if (major.opus!.summary?.text != 'undefined' &&
-        major.opus!.summary?.richTextNodes?.isNotEmpty == true) {
-      summary = major.opus!.summary!.richTextNodes!.first.text ?? '';
+    if (major.opus!.summary?.text != null &&
+        major.opus!.summary!.text != 'undefined' &&
+        major.opus!.summary!.text!.isNotEmpty) {
+      summary = major.opus!.summary!.text!;
+    } else if (major.opus!.summary?.richTextNodes?.isNotEmpty == true) {
+      summary = major.opus!.summary!.richTextNodes!
+          .map((e) => e.text ?? e.origText ?? '')
+          .join();
     }
   } else if (major.article != null) {
     title = major.article!.title ?? '';
@@ -83,7 +88,7 @@ Widget articlePanel(item, context, {floor = 1}) {
           ),
           const SizedBox(height: 2),
         ],
-        picWidget(item, context),
+        picWidget(item, context, floor: floor),
         if (item?.modules?.moduleDynamic?.additional != null)
           addWidget(
             item,

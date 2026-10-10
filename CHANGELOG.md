@@ -6,6 +6,16 @@
 
 ### 修复
 
+- 专栏/Opus 正文解析与排版重构（`lib/http/html.dart` 与 `lib/pages/html/view.dart`）：
+  - 彻底根除章节分幕标题神秘丢失（`para_type == 8`）：升级 Opus 模块内容解析器，建立对分级标题节点（`heading: {level, nodes}`）的完整识别与 `<h$level>` 标签输出，修复全部分幕标题（如《序曲》、《第一幕》至《尾声》等）被静默丢弃的严重缺陷；
+  - 恢复分段装饰分割线（`para_type == 3`）：识别分割线段落并输出标准 `<hr/>` 水平线，恢复章节阅读视效节奏；
+  - 专栏主标题与头部排版升级：提取 `MODULE_TYPE_TITLE` 专栏主标题并下发至 `HtmlArticleData.title`，在正文阅读视图作者信息上方呈现加粗大标题，且路由无标题参数时自动更新 AppBar 标题；
+  - 富文本样式与安全转义加固：全面支持段落文字加粗（`<strong>`）、斜体（`<em>`）、删除线（`<del>`）、下划线（`<u>`）与自定义颜色，识别居中/居右排版，采用语义化 `<p>` 标签并辅以 `HtmlEscapeMode.attribute` 安全字符转义，终结段落拥挤黏连问题；
+  - 扩充引用块（`blockquote`）、代码块（`pre/code`）、有序/无序列表（`ol/ul/li`）与链接卡片解析支持。
+- 专栏动态（`DYNAMIC_TYPE_ARTICLE`）双重渲染与转发封面图丢失缺陷修复：
+  - 彻底根除专栏动态卡片重复渲染：修复主动态流（`floor == 1`）下 [`Content`](file:///E:/Documents/PiliPalaZ/lib/pages/dynamics/widgets/content_panel.dart) 与 [`forWard`](file:///E:/Documents/PiliPalaZ/lib/pages/dynamics/widgets/forward_panel.dart) 重复消费专栏标题与正文摘要的问题；主动态下废除底部多余的灰色嵌套卡片与二次纯文本输出，由 `Content` + `NineGridGallery` 统一沉浸承载话题、加粗标题、富文本正文与封面画册；
+  - 转发专栏（`floor == 2`）体验完善与封面修复：消除转发卡片内多余的双层灰色背景嵌套；为 [`picWidget`](file:///E:/Documents/PiliPalaZ/lib/pages/dynamics/widgets/pic_panel.dart) 建立 `floor` 上下文仲裁，修复转发 Opus 专栏时因防重逻辑误伤导致封面图丢失的缺陷；
+  - 增强新老专栏协议兼容性：在富文本解析与画册中为旧版 `major.article` 建立平滑回退，提升摘要字符拼接容错性。
 - 视频详情大屏下拉放大防误触与直播横竖屏状态机竞态修复：
   - 大屏/平板双栏下拉全屏体验重构（`VideoDetailLayoutCoordinator`）：为 `pullToFullScreen` 建立自适应防误触门槛，双栏大屏提升至 80.0dp 并辅以 `HapticFeedback.mediumImpact` 临界触感震动，在左栏简介所有变体重新挂载下拉放大，彻底解决横屏大屏无法下拉放大的心智模型割裂；
   - 彻底根除屏幕旋转 2 秒延时定时器竞态（`verticalScreenForTwoSeconds`）：废除延时解除朝向锁的定时器，重构 `PlPlayerController.triggerFullScreen` 针对竖屏流（`direction == 'vertical'`）的朝向状态机，手机端进退全屏确定性锁定与恢复竖屏半屏模式，杜绝竖屏直播在横屏设备上进出全屏时发生的反向二度翻转与死锁缺陷。

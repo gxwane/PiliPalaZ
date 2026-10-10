@@ -142,16 +142,16 @@ Widget forWard(item, context, ctr, source, {floor = 1, String? heroTag}) {
       );
     // 文章
     case 'DYNAMIC_TYPE_ARTICLE':
-      return Container(
-        padding: const EdgeInsets.only(
-          left: 10,
-          top: 12,
-          right: 10,
-          bottom: 10,
-        ),
-        color: Theme.of(context).dividerColor.withValues(alpha: 0.08),
-        child: articlePanel(item, context, floor: floor),
-      );
+      return floor == 2
+          ? articlePanel(item, context, floor: floor)
+          : item.modules?.moduleDynamic?.additional != null
+          ? addWidget(
+              item,
+              context,
+              item.modules.moduleDynamic.additional.type,
+              floor: floor,
+            )
+          : const SizedBox.shrink();
     // 转发
     case 'DYNAMIC_TYPE_FORWARD':
       return HeroTagGenerator(

@@ -1,7 +1,6 @@
 // 内容
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:pilipalaz/models/dynamics/result.dart';
 
 import 'nine_grid_gallery.dart';
 import 'rich_node_panel.dart';
@@ -19,17 +18,24 @@ class Content extends StatefulWidget {
 
 class _ContentState extends State<Content> {
   late bool hasPics;
-  List<OpusPicsModel> pics = [];
+  List<dynamic> pics = [];
 
   @override
   void initState() {
     super.initState();
+    final major = widget.item.modules?.moduleDynamic?.major;
     hasPics =
-        widget.item.modules.moduleDynamic.major != null &&
-        widget.item.modules.moduleDynamic.major.opus != null &&
-        widget.item.modules.moduleDynamic.major.opus.pics.isNotEmpty;
+        major != null &&
+        ((major.opus != null && major.opus.pics.isNotEmpty) ||
+            (major.article != null &&
+                (major.article.covers?.isNotEmpty ?? false)));
     if (hasPics) {
-      pics = widget.item.modules.moduleDynamic.major.opus.pics;
+      if (major?.opus != null && major!.opus.pics.isNotEmpty) {
+        pics = widget.item.modules.moduleDynamic.major.opus.pics;
+      } else if (major?.article != null &&
+          (major!.article.covers?.isNotEmpty ?? false)) {
+        pics = major.article.covers;
+      }
     }
   }
 

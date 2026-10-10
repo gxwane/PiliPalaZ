@@ -19,27 +19,45 @@ InlineSpan? richNode(item, context) {
   if (item.modules.moduleDynamic.desc != null) {
     richTextNodes = item.modules.moduleDynamic.desc.richTextNodes;
   } else if (item.modules.moduleDynamic.major != null) {
-    // 动态页面 richTextNodes 层级可能与主页动态层级不同
-    richTextNodes =
-        item.modules.moduleDynamic.major.opus?.summary?.richTextNodes;
-    if (item.modules.moduleDynamic.major.opus?.title != null) {
-      spanChildren.add(
-        TextSpan(
-          text: item.modules.moduleDynamic.major.opus.title + '\n',
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold),
-        ),
-      );
+    if (item.modules.moduleDynamic.major.opus != null) {
+      richTextNodes =
+          item.modules.moduleDynamic.major.opus?.summary?.richTextNodes;
+      if (item.modules.moduleDynamic.major.opus?.title != null) {
+        spanChildren.add(
+          TextSpan(
+            text: item.modules.moduleDynamic.major.opus.title + '\n',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold),
+          ),
+        );
+      }
+    } else if (item.modules.moduleDynamic.major.article != null) {
+      if (item.modules.moduleDynamic.major.article.title != null) {
+        spanChildren.add(
+          TextSpan(
+            text: item.modules.moduleDynamic.major.article.title + '\n',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold),
+          ),
+        );
+      }
+      if (item.modules.moduleDynamic.major.article.desc != null) {
+        spanChildren.add(
+          TextSpan(
+            text: item.modules.moduleDynamic.major.article.desc,
+            style: const TextStyle(height: 1.65),
+          ),
+        );
+      }
+      return TextSpan(children: spanChildren);
     }
   }
   if (richTextNodes == null || richTextNodes.isEmpty) {
-    return null;
+    return spanChildren.isNotEmpty ? TextSpan(children: spanChildren) : null;
   } else {
     for (var i in richTextNodes) {
-      /// fix 渲染专栏时内容会重复
-      // if (item.modules.moduleDynamic.major.opus.title == null &&
-      //     i.type == 'RICH_TEXT_NODE_TYPE_TEXT') {
       if (i.type == 'RICH_TEXT_NODE_TYPE_TEXT') {
         spanChildren.add(
           TextSpan(text: i.origText, style: const TextStyle(height: 1.65)),
