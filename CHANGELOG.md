@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.6.0-beta.2] - 2026-10-10
+
 ### 修复
 
 - 专栏/Opus 正文解析与排版重构（`lib/http/html.dart` 与 `lib/pages/html/view.dart`）：
