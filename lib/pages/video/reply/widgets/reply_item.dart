@@ -657,12 +657,10 @@ Future<void> _showReplyImagePreview(
 }) async {
   Future<void> showPreview() async {
     if (!context.mounted) return;
-    await showDialog<void>(
-      useSafeArea: false,
+    await ImagePreview.show(
       context: context,
-      builder: (BuildContext context) {
-        return ImagePreview(initialPage: initialPage, imgList: imgList);
-      },
+      initialPage: initialPage,
+      imgList: imgList,
     );
   }
 

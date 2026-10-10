@@ -5,146 +5,27 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
 import 'package:pilipalaz/utils/utils.dart';
 
-import '../../../common/widgets/badge.dart';
 import '../../../common/widgets/hero_tag_generator.dart';
 import '../../../common/widgets/network_img_layer.dart';
 import '../../../models/dynamics/result.dart';
-import '../../preview/view.dart';
 import 'additional_panel.dart';
 import 'article_panel.dart';
 import 'live_panel.dart';
 import 'live_rcmd_panel.dart';
+import 'nine_grid_gallery.dart';
 import 'pic_panel.dart';
 import 'rich_node_panel.dart';
 import 'video_panel.dart';
 
-InlineSpan picsNodes(List<OpusPicsModel> pics) {
-  List<InlineSpan> spanChildren = [];
-  int len = pics.length;
-  List<String> picList = [];
-
-  if (len == 1) {
-    OpusPicsModel pictureItem = pics.first;
-    picList.add(pictureItem.url!);
-
-    /// 图片上方的空白间隔
-    // spanChildren.add(const TextSpan(text: '\n'));
-    spanChildren.add(
-      WidgetSpan(
-        child: LayoutBuilder(
-          builder: (context, BoxConstraints box) {
-            double maxWidth = box.maxWidth.truncateToDouble();
-            double maxHeight = box.maxWidth * 0.6; // 设置最大高度
-            double height =
-                maxWidth *
-                0.5 *
-                (pictureItem.height != null && pictureItem.width != null
-                    ? pictureItem.height! / pictureItem.width!
-                    : 1);
-            return Semantics(
-              label: '图片1,共1张',
-              child: GestureDetector(
-                onTap: () {
-                  showDialog(
-                    useSafeArea: false,
-                    context: context,
-                    builder: (context) {
-                      return ImagePreview(initialPage: 0, imgList: picList);
-                    },
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.only(top: 4),
-                  constraints: BoxConstraints(maxHeight: maxHeight),
-                  width: box.maxWidth / 2,
-                  height: height,
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
-                        child: NetworkImgLayer(
-                          src: pictureItem.url,
-                          width: maxWidth / 2,
-                          height: height,
-                        ),
-                      ),
-                      height > Get.size.height * 0.9
-                          ? const PBadge(text: '长图', right: 8, bottom: 8)
-                          : const SizedBox(),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-  if (len > 1) {
-    List<Widget> list = [];
-    for (var i = 0; i < len; i++) {
-      picList.add(pics[i].url!);
-      list.add(
-        LayoutBuilder(
-          builder: (context, BoxConstraints box) {
-            double maxWidth = box.maxWidth.truncateToDouble();
-            return Semantics(
-              label: '图片${i + 1},共$len张',
-              child: GestureDetector(
-                onTap: () {
-                  showDialog(
-                    useSafeArea: false,
-                    context: context,
-                    builder: (context) {
-                      return ImagePreview(initialPage: i, imgList: picList);
-                    },
-                  );
-                },
-                child: NetworkImgLayer(
-                  src: pics[i].url,
-                  width: maxWidth,
-                  height: maxWidth,
-                  origAspectRatio:
-                      pics[i].width!.toInt() / pics[i].height!.toInt(),
-                ),
-              ),
-            );
-          },
-        ),
-      );
-    }
-    spanChildren.add(
-      WidgetSpan(
-        child: LayoutBuilder(
-          builder: (context, BoxConstraints box) {
-            double maxWidth = box.maxWidth.truncateToDouble();
-            double crossCount = len < 3 ? 2 : 3;
-            double height =
-                maxWidth /
-                    crossCount *
-                    (len % crossCount == 0
-                        ? len ~/ crossCount
-                        : len ~/ crossCount + 1) +
-                6;
-            return Container(
-              padding: const EdgeInsets.only(top: 6),
-              height: height,
-              child: GridView.count(
-                padding: EdgeInsets.zero,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: crossCount.toInt(),
-                mainAxisSpacing: 4.0,
-                crossAxisSpacing: 4.0,
-                childAspectRatio: 1,
-                children: list,
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
-  return TextSpan(children: spanChildren);
+InlineSpan picsNodes(List<OpusPicsModel> pics, {String? dynamicId}) {
+  if (pics.isEmpty) return const TextSpan();
+  return WidgetSpan(
+    child: NineGridGallery(
+      items: pics,
+      sourceScope: 'forward_panel',
+      dynamicId: dynamicId,
+    ),
+  );
 }
 
 Widget forWard(item, context, ctr, source, {floor = 1, String? heroTag}) {
@@ -222,7 +103,11 @@ Widget forWard(item, context, ctr, source, {floor = 1, String? heroTag}) {
               ),
             if (hasPics) ...[
               Text.rich(
-                picsNodes(pics),
+                picsNodes(
+                  pics,
+                  dynamicId: (item.idStr ?? item.basic?.commentIdStr ?? '')
+                      .toString(),
+                ),
                 // semanticsLabel: '动态图片',
               ),
             ],

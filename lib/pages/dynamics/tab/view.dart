@@ -34,9 +34,27 @@ class _DynamicsTabPageState extends State<DynamicsTabPage>
   late ScrollController scrollController;
   late bool dynamicsWaterfallFlow;
   late final DynamicsController dynamicsController;
+  StreamSubscription<int>? _midSubscription;
 
   @override
   bool get wantKeepAlive => true;
+
+  void _onScroll() {
+    if (scrollController.position.pixels >=
+        scrollController.position.maxScrollExtent - 200) {
+      if (!_dynamicsTabController.isLoadingMore.value) {
+        EasyThrottle.throttle(
+          '_dynamicsTabController_onLoad_${widget.dynamicsType}',
+          const Duration(milliseconds: 500),
+          () {
+            _dynamicsTabController.isLoadingMore.value = true;
+            _dynamicsTabController.onLoad();
+            _dynamicsTabController.isLoadingMore.value = false;
+          },
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -47,22 +65,11 @@ class _DynamicsTabPageState extends State<DynamicsTabPage>
 
     _futureBuilderFuture = _dynamicsTabController.queryFollowDynamic(
         'init', widget.dynamicsType, dynamicsController.mid.value);
-    scrollController = _dynamicsTabController.scrollController
-      ..addListener(() {
-        if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 200) {
-          if (!_dynamicsTabController.isLoadingMore.value) {
-            EasyThrottle.throttle('_dynamicsTabController_onLoad',
-                const Duration(milliseconds: 500), () {
-              _dynamicsTabController.isLoadingMore.value = true;
-              _dynamicsTabController.onLoad();
-              _dynamicsTabController.isLoadingMore.value = false;
-            });
-          }
-        }
-      });
-    dynamicsController.mid.listen((mid) {
-      print('midListen: $mid');
+    scrollController = _dynamicsTabController.scrollController;
+    scrollController.addListener(_onScroll);
+
+    _midSubscription = dynamicsController.mid.listen((mid) {
+      if (!mounted) return;
       scrollController.jumpTo(0);
       _futureBuilderFuture = _dynamicsTabController.queryFollowDynamic(
           'init', widget.dynamicsType, mid);
@@ -73,8 +80,8 @@ class _DynamicsTabPageState extends State<DynamicsTabPage>
 
   @override
   void dispose() {
-    scrollController.removeListener(() {});
-    dynamicsController.mid.close();
+    scrollController.removeListener(_onScroll);
+    _midSubscription?.cancel();
     super.dispose();
   }
 

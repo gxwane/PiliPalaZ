@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:pilipalaz/common/constants.dart';
-import 'package:pilipalaz/common/widgets/badge.dart';
-import 'package:pilipalaz/common/widgets/network_img_layer.dart';
-import 'package:pilipalaz/pages/preview/index.dart';
 
-Widget picWidget(item, context) {
-  var major = item.modules?.moduleDynamic?.major;
-  if (major == null) return const SizedBox();
-  String type = major.type ?? '';
-  List pictures = [];
+import 'nine_grid_gallery.dart';
+
+/// 动态图片/画册渲染组件，统一接入 NineGridGallery 沉浸式九宫格
+Widget picWidget(dynamic item, BuildContext context) {
+  final dynamic major = item.modules?.moduleDynamic?.major;
+  if (major == null) return const SizedBox.shrink();
+  final String type = major.type ?? '';
+  List<dynamic> pictures = [];
   if (type == 'MAJOR_TYPE_OPUS') {
     /// fix 图片跟rich_node_panel重复
-    // pictures = item.modules.moduleDynamic.major.opus.pics;
-    return const SizedBox();
+    return const SizedBox.shrink();
   }
   if (type == 'MAJOR_TYPE_DRAW') {
     pictures = major.draw?.items ?? [];
@@ -21,96 +18,14 @@ Widget picWidget(item, context) {
   if (type == 'MAJOR_TYPE_ARTICLE') {
     pictures = major.article?.covers ?? [];
   }
-  int len = pictures.length;
-  if (len == 0) return const SizedBox();
-  List<String> picList = [];
-  List<Widget> list = [];
-  for (var i = 0; i < len; i++) {
-    String imgUrl = pictures[i] is String ? pictures[i] : (pictures[i].src ?? pictures[i].url);
-    picList.add(imgUrl);
-    list.add(
-      LayoutBuilder(
-        builder: (context, BoxConstraints box) {
-          return GestureDetector(
-            onTap: () {
-              showDialog(
-                useSafeArea: false,
-                context: context,
-                builder: (context) {
-                  return ImagePreview(initialPage: i, imgList: picList);
-                },
-              );
-            },
-            child: NetworkImgLayer(
-              src: imgUrl,
-              width: box.maxWidth,
-              height: box.maxWidth,
-            ),
-            // ),
-          );
-        },
-      ),
-    );
-  }
-  return LayoutBuilder(
-    builder: (context, BoxConstraints box) {
-      double maxWidth = box.maxWidth;
-      double aspectRatio = 1.0;
-      double origAspectRatio = 0.0;
-      double crossCount = 3;
+  if (pictures.isEmpty) return const SizedBox.shrink();
 
-      double height = 0.0;
-      if (len == 1) {
-        double picWidth = 1920;
-        try {
-          if (pictures.first is! String) {
-            origAspectRatio =
-                aspectRatio = pictures.first.width / pictures.first.height;
-            picWidth = (pictures.first.width ?? 1920).toDouble();
-          }
-        } catch (_) {}
-        if (aspectRatio < 0.4) {
-          aspectRatio = 0.4;
-        }
-        if (origAspectRatio < 0.5 || picWidth < 1920) {
-          crossCount = 2;
-          height = maxWidth / 2 / aspectRatio;
-        }
-      } else {
-        aspectRatio = 1;
-        height =
-            maxWidth / crossCount * ((len + crossCount - 1) ~/ crossCount) + 6;
-      }
-      return Container(
-        padding: const EdgeInsets.only(top: 4),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(StyleString.imgRadius.x),
-        ),
-        clipBehavior: Clip.hardEdge,
-        height: height,
-        child: Stack(
-          children: [
-            GridView.count(
-              padding: EdgeInsets.zero,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: crossCount.toInt(),
-              mainAxisSpacing: 4.0,
-              crossAxisSpacing: 4.0,
-              childAspectRatio: aspectRatio,
-              children: list,
-            ),
-            if (len == 1 && height > Get.size.height * 0.9)
-              const PBadge(
-                text: '长图',
-                top: null,
-                right: null,
-                bottom: 6.0,
-                left: 6.0,
-                type: 'gray',
-              )
-          ],
-        ),
-      );
-    },
+  final String dynamicId =
+      (item.idStr ?? item.basic?.commentIdStr ?? '').toString();
+
+  return NineGridGallery(
+    items: pictures,
+    sourceScope: 'pic_panel',
+    dynamicId: dynamicId,
   );
 }

@@ -6,6 +6,13 @@
 
 ### 新增
 
+- 动态多类型流沉浸排版与九宫格手势打磨体系（Phase 4.2: Dynamic Feeds & Grid Gallery Gesture Polish）：
+  - 打造统一九宫格沉浸相册组件（`NineGridGallery`）：全面消除动态图文（`pic_panel`）、正文（`content_panel`）与转发（`forward_panel`）中历史遗留的重复 GridView 代码，实现高内聚排版与统一交互维护；
+  - 4 图 2x2 经典对称宫格与视觉对齐：重构网格几何引擎（`NineGridGalleryLayout`），针对 4 图严格输出 2x2 对称排版，单图尺寸精准与 3 列宫格等宽对齐，彻底终结历史遗留的 3+1 不对称孤悬空位缺陷；
+  - 单图视口智能钳制与长图识别角标：针对超长图（宽高比 < 0.5）限制宽度为容器 65% 并将高度安全钳制在 180~360dp，自动附加 `PBadge(text: '长图')` 灰色标签；超宽横图高度钳制在 100~200dp，常规比例优雅居中展示，杜绝极端图片撑裂动态信息流；
+  - 全屏透明路由大图预览与 Hero 共享元素动画（`ImagePreview.show`）：接入 `context.pushTransparentRoute` 沉浸式透明页面路由，建立 `hero_gallery_${sourceScope}_${safeDynamicId}_$index` 全局唯一 Hero 标签规范，实现列表缩略图与大图之间无碰撞、无闪烁的平滑共享元素展开与收缩动效；
+  - 沉浸式下拉拖拽退出手势（`DismissiblePage`）与缩放仲裁：大图预览接入 `DismissiblePage`，支持跟随手指平滑下拉渐变退出；引入 `ExtendedImageGesturePageView.canScrollPage` 细粒度缩放状态仲裁机制，图片放大（`scale > 1.001`）状态下自动禁用下拉手势并优先保障图片内部平移浏览，彻底杜绝手势误触冲突；
+  - 动态流生命周期泄漏修复与控制流净化：修复 `DynamicsTabPageState` 中滚动监听器（`_onScroll`）具名注销泄漏；取消 `_midSubscription` 监听替代误调用全局共享 `dynamicsController.mid.close()` 导致的崩溃隐患；移除生产环境调试打印。
 - 弹幕高级类型、色彩与发射交互加固体系（Phase 4.1: Danmaku Advanced Types, Colors & Shoot UX）：
   - 打造 Material 3 独立弹幕发射面板（`ShootDanmakuSheet`）：将发射弹幕逻辑从播控顶栏彻底解耦为高内聚底部抽屉组件；圆角底栏设计、顶部拖拽手柄、字数实时统计（100 字符限制）与清空按钮；
   - 12 种标准色彩调色板与位运算色彩修复：接入 B 站官方 12 种标准色彩预设，修复 24 位 RGB 颜色传入 Flutter 时 Alpha 丢失为 0 导致透明的底层缺陷（`DmUtils.decimalToColor` 补全 `0xFF000000 | (color & 0xFFFFFF)`）；调色盘支持横向平滑滚动、微动效聚焦环、自适应发光投影与明暗反差勾号（浅色显黑勾、深色显白勾）；
