@@ -273,7 +273,7 @@ class ProgressBar extends LeafRenderObjectWidget {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
     final textStyle = timeLabelTextStyle ?? theme.textTheme.bodyLarge;
-    final textScaleFactor = MediaQuery.textScaleFactorOf(context);
+    final textScaler = MediaQuery.textScalerOf(context);
     return _RenderProgressBar(
       progress: progress,
       total: total,
@@ -298,7 +298,7 @@ class ProgressBar extends LeafRenderObjectWidget {
       timeLabelType: timeLabelType ?? TimeLabelType.totalTime,
       timeLabelTextStyle: textStyle,
       timeLabelPadding: timeLabelPadding,
-      textScaleFactor: textScaleFactor,
+      textScaler: textScaler,
       chapterPoints: chapterPoints,
       chapterGapWidth: chapterGapWidth,
       enableChapterSnap: enableChapterSnap,
@@ -310,7 +310,7 @@ class ProgressBar extends LeafRenderObjectWidget {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
     final textStyle = timeLabelTextStyle ?? theme.textTheme.bodyLarge;
-    final textScaleFactor = MediaQuery.textScaleFactorOf(context);
+    final textScaler = MediaQuery.textScalerOf(context);
     (renderObject as _RenderProgressBar)
       ..progress = progress
       ..total = total
@@ -335,7 +335,7 @@ class ProgressBar extends LeafRenderObjectWidget {
       ..timeLabelType = timeLabelType ?? TimeLabelType.totalTime
       ..timeLabelTextStyle = textStyle
       ..timeLabelPadding = timeLabelPadding
-      ..textScaleFactor = textScaleFactor
+      ..textScaler = textScaler
       ..chapterPoints = chapterPoints
       ..chapterGapWidth = chapterGapWidth
       ..enableChapterSnap = enableChapterSnap;
@@ -484,7 +484,7 @@ class _RenderProgressBar extends RenderBox {
     required TimeLabelType timeLabelType,
     TextStyle? timeLabelTextStyle,
     double timeLabelPadding = 0.0,
-    double textScaleFactor = 1.0,
+    TextScaler textScaler = TextScaler.noScaling,
     List<Duration>? chapterPoints,
     double chapterGapWidth = 2.0,
     bool enableChapterSnap = true,
@@ -508,7 +508,7 @@ class _RenderProgressBar extends RenderBox {
        _timeLabelType = timeLabelType,
        _timeLabelTextStyle = timeLabelTextStyle,
        _timeLabelPadding = timeLabelPadding,
-       _textScaleFactor = textScaleFactor,
+       _textScaler = textScaler,
        _chapterPoints = chapterPoints,
        _chapterGapWidth = chapterGapWidth,
        _enableChapterSnap = enableChapterSnap {
@@ -772,7 +772,7 @@ class _RenderProgressBar extends RenderBox {
     TextPainter textPainter = TextPainter(
       text: TextSpan(text: text, style: _timeLabelTextStyle),
       textDirection: TextDirection.ltr,
-      textScaleFactor: textScaleFactor,
+      textScaler: _textScaler,
     );
     textPainter.layout(minWidth: 0, maxWidth: double.infinity);
     return textPainter;
@@ -986,13 +986,12 @@ class _RenderProgressBar extends RenderBox {
     markNeedsLayout();
   }
 
-  /// The text scale factor for the `progress` and `total` text labels.
-  /// By default the value is 1.0.
-  double get textScaleFactor => _textScaleFactor;
-  double _textScaleFactor;
-  set textScaleFactor(double value) {
-    if (_textScaleFactor == value) return;
-    _textScaleFactor = value;
+  /// The text scaler for the `progress` and `total` text labels.
+  TextScaler get textScaler => _textScaler;
+  TextScaler _textScaler;
+  set textScaler(TextScaler value) {
+    if (_textScaler == value) return;
+    _textScaler = value;
     _clearLabelCache();
     markNeedsLayout();
   }

@@ -4,11 +4,12 @@ class SelectDialog<T> extends StatefulWidget {
   final T value;
   final String title;
   final List<dynamic> values;
-  const SelectDialog(
-      {super.key,
-      required this.value,
-      required this.values,
-      required this.title});
+  const SelectDialog({
+    super.key,
+    required this.value,
+    required this.values,
+    required this.title,
+  });
 
   @override
   _SelectDialogState<T> createState() => _SelectDialogState<T>();
@@ -30,27 +31,31 @@ class _SelectDialogState<T> extends State<SelectDialog<T>> {
     return AlertDialog(
       title: Text(widget.title),
       contentPadding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
-      content: StatefulBuilder(builder: (context, StateSetter setState) {
-        return SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              for (var i in widget.values) ...[
-                RadioListTile(
-                  value: i['value'],
-                  title: Text(i['title'], style: titleStyle),
-                  groupValue: _tempValue,
-                  onChanged: (value) {
-                    setState(() {
-                      _tempValue = value as T;
-                    });
-                  },
-                ),
-              ]
-            ],
-          ),
-        );
-      }),
+      content: StatefulBuilder(
+        builder: (context, StateSetter setState) {
+          return SingleChildScrollView(
+            child: RadioGroup<T>(
+              groupValue: _tempValue,
+              onChanged: (value) {
+                setState(() {
+                  _tempValue = value as T;
+                });
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i in widget.values) ...[
+                    RadioListTile<T>(
+                      value: i['value'] as T,
+                      title: Text(i['title'], style: titleStyle),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
+      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
@@ -62,7 +67,7 @@ class _SelectDialogState<T> extends State<SelectDialog<T>> {
         TextButton(
           onPressed: () => Navigator.pop(context, _tempValue),
           child: const Text('确定'),
-        )
+        ),
       ],
     );
   }

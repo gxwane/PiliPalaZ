@@ -12,10 +12,7 @@ import '../../../plugin/pl_player/controller.dart';
 class AiDetail extends StatelessWidget {
   final ModelResult? modelResult;
 
-  const AiDetail({
-    super.key,
-    this.modelResult,
-  });
+  const AiDetail({super.key, this.modelResult});
 
   @override
   Widget build(BuildContext context) {
@@ -68,43 +65,49 @@ class AiDetail extends StatelessWidget {
                                   text: TextSpan(
                                     style: TextStyle(
                                       fontSize: 13,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onBackground,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface,
                                       height: 1.5,
                                     ),
                                     children: [
                                       TextSpan(
-                                        text: Utils.tampToSeektime(modelResult!
-                                            .outline![index]
-                                            .partOutline![i]
-                                            .timestamp!),
+                                        text: Utils.tampToSeektime(
+                                          modelResult!
+                                              .outline![index]
+                                              .partOutline![i]
+                                              .timestamp!,
+                                        ),
                                         style: TextStyle(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .primary,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
                                         ),
                                         recognizer: TapGestureRecognizer()
                                           ..onTap = () {
                                             // 跳转到指定位置
                                             PlPlayerController.seekToIfExists(
-                                                Duration(
-                                                  seconds: Utils.duration(
-                                                    Utils.tampToSeektime(
-                                                            modelResult!
-                                                                .outline![index]
-                                                                .partOutline![i]
-                                                                .timestamp!)
-                                                        .toString(),
-                                                  ),
+                                              Duration(
+                                                seconds: Utils.duration(
+                                                  Utils.tampToSeektime(
+                                                    modelResult!
+                                                        .outline![index]
+                                                        .partOutline![i]
+                                                        .timestamp!,
+                                                  ).toString(),
                                                 ),
-                                                type: 'slider');
+                                              ),
+                                              type: 'slider',
+                                            );
                                           },
                                       ),
                                       const TextSpan(text: ' '),
                                       TextSpan(
-                                          text: modelResult!.outline![index]
-                                              .partOutline![i].content!),
+                                        text: modelResult!
+                                            .outline![index]
+                                            .partOutline![i]
+                                            .content!,
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -118,7 +121,7 @@ class AiDetail extends StatelessWidget {
                   ],
                 );
               },
-            )
+            ),
           ],
         ),
       ),
@@ -141,15 +144,21 @@ class AiDetail extends StatelessWidget {
           int previousEndIndex = 0;
           for (Match match in matches) {
             if (match.start > previousEndIndex) {
-              spanChildren.add(TextSpan(
-                  text: currentDesc.rawText
-                      .substring(previousEndIndex, match.start)));
+              spanChildren.add(
+                TextSpan(
+                  text: currentDesc.rawText.substring(
+                    previousEndIndex,
+                    match.start,
+                  ),
+                ),
+              );
             }
             spanChildren.add(
               TextSpan(
                 text: match.group(0),
                 style: TextStyle(
-                    color: Theme.of(context).colorScheme.primary), // 设置颜色为蓝色
+                  color: Theme.of(context).colorScheme.primary,
+                ), // 设置颜色为蓝色
                 recognizer: TapGestureRecognizer()
                   ..onTap = () {
                     // 处理点击事件
@@ -172,8 +181,9 @@ class AiDetail extends StatelessWidget {
           }
 
           if (previousEndIndex < currentDesc.rawText.length) {
-            spanChildren.add(TextSpan(
-                text: currentDesc.rawText.substring(previousEndIndex)));
+            spanChildren.add(
+              TextSpan(text: currentDesc.rawText.substring(previousEndIndex)),
+            );
           }
 
           TextSpan result = TextSpan(children: spanChildren);

@@ -61,7 +61,7 @@ class _GroupPanelState extends State<GroupPanel> {
     return Container(
       height: 500,
       width: min(Get.width, 350),
-      color: Theme.of(context).colorScheme.background,
+      color: Theme.of(context).colorScheme.surface,
       child: Column(
         children: <Widget>[
           AppBar(

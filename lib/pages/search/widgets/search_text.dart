@@ -18,7 +18,7 @@ class SearchText extends StatelessWidget {
     return Material(
       color: Theme.of(
         context,
-      ).colorScheme.surfaceVariant.withValues(alpha: 0.5),
+      ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
       borderRadius: BorderRadius.circular(6),
       child: Padding(
         padding: EdgeInsets.zero,

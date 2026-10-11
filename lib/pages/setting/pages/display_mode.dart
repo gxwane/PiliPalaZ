@@ -80,25 +80,28 @@ class _SetDisplayModeState extends State<SetDisplayMode> {
               ),
             ),
             Expanded(
-              child: ListView.builder(
-                itemCount: modes.length,
-                itemBuilder: (_, int i) {
-                  final DisplayMode mode = modes[i];
-                  return RadioListTile<DisplayMode>(
-                    value: mode,
-                    title: mode == DisplayMode.auto
-                        ? const Text('自动')
-                        : Text('$mode${mode == active ? "  [系统]" : ""}'),
-                    groupValue: preferred,
-                    onChanged: (DisplayMode? newMode) async {
-                      await FlutterDisplayMode.setPreferredMode(newMode!);
-                      await Future<dynamic>.delayed(
-                        const Duration(milliseconds: 100),
-                      );
-                      await fetchAll();
-                    },
+              child: RadioGroup<DisplayMode>(
+                groupValue: preferred,
+                onChanged: (DisplayMode? newMode) async {
+                  if (newMode == null) return;
+                  await FlutterDisplayMode.setPreferredMode(newMode);
+                  await Future<dynamic>.delayed(
+                    const Duration(milliseconds: 100),
                   );
+                  await fetchAll();
                 },
+                child: ListView.builder(
+                  itemCount: modes.length,
+                  itemBuilder: (_, int i) {
+                    final DisplayMode mode = modes[i];
+                    return RadioListTile<DisplayMode>(
+                      value: mode,
+                      title: mode == DisplayMode.auto
+                          ? const Text('自动')
+                          : Text('$mode${mode == active ? "  [系统]" : ""}'),
+                    );
+                  },
+                ),
               ),
             ),
           ],

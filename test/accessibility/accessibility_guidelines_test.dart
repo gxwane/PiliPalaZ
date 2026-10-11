@@ -45,7 +45,11 @@ void main() {
           _wrapInTestApp(
             ComBtn(
               semanticsLabel: '上一集',
-              icon: const Icon(Icons.skip_previous, size: 22, color: Colors.white),
+              icon: const Icon(
+                Icons.skip_previous,
+                size: 22,
+                color: Colors.white,
+              ),
               fuc: () {},
             ),
           ),
@@ -73,10 +77,7 @@ void main() {
 
         await tester.pumpWidget(
           _wrapInTestApp(
-            const PlayOrPauseButton(
-              iconSize: 24,
-              iconColor: Colors.white,
-            ),
+            const PlayOrPauseButton(iconSize: 24, iconColor: Colors.white),
           ),
         );
 
@@ -216,7 +217,9 @@ void main() {
           ),
         );
 
-        await tester.pumpWidget(_wrapInTestApp(headerRow, canvasColor: Colors.black));
+        await tester.pumpWidget(
+          _wrapInTestApp(headerRow, canvasColor: Colors.black),
+        );
 
         await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
         await expectLater(tester, meetsGuideline(iOSTapTargetGuideline));
@@ -293,7 +296,7 @@ void main() {
         expect(data.label, equals('1.2万已点赞'));
         expect(data.hint, equals('长按一键三连'));
         expect(data.flagsCollection.isButton, isTrue);
-        expect(data.hasFlag(SemanticsFlag.isSelected), isTrue);
+        expect(data.flagsCollection.isSelected, equals(Tristate.isTrue));
         expect(data.hasAction(SemanticsAction.tap), isTrue);
         expect(data.hasAction(SemanticsAction.longPress), isTrue);
 
@@ -328,10 +331,12 @@ void main() {
         );
 
         final semantics = tester.getSemantics(
-          find.descendant(
-            of: find.byType(VideoCardV),
-            matching: find.byType(Semantics),
-          ).first,
+          find
+              .descendant(
+                of: find.byType(VideoCardV),
+                matching: find.byType(Semantics),
+              )
+              .first,
         );
         final cardData = semantics.getSemanticsData();
         expect(cardData.flagsCollection.isButton, isTrue);
@@ -390,7 +395,8 @@ void main() {
         expect(
           find.bySemanticsLabel('浮层中的播放按键'),
           findsNothing,
-          reason: 'Hidden controls must be excluded from TalkBack semantics tree',
+          reason:
+              'Hidden controls must be excluded from TalkBack semantics tree',
         );
 
         // Tap toggle button to show controls

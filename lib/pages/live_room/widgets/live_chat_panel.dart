@@ -73,7 +73,7 @@ class LiveChatPanel extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.pinkAccent.withOpacity(0.9),
+                color: Colors.pinkAccent.withValues(alpha: 0.9),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: const [
                   BoxShadow(
@@ -130,11 +130,11 @@ class LiveChatPanel extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: isAnchor
-              ? const Color(0xFFFF6699).withOpacity(0.12)
-              : Colors.white.withOpacity(0.06),
+              ? const Color(0xFFFF6699).withValues(alpha: 0.12)
+              : Colors.white.withValues(alpha: 0.06),
           border: isAnchor
               ? Border.all(
-                  color: const Color(0xFFFF6699).withOpacity(0.4),
+                  color: const Color(0xFFFF6699).withValues(alpha: 0.4),
                   width: 0.8,
                 )
               : null,
@@ -199,8 +199,10 @@ class LiveChatPanel extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xFFE57373).withOpacity(0.2),
-            border: Border.all(color: const Color(0xFFE57373).withOpacity(0.5)),
+            color: const Color(0xFFE57373).withValues(alpha: 0.2),
+            border: Border.all(
+              color: const Color(0xFFE57373).withValues(alpha: 0.5),
+            ),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Column(

@@ -193,32 +193,38 @@ class VideoPanelController extends GetxController {
           contentPadding: const EdgeInsets.fromLTRB(0, 15, 0, 20),
           content: StatefulBuilder(
             builder: (context, StateSetter setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i in timeFiltersList) ...[
-                    RadioListTile(
-                      value: i['value'],
-                      autofocus: true,
-                      title: Text(i['label'], style: textStyle),
-                      groupValue: currentTimeFilterval.value,
-                      onChanged: (value) async {
-                        currentTimeFilterval.value = value!;
-                        setState(() {});
-                        SmartDialog.dismiss();
-                        SmartDialog.showToast("「${i['label']}」的筛选结果");
-                        SearchPanelController ctr =
-                            Get.find<SearchPanelController>(
-                              tag: 'video${searchPanelCtr.keyword!}',
-                            );
-                        ctr.duration.value = i['value'];
-                        SmartDialog.showLoading(msg: 'loading');
-                        await ctr.onRefresh();
-                        SmartDialog.dismiss();
-                      },
-                    ),
+              return RadioGroup<dynamic>(
+                groupValue: currentTimeFilterval.value,
+                onChanged: (value) async {
+                  if (value == null) return;
+                  currentTimeFilterval.value = value;
+                  setState(() {});
+                  SmartDialog.dismiss();
+                  final selected = timeFiltersList.firstWhere(
+                    (item) => item['value'] == value,
+                    orElse: () => {'label': ''},
+                  );
+                  SmartDialog.showToast("「${selected['label']}」的筛选结果");
+                  SearchPanelController ctr = Get.find<SearchPanelController>(
+                    tag: 'video${searchPanelCtr.keyword!}',
+                  );
+                  ctr.duration.value = value;
+                  SmartDialog.showLoading(msg: 'loading');
+                  await ctr.onRefresh();
+                  SmartDialog.dismiss();
+                },
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var i in timeFiltersList) ...[
+                      RadioListTile<dynamic>(
+                        value: i['value'],
+                        autofocus: true,
+                        title: Text(i['label'], style: textStyle),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               );
             },
           ),

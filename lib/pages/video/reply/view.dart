@@ -203,7 +203,7 @@ class _VideoReplyPanelState extends State<VideoReplyPanel>
                     height: 45,
                     padding: const EdgeInsets.fromLTRB(12, 0, 6, 0),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.background,
+                      color: Theme.of(context).colorScheme.surface,
                       border: Border(
                         bottom: BorderSide(
                           color: Theme.of(

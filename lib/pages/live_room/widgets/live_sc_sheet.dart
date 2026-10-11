@@ -105,7 +105,9 @@ class LiveScSheet extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF2C2210),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFFFD54F).withOpacity(0.3)),
+        border: Border.all(
+          color: const Color(0xFFFFD54F).withValues(alpha: 0.3),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

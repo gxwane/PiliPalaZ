@@ -124,7 +124,7 @@ class _WhisperDetailPageState extends State<WhisperDetailPage>
                   style: ButtonStyle(
                     padding: WidgetStateProperty.all(EdgeInsets.zero),
                     backgroundColor: WidgetStateProperty.resolveWith((
-                      Set<MaterialState> states,
+                      Set<WidgetState> states,
                     ) {
                       return Theme.of(
                         context,

@@ -180,27 +180,26 @@ class _ColorSelectPageState extends State<ColorSelectPage> {
             ),
           ),
           Obx(
-            () => RadioListTile(
-              value: 0,
-              title: Text('动态取色', style: titleStyle),
+            () => RadioGroup<int>(
               groupValue: ctr.type.value,
-              onChanged: (dynamic val) async {
-                ctr.type.value = 0;
-                ctr.setting.put(SettingBoxKey.dynamicColor, true);
+              onChanged: (int? val) async {
+                if (val == null) return;
+                ctr.type.value = val;
+                ctr.setting.put(SettingBoxKey.dynamicColor, val == 0);
                 Get.forceAppUpdate();
               },
-            ),
-          ),
-          Obx(
-            () => RadioListTile(
-              value: 1,
-              title: Text('指定颜色', style: titleStyle),
-              groupValue: ctr.type.value,
-              onChanged: (dynamic val) async {
-                ctr.type.value = 1;
-                ctr.setting.put(SettingBoxKey.dynamicColor, false);
-                Get.forceAppUpdate();
-              },
+              child: Column(
+                children: [
+                  RadioListTile<int>(
+                    value: 0,
+                    title: Text('动态取色', style: titleStyle),
+                  ),
+                  RadioListTile<int>(
+                    value: 1,
+                    title: Text('指定颜色', style: titleStyle),
+                  ),
+                ],
+              ),
             ),
           ),
           Obx(

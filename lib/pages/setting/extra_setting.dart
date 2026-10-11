@@ -160,10 +160,10 @@ class _ExtraSettingState extends State<ExtraSetting> {
                 scale: 0.8,
                 child: Switch(
                   thumbIcon: WidgetStateProperty.resolveWith<Icon?>((
-                    Set<MaterialState> states,
+                    Set<WidgetState> states,
                   ) {
                     if (states.isNotEmpty &&
-                        states.first == MaterialState.selected) {
+                        states.first == WidgetState.selected) {
                       return const Icon(Icons.done);
                     }
                     return null; // All other states will use the default thumbIcon.
@@ -300,10 +300,10 @@ class _ExtraSettingState extends State<ExtraSetting> {
               scale: 0.8,
               child: Switch(
                 thumbIcon: WidgetStateProperty.resolveWith<Icon?>((
-                  Set<MaterialState> states,
+                  Set<WidgetState> states,
                 ) {
                   if (states.isNotEmpty &&
-                      states.first == MaterialState.selected) {
+                      states.first == WidgetState.selected) {
                     return const Icon(Icons.done);
                   }
                   return null; // All other states will use the default thumbIcon.

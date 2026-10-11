@@ -91,7 +91,9 @@ class _LiveInputBarState extends State<LiveInputBar> {
       ),
       decoration: BoxDecoration(
         color: const Color(0xFF1E1E1E),
-        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
+        border: Border(
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        ),
       ),
       child: Row(
         children: [
@@ -100,7 +102,7 @@ class _LiveInputBarState extends State<LiveInputBar> {
               height: 40,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
+                color: Colors.white.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: TextField(

@@ -323,28 +323,20 @@ class BangumiIntroController extends GetxController {
           contentPadding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
           content: StatefulBuilder(
             builder: (context, StateSetter setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  RadioListTile(
-                    value: 1,
-                    title: const Text('1枚'),
-                    groupValue: _tempThemeValue,
-                    onChanged: (value) {
-                      _tempThemeValue = value!;
-                      Get.appUpdate();
-                    },
-                  ),
-                  RadioListTile(
-                    value: 2,
-                    title: const Text('2枚'),
-                    groupValue: _tempThemeValue,
-                    onChanged: (value) {
-                      _tempThemeValue = value!;
-                      Get.appUpdate();
-                    },
-                  ),
-                ],
+              return RadioGroup<int>(
+                groupValue: _tempThemeValue,
+                onChanged: (value) {
+                  if (value == null) return;
+                  _tempThemeValue = value;
+                  Get.appUpdate();
+                },
+                child: const Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    RadioListTile<int>(value: 1, title: Text('1枚')),
+                    RadioListTile<int>(value: 2, title: Text('2枚')),
+                  ],
+                ),
               );
             },
           ),

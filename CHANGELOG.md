@@ -10,6 +10,12 @@
   - 清理各页面模块 `index.dart` 顶部的历史冗余 `library` 命名声明；
   - 移除无用导入，升级集合字面量空判断为现代 Dart `?`（`null_aware_elements`）语法；
   - 规范字符串插值与控制流大括号，精简回调通配符下划线。
+- Flutter SDK 现代化与弃用 API 适配（Batch 2）：
+  - 全面消除 `deprecated_member_use` 提示（实现 0 废弃调用）；
+  - 主题色彩对齐：`colorScheme.background` $\to$ `surface`，`onBackground` $\to$ `onSurface`；
+  - 交互状态对齐：`MaterialState` $\to$ `WidgetState`，`Color.withOpacity` $\to$ `Color.withValues(alpha: ...)`；
+  - 单选控件对齐：设置与筛选弹窗中的 `RadioListTile` 接入现代化 `RadioGroup` 上下文；
+  - 进度条与无障碍对齐：`ProgressBar` 迁移至 `TextScaler`，语义测试对齐 `flagsCollection.isSelected`。
 
 ## [1.6.0-beta.3] - 2026-10-11
 

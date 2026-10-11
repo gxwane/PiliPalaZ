@@ -33,10 +33,10 @@ class LiveAnchorStrip extends StatelessWidget {
         height: 52,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.35),
+          color: Colors.black.withValues(alpha: 0.35),
           border: Border(
             bottom: BorderSide(
-              color: Colors.white.withOpacity(0.08),
+              color: Colors.white.withValues(alpha: 0.08),
               width: 0.5,
             ),
           ),
@@ -173,7 +173,7 @@ class LiveAnchorStrip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.08),
+          color: Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(14),
         ),
         child: const Row(
@@ -200,7 +200,7 @@ class LiveAnchorStrip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
             color: isFollowed
-                ? Colors.white.withOpacity(0.12)
+                ? Colors.white.withValues(alpha: 0.12)
                 : const Color(0xFFFF6699),
             borderRadius: BorderRadius.circular(14),
           ),

@@ -384,7 +384,7 @@ class _HeaderControlState extends State<HeaderControl> {
             height: 450,
             clipBehavior: Clip.hardEdge,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.background,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: const BorderRadius.all(Radius.circular(12)),
             ),
             // margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 30),
@@ -526,7 +526,7 @@ class _HeaderControlState extends State<HeaderControl> {
         height: min(totalQaSam * 50.0 + 45, 500),
         clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.background,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: const BorderRadius.all(Radius.circular(12)),
         ),
         // margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 30),
@@ -633,7 +633,7 @@ class _HeaderControlState extends State<HeaderControl> {
         height: 250,
         clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.background,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: const BorderRadius.all(Radius.circular(12)),
         ),
         // margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 30),
@@ -728,7 +728,7 @@ class _HeaderControlState extends State<HeaderControl> {
         height: 250,
         clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.background,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: const BorderRadius.all(Radius.circular(12)),
         ),
         // margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 30),
@@ -823,7 +823,7 @@ class _HeaderControlState extends State<HeaderControl> {
             height: 500,
             clipBehavior: Clip.hardEdge,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.background,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: const BorderRadius.all(Radius.circular(12)),
             ),
             // margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 30),
@@ -1186,7 +1186,7 @@ class _HeaderControlState extends State<HeaderControl> {
         height: 300,
         clipBehavior: Clip.hardEdge,
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.background,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: const BorderRadius.all(Radius.circular(12)),
         ),
         // margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 30),
