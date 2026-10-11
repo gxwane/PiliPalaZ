@@ -34,17 +34,16 @@ class VideoDetailLayoutCoordinator {
   /// 最大允许画幅比例（2.40:1 宽银幕 CinemaScope / 21:9 电影），防范极端扁平比例
   static const double maxAllowedAspectRatio = 2.40;
 
-  /// 计算受视高安全钳制的播放器高度，支持宽银幕（CinemaScope 2.39:1）与经典老番（4:3）自适应
+  /// 计算受视高安全钳制的播放器高度。
+  /// 统一以 16:9 标准高清画幅作为固定容器基准，消除跨画幅高度伸缩与起播瞬间的布局跳变（CLS）；
+  /// 在超扁平视口或分屏场景下保留 [maxPlayerHeightRatio] (62%) 视高安全钳制。
   static double computeClampedPlayerHeight({
     required double maxHeight,
     required double leftWidth,
     double? aspectRatio,
   }) {
     if (maxHeight <= 0 || leftWidth <= 0) return 0.0;
-    final double safeRatio = (aspectRatio != null && aspectRatio > 0)
-        ? aspectRatio.clamp(minAllowedAspectRatio, maxAllowedAspectRatio)
-        : defaultAspectRatio;
-    final double rawHeight = leftWidth / safeRatio;
+    final double rawHeight = leftWidth / defaultAspectRatio;
     final double maxHeightLimit = maxHeight * maxPlayerHeightRatio;
     return min(maxHeightLimit, rawHeight);
   }

@@ -6,6 +6,14 @@
 
 ### 修复
 
+- 平板横屏双栏播放器画幅标准化与防跳变优化（`VideoDetailLayoutCoordinator` 与 `_buildDualColumnLayout`）：
+  - 统一固定 16:9 播放器容器基准：将平板双栏左栏播放器容器高度固定为标准的 16:9 视口，彻底消除 2.39:1 / 4:3 等非标画幅起播与切集时的剧烈高度伸缩（CLS 归零），消除下方 UP 主信息、选集与评论区发生位移导致的误触风险，并保留超扁平分屏下 62% 视高安全钳制；
+  - 统一手机与平板心智模型：分栏浏览态专注交互与操作稳定性，极致沉浸画幅体验统一交由全屏模式与 80dp 下拉放大手势承接。
+- 直播广场卡片文字全区域点击跳转修复（`LiveCardV`）：
+  - 重构卡片手势为标准 `InkWell`：消除 `GestureDetector(deferToChild)` 导致仅图片可点、点击卡片标题/主播昵称/空白无法进入直播间的缺陷，与普通视频卡片规范完全统一，补全标准 Material 水波纹触控反馈。
+- 播放器单例进出直播间视频倍速隔离与保持修复（`PlPlayerController`）：
+  - 隔离直播拉流原速与视频偏好倍速：直播模式下直接调整底层引擎播放速率为 1.0，禁止覆写全局 `_playbackSpeed.value` 用户倍速变量；
+  - 进出直播间记忆保持：切回或重新打开普通视频时，播放器确定性恢复并应用用户先前设定的倍速（如 1.5x、2.0x），根除倍速被静默重置为 1.0 的状态泄漏缺陷。
 - 用户主页投稿加载随机崩溃修复（`MemberHttp.memberArchive` 与 `Utils.generateRandomBytes`）：
   - 修复随机字节生成下限丢失缺陷：纠正 `Utils.generateRandomBytes` 中未加 `minLength` 导致偶发生成 0 字节并触发 `RangeError (end): -2` 越界异常的问题，确保字节长度严格落在 `[minLength, maxLength]` 区间内；
   - 接口参数安全切片防御：在 `MemberHttp.memberArchive` 为 `dm_img_str` 与 `dm_cover_img_str` 补充长度防御检查，杜绝空串或极短字符导致的未处理异步异常。

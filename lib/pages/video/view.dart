@@ -1058,6 +1058,11 @@ class _VideoDetailPageState extends State<VideoDetailPage>
               VideoDetailLayoutCoordinator.computeLeftColumnWidth(
                 safeConstraints.maxWidth,
               );
+          final double playerHeight =
+              VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
+                maxHeight: safeConstraints.maxHeight,
+                leftWidth: leftWidth,
+              );
 
           final double rawKeyboardHeight = MediaQuery.viewInsetsOf(
             context,
@@ -1125,24 +1130,11 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                   height: safeConstraints.maxHeight,
                   color: Colors.black,
                   child: Center(
-                    child: Obx(() {
-                      final double? playerAspectRatio =
-                          plPlayerController?.videoDimension.value.hasSize ==
-                              true
-                          ? plPlayerController!.videoDimension.value.aspectRatio
-                          : null;
-                      final double dynamicPlayerHeight =
-                          VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
-                            maxHeight: safeConstraints.maxHeight,
-                            leftWidth: leftWidth,
-                            aspectRatio: playerAspectRatio,
-                          );
-                      return SizedBox(
-                        width: leftWidth,
-                        height: dynamicPlayerHeight,
-                        child: playerPopScope(leftWidth, dynamicPlayerHeight),
-                      );
-                    }),
+                    child: SizedBox(
+                      width: leftWidth,
+                      height: playerHeight,
+                      child: playerPopScope(leftWidth, playerHeight),
+                    ),
                   ),
                 ),
                 VerticalDivider(
@@ -1179,24 +1171,11 @@ class _VideoDetailPageState extends State<VideoDetailPage>
                 height: safeConstraints.maxHeight,
                 child: Column(
                   children: [
-                    Obx(() {
-                      final double? playerAspectRatio =
-                          plPlayerController?.videoDimension.value.hasSize ==
-                              true
-                          ? plPlayerController!.videoDimension.value.aspectRatio
-                          : null;
-                      final double dynamicPlayerHeight =
-                          VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
-                            maxHeight: safeConstraints.maxHeight,
-                            leftWidth: leftWidth,
-                            aspectRatio: playerAspectRatio,
-                          );
-                      return SizedBox(
-                        width: leftWidth,
-                        height: dynamicPlayerHeight,
-                        child: playerPopScope(leftWidth, dynamicPlayerHeight),
-                      );
-                    }),
+                    SizedBox(
+                      width: leftWidth,
+                      height: playerHeight,
+                      child: playerPopScope(leftWidth, playerHeight),
+                    ),
                     Expanded(
                       child: pullToFullScreen(
                         CustomScrollView(

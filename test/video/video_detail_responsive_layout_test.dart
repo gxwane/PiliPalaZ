@@ -71,45 +71,35 @@ void main() {
     );
 
     test(
-      'computeClampedPlayerHeight supports dynamic aspect ratio for CinemaScope and 4:3 anime',
+      'computeClampedPlayerHeight standardizes container to 16:9 across aspect ratios to prevent CLS',
       () {
-        // 2.39:1 CinemaScope wide movie: leftWidth = 793, raw height = 793 / 2.39 = 331.79
+        const standard169Height = 793.0 * 9 / 16;
+
+        // 2.39:1 CinemaScope wide movie: container height is consistently 16:9
         final cinemaHeight =
             VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
               maxHeight: 800.0,
               leftWidth: 793.0,
               aspectRatio: 2.39,
             );
-        expect(cinemaHeight, closeTo(793.0 / 2.39, 0.01));
-        expect(cinemaHeight, lessThan(793.0 * 9 / 16));
+        expect(cinemaHeight, closeTo(standard169Height, 0.01));
 
-        // 4:3 vintage anime: leftWidth = 793, raw height = 793 / (4/3) = 594.75
-        // Clamped by maxPlayerHeightRatio (800 * 0.62 = 496.0)
+        // 4:3 vintage anime: container height is consistently 16:9
         final animeHeight =
             VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
               maxHeight: 800.0,
               leftWidth: 793.0,
               aspectRatio: 4.0 / 3.0,
             );
-        expect(animeHeight, equals(496.0));
+        expect(animeHeight, closeTo(standard169Height, 0.01));
 
-        // Extreme wide aspect ratio (> 2.40) clamped to 2.40
-        final ultraWideHeight =
+        // Default call without aspectRatio also yields 16:9
+        final defaultHeight =
             VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
               maxHeight: 800.0,
               leftWidth: 793.0,
-              aspectRatio: 3.2,
             );
-        expect(ultraWideHeight, closeTo(793.0 / 2.40, 0.01));
-
-        // Extreme tall aspect ratio (< 4/3) clamped to 4/3
-        final extremeTallHeight =
-            VideoDetailLayoutCoordinator.computeClampedPlayerHeight(
-              maxHeight: 1200.0,
-              leftWidth: 793.0,
-              aspectRatio: 0.5,
-            );
-        expect(extremeTallHeight, closeTo(793.0 / (4.0 / 3.0), 0.01));
+        expect(defaultHeight, closeTo(standard169Height, 0.01));
       },
     );
 

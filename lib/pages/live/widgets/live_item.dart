@@ -33,15 +33,12 @@ class LiveCardV extends StatelessWidget {
   Widget build(BuildContext context) {
     String heroTag = Utils.makeHeroTag(liveItem.roomId);
     return Card(
+      color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.4),
       elevation: 0,
       clipBehavior: Clip.hardEdge,
       margin: EdgeInsets.zero,
-      child: GestureDetector(
-        onLongPress: () {
-          if (longPress != null) {
-            longPress!();
-          }
-        },
+      child: InkWell(
+        onLongPress: longPress,
         onTap: () async {
           Get.toNamed(
             '/liveRoom?roomid=${liveItem.roomId}',
@@ -55,11 +52,6 @@ class LiveCardV extends StatelessWidget {
             },
           );
         },
-        // onLongPressEnd: (details) {
-        //   if (longPressEnd != null) {
-        //     longPressEnd!();
-        //   }
-        // },
         child: Column(
           children: [
             ClipRRect(

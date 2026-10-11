@@ -1688,7 +1688,12 @@ class PlPlayerController with WidgetsBindingObserver {
     if (_instance == null) return;
     // 设置倍速
     if (videoType.value == 'live') {
-      await setPlaybackSpeed(1.0);
+      if (!isHeadlessTestMode) {
+        try {
+          await _engine?.setRate(1.0);
+          await _videoPlayerController?.setRate(1.0);
+        } catch (_) {}
+      }
     } else {
       if (_playbackSpeed.value != 1.0) {
         await setPlaybackSpeed(_playbackSpeed.value);
@@ -2239,8 +2244,8 @@ class PlPlayerController with WidgetsBindingObserver {
         await _videoPlayerController?.setRate(speed);
       } catch (_) {}
     }
-    // fix 长按倍速后放开不恢复
-    if (doubleSpeedStatus.value == 0) {
+    // fix 长按倍速后放开不恢复；直播模式下不污染普通视频倍速偏好
+    if (doubleSpeedStatus.value == 0 && videoType.value != 'live') {
       _playbackSpeed.value = speed;
     }
   }
