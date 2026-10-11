@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.6.0-beta.3] - 2026-10-11
+
 ### 修复
 
 - 平板横屏双栏播放器画幅标准化与防跳变优化（`VideoDetailLayoutCoordinator` 与 `_buildDualColumnLayout`）：
