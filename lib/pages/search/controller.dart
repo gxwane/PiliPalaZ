@@ -17,8 +17,9 @@ class SSearchController extends GetxController {
   List<String> historyCacheList = [];
   RxList<String> historyList = <String>[].obs;
   RxList<SearchSuggestItem> searchSuggestList = <SearchSuggestItem>[].obs;
-  final _debouncer =
-      Debouncer(delay: const Duration(milliseconds: 200)); // 设置延迟时间
+  final _debouncer = Debouncer(
+    delay: const Duration(milliseconds: 200),
+  ); // 设置延迟时间
   String hintText = '搜索';
   RxString defaultSearch = ''.obs;
   Box setting = GStorage.setting;
@@ -37,12 +38,12 @@ class SSearchController extends GetxController {
         searchKeyWord.value = hintText;
       }
     }
-    historyCacheList = List<String>.from(historyWord.get('cacheList')??[]);
+    historyCacheList = List<String>.from(historyWord.get('cacheList') ?? []);
     historyList.value = historyCacheList;
     enableHotKey = setting.get(SettingBoxKey.enableHotKey, defaultValue: true);
   }
 
-  void onChange(value) {
+  void onChange(String value) {
     searchKeyWord.value = value;
     if (value == '') {
       searchSuggestList.value = [];
@@ -65,12 +66,14 @@ class SSearchController extends GetxController {
   void submit() {
     // ignore: unrelated_type_equality_checks
     if (searchKeyWord == '') {
-      if (hintText == ''){
+      if (hintText == '') {
         return;
       }
       searchKeyWord.value = hintText;
     }
-    List<String> arr = historyCacheList.where((e) => e != searchKeyWord.value).toList();
+    List<String> arr = historyCacheList
+        .where((e) => e != searchKeyWord.value)
+        .toList();
     arr.insert(0, searchKeyWord.value);
     historyCacheList = arr;
 
@@ -110,19 +113,19 @@ class SSearchController extends GetxController {
     return result;
   }
 
-  onSelect(word) {
+  void onSelect(String word) {
     searchKeyWord.value = word;
     controller.value.text = word;
     submit();
   }
 
-  onLongSelect(word) {
+  void onLongSelect(String word) {
     int index = historyList.indexOf(word);
     historyList.removeAt(index);
     historyWord.put('cacheList', historyList);
   }
 
-  onClearHis() {
+  void onClearHis() {
     historyList.value = [];
     historyCacheList = [];
     historyList.refresh();

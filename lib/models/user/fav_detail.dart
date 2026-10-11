@@ -1,11 +1,7 @@
 import 'package:pilipalaz/models/model_owner.dart';
 
 class FavDetailData {
-  FavDetailData({
-    this.info,
-    this.medias,
-    this.hasMore,
-  });
+  FavDetailData({this.info, this.medias, this.hasMore});
 
   Map? info;
   List<FavDetailItemData>? medias;
@@ -15,8 +11,8 @@ class FavDetailData {
     info = json['info'];
     medias = json['medias'] != null
         ? json['medias']
-            .map<FavDetailItemData>((e) => FavDetailItemData.fromJson(e))
-            .toList()
+              .map<FavDetailItemData>((e) => FavDetailItemData.fromJson(e))
+              .toList()
         : [];
     hasMore = json['has_more'];
   }
@@ -93,7 +89,7 @@ class FavDetailItemData {
     }
   }
 
-  String resolveEpId(url) {
+  String resolveEpId(String url) {
     RegExp regex = RegExp(r'\d+');
     Iterable<Match> matches = regex.allMatches(url);
     List<String> numbers = [];
@@ -105,10 +101,7 @@ class FavDetailItemData {
 }
 
 class Stat {
-  Stat({
-    this.view,
-    this.danmu,
-  });
+  Stat({this.view, this.danmu});
 
   int? view;
   int? danmu;

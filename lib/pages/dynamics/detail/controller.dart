@@ -52,7 +52,9 @@ class DynamicDetailController extends GetxController {
     sortTypeLabel.value = _sortType.labels;
   }
 
-  Future<ApiResult<ReplyData>?> queryReplyList({reqType = 'init'}) async {
+  Future<ApiResult<ReplyData>?> queryReplyList({
+    String reqType = 'init',
+  }) async {
     if (reqType == 'init') {
       nextOffset = "";
       noMore.value = "";
@@ -103,7 +105,7 @@ class DynamicDetailController extends GetxController {
   }
 
   // 排序搜索评论
-  queryBySort() {
+  void queryBySort() {
     feedBack();
     switch (_sortType) {
       case ReplySortType.time:

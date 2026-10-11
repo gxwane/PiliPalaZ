@@ -5,8 +5,7 @@ import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/utils/utils.dart';
 
 class FavItem extends StatelessWidget {
-  // ignore: prefer_typing_uninitialized_variables
-  final favFolderItem;
+  final dynamic favFolderItem;
   const FavItem({super.key, required this.favFolderItem});
 
   @override
@@ -50,7 +49,7 @@ class FavItem extends StatelessWidget {
                       },
                     ),
                   ),
-                  VideoContent(favFolderItem: favFolderItem)
+                  VideoContent(favFolderItem: favFolderItem),
                 ],
               ),
             );

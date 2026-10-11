@@ -1,5 +1,5 @@
 import 'package:fl_pip/fl_pip.dart';
-import 'package:pilipalaz/models/video/play/CDN.dart';
+import 'package:pilipalaz/models/video/play/cdn.dart';
 import 'package:pilipalaz/models/video/play/url.dart';
 import 'package:pilipalaz/utils/storage.dart';
 
@@ -90,7 +90,7 @@ class VideoUtils {
     String? backupUrl;
     String? videoUrl;
     String defaultCDNService = GStorage.setting.get(
-      SettingBoxKey.CDNService,
+      SettingBoxKey.cdnService,
       defaultValue: CDNService.backupUrl.code,
     );
     if (item is AudioItem) {

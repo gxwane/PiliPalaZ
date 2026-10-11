@@ -18,7 +18,9 @@ class SubController extends GetxController {
   int pageSize = 20;
   RxBool hasMore = true.obs;
 
-  Future<ApiResult<SubFolderModelData>> querySubFolder({type = 'init'}) async {
+  Future<ApiResult<SubFolderModelData>> querySubFolder({
+    String type = 'init',
+  }) async {
     userInfo = userInfoCache.get('userInfoCache');
     if (userInfo == null) {
       return const ApiFailure<SubFolderModelData>(
@@ -72,7 +74,9 @@ class SubController extends GetxController {
           TextButton(
             onPressed: () async {
               var res = await UserHttp.cancelSub(
-                  id: subFolderItem.id!, type: subFolderItem.type!);
+                id: subFolderItem.id!,
+                type: subFolderItem.type!,
+              );
               if (res is ApiSuccess<void>) {
                 subFolderData.value.list!.remove(subFolderItem);
                 subFolderData.update((val) {});

@@ -214,7 +214,7 @@ class IntroDetail extends StatelessWidget {
   }
 
   // ai总结
-  showAiBottomSheet(context, modelResult) {
+  void showAiBottomSheet(BuildContext context, ModelResult? modelResult) {
     // showBottomSheet(
     //   context: context,
     //   enableDrag: true,

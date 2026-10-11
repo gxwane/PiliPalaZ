@@ -2,7 +2,7 @@ class MsgFeedAtMe {
   Cursor? cursor;
   List<AtMeItems>? items;
 
-  MsgFeedAtMe({cursor, items});
+  MsgFeedAtMe({this.cursor, this.items});
 
   MsgFeedAtMe.fromJson(Map<String, dynamic> json) {
     cursor = json['cursor'] != null ? Cursor.fromJson(json['cursor']) : null;
@@ -27,7 +27,7 @@ class Cursor {
   int? id;
   int? time;
 
-  Cursor({isEnd, id, time});
+  Cursor({this.isEnd, this.id, this.time});
 
   Cursor.fromJson(Map<String, dynamic> json) {
     isEnd = json['is_end'];
@@ -50,7 +50,7 @@ class AtMeItems {
   Item? item;
   int? atTime;
 
-  AtMeItems({id, user, item, atTime});
+  AtMeItems({this.id, this.user, this.item, this.atTime});
 
   AtMeItems.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -77,13 +77,14 @@ class User {
   String? midLink;
   bool? follow;
 
-  User(
-      {this.mid,
-      this.fans,
-      this.nickname,
-      this.avatar,
-      this.midLink,
-      this.follow});
+  User({
+    this.mid,
+    this.fans,
+    this.nickname,
+    this.avatar,
+    this.midLink,
+    this.follow,
+  });
 
   User.fromJson(Map<String, dynamic> json) {
     mid = json['mid'];
@@ -123,22 +124,23 @@ class Item {
   List? topicDetails;
   bool? hideReplyButton;
 
-  Item(
-      {this.type,
-      this.business,
-      this.businessId,
-      this.title,
-      this.image,
-      this.uri,
-      this.subjectId,
-      this.rootId,
-      this.targetId,
-      this.sourceId,
-      this.sourceContent,
-      this.nativeUri,
-      this.atDetails,
-      this.topicDetails,
-      this.hideReplyButton});
+  Item({
+    this.type,
+    this.business,
+    this.businessId,
+    this.title,
+    this.image,
+    this.uri,
+    this.subjectId,
+    this.rootId,
+    this.targetId,
+    this.sourceId,
+    this.sourceContent,
+    this.nativeUri,
+    this.atDetails,
+    this.topicDetails,
+    this.hideReplyButton,
+  });
 
   Item.fromJson(Map<String, dynamic> json) {
     type = json['type'];
@@ -192,13 +194,14 @@ class AtDetails {
   String? midLink;
   bool? follow;
 
-  AtDetails(
-      {this.mid,
-      this.fans,
-      this.nickname,
-      this.avatar,
-      this.midLink,
-      this.follow});
+  AtDetails({
+    this.mid,
+    this.fans,
+    this.nickname,
+    this.avatar,
+    this.midLink,
+    this.follow,
+  });
 
   AtDetails.fromJson(Map<String, dynamic> json) {
     mid = json['mid'];

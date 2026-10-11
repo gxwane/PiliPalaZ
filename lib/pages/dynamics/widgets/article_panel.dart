@@ -7,7 +7,7 @@ import '../../../common/constants.dart';
 import 'additional_panel.dart';
 import 'pic_panel.dart';
 
-Widget articlePanel(item, context, {floor = 1}) {
+Widget articlePanel(dynamic item, BuildContext context, {int floor = 1}) {
   TextStyle authorStyle = TextStyle(
     color: Theme.of(context).colorScheme.primary,
   );

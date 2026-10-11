@@ -125,7 +125,7 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
   }
 
   // 设定倍速弹窗
-  void showBottomSheet(type, i) {
+  void showBottomSheet(String type, int i) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -161,7 +161,7 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
   }
 
   //
-  void menuAction(type, index, id) async {
+  Future<void> menuAction(String type, int index, int id) async {
     double chooseSpeed = 1.0;
     if (type == 'system' && id == -1) {
       SmartDialog.showToast('系统预设倍速不支持删除');

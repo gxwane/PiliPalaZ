@@ -179,7 +179,7 @@ class VideoPanelController extends GetxController {
     super.onInit();
   }
 
-  onShowFilterDialog(
+  void onShowFilterDialog(
     BuildContext context,
     SearchPanelController searchPanelCtr,
   ) {

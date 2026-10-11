@@ -23,7 +23,7 @@ class MemberSeasonController extends GetxController {
   }
 
   // 获取合集详情
-  Future<ApiResult<MemberSeasonsList>> getSeasonDetail(type) async {
+  Future<ApiResult<MemberSeasonsList>> getSeasonDetail(String type) async {
     if (type == 'onRefresh') {
       pn = 1;
     }

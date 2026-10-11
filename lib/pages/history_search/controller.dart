@@ -30,7 +30,7 @@ class HistorySearchController extends GetxController {
     }
   }
 
-  void onChange(value) {
+  void onChange(String value) {
     searchKeyWord.value = value;
   }
 
@@ -43,7 +43,7 @@ class HistorySearchController extends GetxController {
   }
 
   // 搜索视频
-  Future searchHistories({type = 'init'}) async {
+  Future<void> searchHistories({String type = 'init'}) async {
     if (type == 'onLoad' && loadingText.value == '没有更多了') {
       return;
     }
@@ -60,7 +60,7 @@ class HistorySearchController extends GetxController {
       historyList.refresh();
       // count = res['data'].page['total'];
       // if (historyList.length == count) {
-      if (data.hasMore != true){
+      if (data.hasMore != true) {
         loadingText.value = '没有更多了';
       }
     }
@@ -68,12 +68,12 @@ class HistorySearchController extends GetxController {
     // return res;
   }
 
-  onLoad() {
+  void onLoad() {
     pn += 1;
     searchHistories(type: 'onLoad');
   }
 
-  Future delHistory(kid, business) async {
+  Future<void> delHistory(dynamic kid, dynamic business) async {
     String resKid = 'archive_$kid';
     if (business == 'live') {
       resKid = 'live_$kid';

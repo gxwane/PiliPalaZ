@@ -703,7 +703,7 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     ),
   );
 
-  Widget playerStack(videoWidth, videoHeight) => Stack(
+  Widget playerStack(double videoWidth, double videoHeight) => Stack(
     children: <Widget>[
       plPlayer,
 

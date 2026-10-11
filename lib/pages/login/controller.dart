@@ -180,7 +180,11 @@ class LoginPageController extends GetxController
   }
 
   // 申请极验验证码
-  Future getCaptcha(geeGt, geeChallenge, onSuccess) async {
+  Future<void> getCaptcha(
+    String? geeGt,
+    String? geeChallenge,
+    Function onSuccess,
+  ) async {
     var registerData = Gt3RegisterData(
       challenge: geeChallenge,
       gt: geeGt,
@@ -300,10 +304,10 @@ class LoginPageController extends GetxController
       password: password,
       key: key,
       salt: salt,
-      gee_validate: captchaData.validate,
-      gee_seccode: captchaData.seccode,
-      gee_challenge: captchaData.geetest?.challenge,
-      recaptcha_token: captchaData.token,
+      geeValidate: captchaData.validate,
+      geeSeccode: captchaData.seccode,
+      geeChallenge: captchaData.geetest?.challenge,
+      recaptchaToken: captchaData.token,
     );
     final response = _response(res);
     if (response == null) {
@@ -631,10 +635,10 @@ class LoginPageController extends GetxController
       tel: telTextController.text,
       cid: selectedCountryCodeId['country_id'],
       // deviceTouristId: guestId,
-      gee_validate: captchaData.validate,
-      gee_seccode: captchaData.seccode,
-      gee_challenge: captchaData.geetest?.challenge,
-      recaptcha_token: captchaData.token,
+      geeValidate: captchaData.validate,
+      geeSeccode: captchaData.seccode,
+      geeChallenge: captchaData.geetest?.challenge,
+      recaptchaToken: captchaData.token,
     );
     final response = _response(res);
     final recaptchaUrl = response?.payload['recaptcha_url'];

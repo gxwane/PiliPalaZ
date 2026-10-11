@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/models/video/play/quality.dart';
-import 'package:pilipalaz/models/video/play/CDN.dart';
+import 'package:pilipalaz/models/video/play/cdn.dart';
 import 'package:pilipalaz/pages/setting/widgets/select_dialog.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -58,7 +58,7 @@ class _VideoSettingState extends State<VideoSetting> {
     );
     videoSync = setting.get(SettingBoxKey.videoSync, defaultValue: 'audio');
     defaultCDNService = setting.get(
-      SettingBoxKey.CDNService,
+      SettingBoxKey.cdnService,
       defaultValue: CDNService.backupUrl.code,
     );
   }
@@ -144,7 +144,7 @@ class _VideoSettingState extends State<VideoSetting> {
               );
               if (result != null) {
                 defaultCDNService = result;
-                setting.put(SettingBoxKey.CDNService, result);
+                setting.put(SettingBoxKey.cdnService, result);
                 setState(() {});
               }
             },
@@ -161,7 +161,7 @@ class _VideoSettingState extends State<VideoSetting> {
             title: Text('默认画质', style: titleStyle),
             leading: const Icon(Icons.video_settings_outlined),
             subtitle: Text(
-              '当前画质：${VideoQualityCode.fromCode(defaultVideoQa)!.description!}',
+              '当前画质：${VideoQualityCode.fromCode(defaultVideoQa)!.description}',
               style: subTitleStyle,
             ),
             onTap: () async {
@@ -189,7 +189,7 @@ class _VideoSettingState extends State<VideoSetting> {
             title: Text('默认音质', style: titleStyle),
             leading: const Icon(Icons.music_video_outlined),
             subtitle: Text(
-              '当前音质：${AudioQualityCode.fromCode(defaultAudioQa)!.description!}',
+              '当前音质：${AudioQualityCode.fromCode(defaultAudioQa)!.description}',
               style: subTitleStyle,
             ),
             onTap: () async {
@@ -217,7 +217,7 @@ class _VideoSettingState extends State<VideoSetting> {
             title: Text('首选解码格式', style: titleStyle),
             leading: const Icon(Icons.movie_creation_outlined),
             subtitle: Text(
-              '首选解码格式：${VideoDecodeFormatsCode.fromCode(defaultDecode)!.description!}，请根据设备支持情况与需求调整',
+              '首选解码格式：${VideoDecodeFormatsCode.fromCode(defaultDecode)!.description}，请根据设备支持情况与需求调整',
               style: subTitleStyle,
             ),
             onTap: () async {
@@ -244,7 +244,7 @@ class _VideoSettingState extends State<VideoSetting> {
             dense: false,
             title: Text('次选解码格式', style: titleStyle),
             subtitle: Text(
-              '非杜比视频次选：${VideoDecodeFormatsCode.fromCode(secondDecode)!.description!}，仍无则选择首个提供的解码格式',
+              '非杜比视频次选：${VideoDecodeFormatsCode.fromCode(secondDecode)!.description}，仍无则选择首个提供的解码格式',
               style: subTitleStyle,
             ),
             leading: const Icon(Icons.swap_horizontal_circle_outlined),
@@ -291,10 +291,7 @@ class _VideoSettingState extends State<VideoSetting> {
                           'title': 'Media3 (ExoPlayer) - 推荐，低功耗高稳定',
                           'value': 'media3',
                         },
-                        {
-                          'title': 'MPV (media_kit) - 传统内核，备用',
-                          'value': 'mpv',
-                        },
+                        {'title': 'MPV (media_kit) - 传统内核，备用', 'value': 'mpv'},
                       ],
                     );
                   },

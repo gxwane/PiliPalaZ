@@ -19,8 +19,10 @@ class MineController extends GetxController {
   Box userInfoCache = GStorage.userInfo;
   Box setting = GStorage.setting;
   Rx<ThemeType> themeType = ThemeType.system.obs;
-  static bool anonymity =
-      GStorage.setting.get(SettingBoxKey.anonymity, defaultValue: false);
+  static bool anonymity = GStorage.setting.get(
+    SettingBoxKey.anonymity,
+    defaultValue: false,
+  );
 
   @override
   onInit() {
@@ -31,12 +33,15 @@ class MineController extends GetxController {
       userLogin.value = true;
     }
 
-    themeType.value = ThemeType.values[setting.get(SettingBoxKey.themeMode,
-        defaultValue: ThemeType.system.code)];
+    themeType.value =
+        ThemeType.values[setting.get(
+          SettingBoxKey.themeMode,
+          defaultValue: ThemeType.system.code,
+        )];
     // anonymity = setting.get(SettingBoxKey.anonymity, defaultValue: false);
   }
 
-  onLogin() async {
+  Future<void> onLogin() async {
     if (!userLogin.value) {
       // Get.toNamed(
       //   '/webview',
@@ -50,8 +55,11 @@ class MineController extends GetxController {
     } else {
       int mid = userInfo.value.mid!;
       String face = userInfo.value.face!;
-      Get.toNamed('/member?mid=$mid',
-          arguments: {'face': face}, preventDuplicates: false);
+      Get.toNamed(
+        '/member?mid=$mid',
+        arguments: {'face': face},
+        preventDuplicates: false,
+      );
     }
   }
 
@@ -88,7 +96,7 @@ class MineController extends GetxController {
     return res;
   }
 
-  Future resetUserInfo() async {
+  Future<void> resetUserInfo() async {
     userInfo.value = UserInfoData();
     userStat.value = UserStat();
     userInfoCache.delete('userInfoCache');
@@ -96,105 +104,113 @@ class MineController extends GetxController {
     anonymity = false;
   }
 
-  static onChangeAnonymity(BuildContext context) {
+  static void onChangeAnonymity(BuildContext context) {
     anonymity = !anonymity;
     if (anonymity) {
       SmartDialog.show(
-          clickMaskDismiss: false,
-          usePenetrate: true,
-          displayTime: const Duration(seconds: 2),
-          alignment: Alignment.bottomCenter,
-          builder: (context) {
-            return ColoredBox(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-                  child:
-                      Column(mainAxisSize: MainAxisSize.min, children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Icon(
-                          MdiIcons.incognito,
+        clickMaskDismiss: false,
+        usePenetrate: true,
+        displayTime: const Duration(seconds: 2),
+        alignment: Alignment.bottomCenter,
+        builder: (context) {
+          return ColoredBox(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Icon(MdiIcons.incognito),
+                      const SizedBox(width: 10),
+                      Text(
+                        '已进入无痕模式',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '搜索、观看视频/直播不携带身份信息（包含大会员）\n'
+                    '不产生查询或播放记录\n'
+                    '点赞等其它操作不受影响\n'
+                    '（前往隐私设置了解详情）',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          SmartDialog.dismiss();
+                          GStorage.setting.put(SettingBoxKey.anonymity, true);
+                          anonymity = true;
+                          SmartDialog.showToast('已设为永久无痕模式');
+                        },
+                        child: Text(
+                          '保存为永久',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         ),
-                        const SizedBox(width: 10),
-                        Text('已进入无痕模式',
-                            style: Theme.of(context).textTheme.titleMedium)
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                        '搜索、观看视频/直播不携带身份信息（包含大会员）\n'
-                        '不产生查询或播放记录\n'
-                        '点赞等其它操作不受影响\n'
-                        '（前往隐私设置了解详情）',
-                        style: Theme.of(context).textTheme.bodySmall),
-                    Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          TextButton(
-                              onPressed: () {
-                                SmartDialog.dismiss();
-                                GStorage.setting
-                                    .put(SettingBoxKey.anonymity, true);
-                                anonymity = true;
-                                SmartDialog.showToast('已设为永久无痕模式');
-                              },
-                              child: Text(
-                                '保存为永久',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              )),
-                          const SizedBox(width: 10),
-                          TextButton(
-                              onPressed: () {
-                                SmartDialog.dismiss();
-                                GStorage.setting
-                                    .put(SettingBoxKey.anonymity, false);
-                                anonymity = true;
-                                SmartDialog.showToast('已设为临时无痕模式');
-                              },
-                              child: Text(
-                                '仅本次（默认）',
-                                style: TextStyle(
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                              )),
-                        ]),
-                  ])),
-              // duration: const Duration(seconds: 2),
-              // showCloseIcon: true,
-            );
-          });
+                      ),
+                      const SizedBox(width: 10),
+                      TextButton(
+                        onPressed: () {
+                          SmartDialog.dismiss();
+                          GStorage.setting.put(SettingBoxKey.anonymity, false);
+                          anonymity = true;
+                          SmartDialog.showToast('已设为临时无痕模式');
+                        },
+                        child: Text(
+                          '仅本次（默认）',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // duration: const Duration(seconds: 2),
+            // showCloseIcon: true,
+          );
+        },
+      );
     } else {
       GStorage.setting.put(SettingBoxKey.anonymity, false);
       SmartDialog.show(
-          clickMaskDismiss: false,
-          usePenetrate: true,
-          displayTime: const Duration(seconds: 1),
-          alignment: Alignment.bottomCenter,
-          builder: (context) {
-            return ColoredBox(
-                color: Theme.of(context).colorScheme.secondaryContainer,
-                child: Padding(
-                    padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        Icon(
-                          MdiIcons.incognitoOff,
-                        ),
-                        const SizedBox(width: 10),
-                        Text('已退出无痕模式',
-                            style: Theme.of(context).textTheme.titleMedium),
-                      ],
-                    )));
-          });
+        clickMaskDismiss: false,
+        usePenetrate: true,
+        displayTime: const Duration(seconds: 1),
+        alignment: Alignment.bottomCenter,
+        builder: (context) {
+          return ColoredBox(
+            color: Theme.of(context).colorScheme.secondaryContainer,
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Icon(MdiIcons.incognitoOff),
+                  const SizedBox(width: 10),
+                  Text(
+                    '已退出无痕模式',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
     }
   }
 
-  onChangeTheme() {
+  void onChangeTheme() {
     ThemeType currentTheme = themeType.value;
     //system -> dark -> light -> system
     switch (currentTheme) {
@@ -236,7 +252,7 @@ class MineController extends GetxController {
     Get.forceAppUpdate();
   }
 
-  pushFollow() {
+  void pushFollow() {
     if (!userLogin.value) {
       SmartDialog.showToast('账号未登录');
       return;
@@ -244,7 +260,7 @@ class MineController extends GetxController {
     Get.toNamed('/follow?mid=${userInfo.value.mid}', preventDuplicates: false);
   }
 
-  pushFans() {
+  void pushFans() {
     if (!userLogin.value) {
       SmartDialog.showToast('账号未登录');
       return;
@@ -252,12 +268,11 @@ class MineController extends GetxController {
     Get.toNamed('/fan?mid=${userInfo.value.mid}', preventDuplicates: false);
   }
 
-  pushDynamic() {
+  void pushDynamic() {
     if (!userLogin.value) {
       SmartDialog.showToast('账号未登录');
       return;
     }
-    Get.toNamed('/member?mid=${userInfo.value.mid}',
-        preventDuplicates: false);
+    Get.toNamed('/member?mid=${userInfo.value.mid}', preventDuplicates: false);
   }
 }

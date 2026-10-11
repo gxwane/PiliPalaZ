@@ -22,7 +22,7 @@ class HomeController extends GetxController with GetTickerProviderStateMixin {
   Box settingStorage = GStorage.setting;
   RxBool userLogin = false.obs;
   RxString userFace = ''.obs;
-  var userInfo;
+  dynamic userInfo;
   Box setting = GStorage.setting;
   late final StreamController<bool> searchBarStream =
       StreamController<bool>.broadcast();
@@ -75,10 +75,10 @@ class HomeController extends GetxController with GetTickerProviderStateMixin {
   }
 
   // 更新登录状态
-  void updateLoginStatus(val) async {
+  Future<void> updateLoginStatus(bool? val) async {
     userInfo = await userInfoCache.get('userInfoCache');
     userLogin.value = val ?? false;
-    if (val) return;
+    if (val == true) return;
     userFace.value = userInfo != null ? userInfo.face : '';
   }
 
@@ -140,7 +140,7 @@ class HomeController extends GetxController with GetTickerProviderStateMixin {
     }
   }
 
-  showUserInfoDialog(context) {
+  void showUserInfoDialog(BuildContext context) {
     feedBack();
     showDialog(
       context: context,

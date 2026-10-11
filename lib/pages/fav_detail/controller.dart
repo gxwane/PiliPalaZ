@@ -30,7 +30,7 @@ class FavDetailController extends GetxController {
   }
 
   Future<ApiResult<FavDetailData>?> queryUserFavFolderDetail({
-    type = 'init',
+    String type = 'init',
   }) async {
     if (type == 'onLoad' && favList.length >= mediaCount) {
       loadingText.value = '没有更多了';
@@ -59,7 +59,7 @@ class FavDetailController extends GetxController {
     return res;
   }
 
-  onCancelFav(int id) async {
+  Future<void> onCancelFav(int id) async {
     var result = await VideoHttp.favVideo(
       aid: id,
       addIds: '',
@@ -77,7 +77,7 @@ class FavDetailController extends GetxController {
     }
   }
 
-  onLoad() {
+  void onLoad() {
     queryUserFavFolderDetail(type: 'onLoad');
   }
 }

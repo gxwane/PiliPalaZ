@@ -34,7 +34,7 @@ class FollowSearchController extends GetxController {
     }
   }
 
-  void onChange(value) {
+  void onChange(String value) {
     searchKeyWord.value = value;
   }
 
@@ -44,7 +44,9 @@ class FollowSearchController extends GetxController {
     searchFollow();
   }
 
-  Future<ApiResult<FollowDataModel>> searchFollow({type = 'init'}) async {
+  Future<ApiResult<FollowDataModel>> searchFollow({
+    String type = 'init',
+  }) async {
     if (controller.value.text == '') {
       followList.clear();
       total.value = 0;

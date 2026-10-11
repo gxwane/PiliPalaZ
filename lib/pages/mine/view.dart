@@ -186,7 +186,7 @@ class _MinePageState extends State<MinePage> {
     );
   }
 
-  Widget userInfoBuild(_mineController, context) {
+  Widget userInfoBuild(MineController _mineController, BuildContext context) {
     LevelInfo? levelInfo = _mineController.userInfo.value.levelInfo;
     TextStyle style = TextStyle(
       fontSize: Theme.of(context).textTheme.titleMedium!.fontSize,

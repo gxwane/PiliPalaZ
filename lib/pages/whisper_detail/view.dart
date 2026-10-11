@@ -40,7 +40,7 @@ class _WhisperDetailPageState extends State<WhisperDetailPage>
     _focusListener();
   }
 
-  _focusListener() {
+  void _focusListener() {
     replyContentFocusNode.addListener(() {
       if (replyContentFocusNode.hasFocus) {
         setState(() {
@@ -194,7 +194,7 @@ class _WhisperDetailPageState extends State<WhisperDetailPage>
               itemBuilder: (_, int i) {
                 return ChatItem(
                   item: messageList[i],
-                  e_infos: _whisperDetailController.eInfos,
+                  eInfos: _whisperDetailController.eInfos,
                 );
               },
               padding: const EdgeInsets.only(bottom: 20),
@@ -320,7 +320,7 @@ class Debouncer {
 
   Debouncer({this.milliseconds});
 
-  run(DebounceCallback callback) {
+  void run(DebounceCallback callback) {
     if (_timer != null) {
       _timer!.cancel();
     }

@@ -35,7 +35,7 @@ class DynamicsController extends GetxController
   RxInt initialValue = 0.obs;
   Box userInfoCache = GStorage.userInfo;
   RxBool userLogin = false.obs;
-  var userInfo;
+  dynamic userInfo;
   RxBool isLoadingDynamic = false.obs;
   Box setting = GStorage.setting;
   List<UpItem> hasUpdatedUps = <UpItem>[];
@@ -66,11 +66,16 @@ class DynamicsController extends GetxController
     queryFollowUp();
   }
 
-  onSelectType(value) async {
+  Future<void> onSelectType(int value) async {
     initialValue.value = value;
   }
 
-  pushDetail(item, floor, {action = 'all', String? heroTag}) async {
+  Future<dynamic> pushDetail(
+    dynamic item,
+    int floor, {
+    String action = 'all',
+    String? heroTag,
+  }) async {
     feedBack();
 
     /// 点击评论action 直接查看评论
@@ -253,7 +258,7 @@ class DynamicsController extends GetxController
     }
   }
 
-  Future<ApiResult<FollowUpModel>> queryFollowUp({type = 'init'}) async {
+  Future<ApiResult<FollowUpModel>> queryFollowUp({String type = 'init'}) async {
     if (!userLogin.value) {
       return const ApiFailure<FollowUpModel>(
         kind: ApiFailureKind.apiRejected,
@@ -321,7 +326,7 @@ class DynamicsController extends GetxController
     return res;
   }
 
-  onSelectUp(mid) async {
+  Future<void> onSelectUp(int mid) async {
     if (mid == this.mid.value) {
       this.mid.refresh();
       return;
@@ -330,7 +335,7 @@ class DynamicsController extends GetxController
     tabController.index = (mid == -1 ? 0 : 4);
   }
 
-  onRefresh() async {
+  Future<void> onRefresh() async {
     print('onRefresh');
     print(tabsConfig[tabController.index]['ctr']);
     await Future.wait(<Future>[

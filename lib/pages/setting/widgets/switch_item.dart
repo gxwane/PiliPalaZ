@@ -38,7 +38,7 @@ class _SetSwitchItemState extends State<SetSwitchItem> {
     val = Setting.get(widget.setKey, defaultValue: widget.defaultVal ?? false);
   }
 
-  void switchChange(value) async {
+  Future<void> switchChange(bool? value) async {
     val = value ?? !val;
     await Setting.put(widget.setKey, val);
     if (widget.callFn != null) {

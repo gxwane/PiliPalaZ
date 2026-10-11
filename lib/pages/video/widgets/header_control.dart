@@ -23,7 +23,7 @@ import 'package:pilipalaz/utils/screen_utils.dart';
 import 'package:pilipalaz/utils/storage.dart';
 import 'package:pilipalaz/http/api_result.dart';
 import 'package:pilipalaz/services/shutdown_timer_service.dart';
-import '../../../../models/video/play/CDN.dart';
+import '../../../../models/video/play/cdn.dart';
 import '../../../../models/video_detail_res.dart';
 import '../../../common/widgets/my_dialog.dart';
 import '../../../services/service_locator.dart';
@@ -88,7 +88,7 @@ class _HeaderControlState extends State<HeaderControl> {
       defaultValue: false,
     );
     defaultCDNService = setting.get(
-      SettingBoxKey.CDNService,
+      SettingBoxKey.cdnService,
       defaultValue: CDNService.backupUrl.code,
     );
     startClock();
@@ -326,7 +326,7 @@ class _HeaderControlState extends State<HeaderControl> {
               );
               if (result != null) {
                 defaultCDNService = result;
-                setting.put(SettingBoxKey.CDNService, result);
+                setting.put(SettingBoxKey.cdnService, result);
                 SmartDialog.showToast(
                   '已设置为 ${CDNServiceCode.fromCode(result)!.description}，正在重载视频',
                 );
@@ -1230,7 +1230,7 @@ class _HeaderControlState extends State<HeaderControl> {
     );
   }
 
-  getNow() {
+  void getNow() {
     if (!mounted) {
       return;
     }
@@ -1240,7 +1240,7 @@ class _HeaderControlState extends State<HeaderControl> {
     now.value = '$hour:$minute';
   }
 
-  startClock() {
+  void startClock() {
     getNow();
     clock = Timer.periodic(const Duration(seconds: 1), (Timer t) {
       getNow();

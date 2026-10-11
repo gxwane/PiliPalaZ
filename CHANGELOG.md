@@ -19,6 +19,10 @@
 - 日志输出与流资源生命周期规范化（Batch 3）：
   - 清理调试打印（实现 0 `avoid_print`）：移除手势拖拽、URL 解析、路由调度等高频路径下的临时 `print` 语句，必要诊断转为 `debugPrint`；
   - 规范 Stream 资源生命周期（实现 0 `close_sinks`）：在 `MainController` 与 `HomeController` 的 `onClose()` 中严密闭合全局广播流，重构多页面局部控制器流引用，清理未使用的冗余流定义。
+- 类型推断严密化与标识符命名规范化（Batch 4）：
+  - 达成全项目静态分析 0 警告、0 建议（实现 0 `strict_top_level_inference`、0 `constant_identifier_names`、0 `non_constant_identifier_names` 等，整体诊断项 493 -> 0 清零）；
+  - 全面补充顶级方法、控制器动作、回调参数与模型方法的显式类型注解，消除弱类型隐患并提升代码严密性；
+  - 统一小驼峰命名规范，将 `lib/models/video/play/CDN.dart` 重命名为 `cdn.dart`，规范 `SettingBoxKey.cdnService`、`MsgType`、网络验证等标识符命名。
 
 ## [1.6.0-beta.3] - 2026-10-11
 

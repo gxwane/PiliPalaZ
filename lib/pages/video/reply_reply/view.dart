@@ -68,7 +68,7 @@ class _VideoReplyReplyPanelState extends State<VideoReplyReplyPanel> {
     _futureBuilderFuture = _videoReplyReplyController.queryReplyList();
   }
 
-  void replyReply(replyItem) {}
+  void replyReply(ReplyItemModel replyItem) {}
 
   @override
   void dispose() {

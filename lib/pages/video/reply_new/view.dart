@@ -55,14 +55,14 @@ class _VideoReplyNewDialogState extends State<VideoReplyNewDialog>
     _focusListener();
   }
 
-  _autoFocus() async {
+  void _autoFocus() async {
     await Future.delayed(const Duration(milliseconds: 300));
-    if (context.mounted) {
+    if (mounted) {
       FocusScope.of(context).requestFocus(replyContentFocusNode);
     }
   }
 
-  _focusListener() {
+  void _focusListener() {
     replyContentFocusNode.addListener(() {
       if (replyContentFocusNode.hasFocus) {
         setState(() {
@@ -270,7 +270,7 @@ class Debouncer {
 
   Debouncer({this.milliseconds});
 
-  run(DebounceCallback callback) {
+  void run(DebounceCallback callback) {
     if (_timer != null) {
       _timer!.cancel();
     }

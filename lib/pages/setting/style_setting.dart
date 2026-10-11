@@ -34,7 +34,7 @@ class _StyleSettingState extends State<StyleSetting> {
   final ColorSelectController colorSelectController = Get.put(
     ColorSelectController(),
   );
-  FlexSchemeVariant _dynamicSchemeVariant =
+  final FlexSchemeVariant _dynamicSchemeVariant =
       FlexSchemeVariant.values[GStorage.setting.get(
         SettingBoxKey.schemeVariant,
         defaultValue: 10,

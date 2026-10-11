@@ -111,7 +111,7 @@ class _HtmlRenderPageState extends State<HtmlRenderPage>
     }
   }
 
-  void replyReply(replyItem) {
+  void replyReply(dynamic replyItem) {
     int oid = replyItem.oid;
     int rpid = replyItem.rpid!;
     Get.to(

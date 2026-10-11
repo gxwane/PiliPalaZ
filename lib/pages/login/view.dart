@@ -572,7 +572,7 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget tabViewOuter(child) {
+  Widget tabViewOuter(Widget child) {
     return SingleChildScrollView(
       child: Align(
         alignment: Alignment.topCenter,

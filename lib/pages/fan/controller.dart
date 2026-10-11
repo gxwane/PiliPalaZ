@@ -14,7 +14,7 @@ class FansController extends GetxController {
   RxList<FansItemModel> fansList = <FansItemModel>[].obs;
   late int? mid;
   late String? name;
-  var userInfo;
+  dynamic userInfo;
   RxString loadingText = '加载中...'.obs;
   RxBool isOwner = false.obs;
 
@@ -29,7 +29,7 @@ class FansController extends GetxController {
     name = Get.parameters['name'] ?? userInfo?.uname;
   }
 
-  Future<ApiResult<FansDataModel>> queryFans(type) async {
+  Future<ApiResult<FansDataModel>> queryFans(String type) async {
     if (type == 'init' || type == 'refresh') {
       pn = 1;
       loadingText.value == '加载中...';

@@ -6,10 +6,11 @@ import 'package:pilipalaz/utils/utils.dart';
 
 import 'rich_node_panel.dart';
 
-Widget livePanel(item, context, {floor = 1}) {
+Widget livePanel(dynamic item, BuildContext context, {int floor = 1}) {
   dynamic content = item.modules.moduleDynamic.major;
-  TextStyle authorStyle =
-      TextStyle(color: Theme.of(context).colorScheme.primary);
+  TextStyle authorStyle = TextStyle(
+    color: Theme.of(context).colorScheme.primary,
+  );
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -22,15 +23,17 @@ Widget livePanel(item, context, {floor = 1}) {
                 style: authorStyle,
                 recognizer: TapGestureRecognizer()
                   ..onTap = () => Get.toNamed(
-                      '/member?mid=${item.modules.moduleAuthor.mid}',
-                      arguments: {'face': item.modules.moduleAuthor.face}),
+                    '/member?mid=${item.modules.moduleAuthor.mid}',
+                    arguments: {'face': item.modules.moduleAuthor.face},
+                  ),
               ),
               const WidgetSpan(child: SizedBox(width: 6)),
               TextSpan(
                 text: Utils.dateFormat(item.modules.moduleAuthor.pubTs),
                 style: TextStyle(
-                    color: Theme.of(context).colorScheme.outline,
-                    fontSize: Theme.of(context).textTheme.labelSmall!.fontSize),
+                  color: Theme.of(context).colorScheme.outline,
+                  fontSize: Theme.of(context).textTheme.labelSmall!.fontSize,
+                ),
               ),
             ],
           ),
@@ -63,11 +66,7 @@ Widget livePanel(item, context, {floor = 1}) {
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            NetworkImgLayer(
-              width: 120,
-              height: 75,
-              src: content.live.cover,
-            ),
+            NetworkImgLayer(width: 120, height: 75, src: content.live.cover),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -84,10 +83,11 @@ Widget livePanel(item, context, {floor = 1}) {
                     content.live.descFirst,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.outline,
-                      fontSize:
-                          Theme.of(context).textTheme.labelMedium!.fontSize,
+                      fontSize: Theme.of(
+                        context,
+                      ).textTheme.labelMedium!.fontSize,
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
@@ -96,7 +96,7 @@ Widget livePanel(item, context, {floor = 1}) {
               style: TextStyle(
                 fontSize: Theme.of(context).textTheme.labelMedium!.fontSize,
               ),
-            )
+            ),
           ],
         ),
       ),

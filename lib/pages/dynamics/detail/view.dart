@@ -124,7 +124,7 @@ class _DynamicDetailPageState extends State<DynamicDetailPage>
   }
 
   // 查看二级评论
-  void replyReply(replyItem) {
+  void replyReply(dynamic replyItem) {
     int targetOid = replyItem.oid;
     int rpid = replyItem.rpid!;
     Get.to(

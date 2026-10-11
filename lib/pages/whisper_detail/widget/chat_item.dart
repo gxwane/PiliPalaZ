@@ -19,17 +19,17 @@ enum MsgType {
   audio(value: 3, label: "语音消息"),
   share(value: 4, label: "分享消息"),
   revoke(value: 5, label: "撤回消息"),
-  custom_face(value: 6, label: "自定义表情"),
-  share_v2(value: 7, label: "分享v2消息"),
-  sys_cancel(value: 8, label: "系统撤销"),
-  mini_program(value: 9, label: "小程序"),
-  notify_msg(value: 10, label: "业务通知"),
-  archive_card(value: 11, label: "投稿卡片"),
-  article_card(value: 12, label: "专栏卡片"),
-  pic_card(value: 13, label: "图片卡片"),
-  common_share(value: 14, label: "异形卡片"),
-  auto_reply_push(value: 16, label: "自动回复推送"),
-  notify_text(value: 18, label: "文本提示");
+  customFace(value: 6, label: "自定义表情"),
+  shareV2(value: 7, label: "分享v2消息"),
+  sysCancel(value: 8, label: "系统撤销"),
+  miniProgram(value: 9, label: "小程序"),
+  notifyMsg(value: 10, label: "业务通知"),
+  archiveCard(value: 11, label: "投稿卡片"),
+  articleCard(value: 12, label: "专栏卡片"),
+  picCard(value: 13, label: "图片卡片"),
+  commonShare(value: 14, label: "异形卡片"),
+  autoReplyPush(value: 16, label: "自动回复推送"),
+  notifyText(value: 18, label: "文本提示");
 
   final int value;
   final String label;
@@ -44,9 +44,9 @@ enum MsgType {
 
 class ChatItem extends StatelessWidget {
   dynamic item;
-  List? e_infos;
+  List? eInfos;
 
-  ChatItem({super.key, this.item, this.e_infos});
+  ChatItem({super.key, this.item, this.eInfos});
 
   @override
   Widget build(BuildContext context) {
@@ -57,12 +57,12 @@ class ChatItem extends StatelessWidget {
     // bool isArchive = item.msgType == 11; // 投稿
     // bool isArticle = item.msgType == 12; // 专栏
     bool isRevoke = item.msgType == MsgType.revoke.value; // 撤回消息
-    // bool isShareV2 = item.msgType == MsgType.share_v2.value;
+    // bool isShareV2 = item.msgType == MsgType.shareV2.value;
     bool isSystem =
-        item.msgType == MsgType.notify_text.value ||
-        item.msgType == MsgType.notify_msg.value ||
-        item.msgType == MsgType.pic_card.value ||
-        item.msgType == MsgType.auto_reply_push.value;
+        item.msgType == MsgType.notifyText.value ||
+        item.msgType == MsgType.notifyMsg.value ||
+        item.msgType == MsgType.picCard.value ||
+        item.msgType == MsgType.autoReplyPush.value;
     dynamic content = item.content ?? '';
     Color textColor(BuildContext context) {
       return isOwner
@@ -72,10 +72,10 @@ class ChatItem extends StatelessWidget {
 
     Widget richTextMessage(BuildContext context) {
       var text = content['content'];
-      if (e_infos != null) {
+      if (eInfos != null) {
         final List<InlineSpan> children = [];
         Map<String, String> emojiMap = {};
-        for (var e in e_infos!) {
+        for (var e in eInfos!) {
           emojiMap[e['text']] = e['url'];
         }
         text.splitMapJoin(
@@ -135,11 +135,11 @@ class ChatItem extends StatelessWidget {
 
     Widget messageContent(BuildContext context) {
       switch (MsgType.parse(item.msgType)) {
-        case MsgType.notify_msg:
+        case MsgType.notifyMsg:
           return SystemNotice(item: item);
-        case MsgType.pic_card:
+        case MsgType.picCard:
           return SystemNotice2(item: item);
-        case MsgType.notify_text:
+        case MsgType.notifyText:
           return Text(
             jsonDecode(
               content['content'],
@@ -161,7 +161,7 @@ class ChatItem extends StatelessWidget {
             height: 220 * content['height'] / content['width'],
             src: content['url'],
           );
-        case MsgType.share_v2:
+        case MsgType.shareV2:
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -215,7 +215,7 @@ class ChatItem extends StatelessWidget {
               ),
             ],
           );
-        case MsgType.archive_card:
+        case MsgType.archiveCard:
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -274,7 +274,7 @@ class ChatItem extends StatelessWidget {
               ),
             ],
           );
-        case MsgType.auto_reply_push:
+        case MsgType.autoReplyPush:
           return Container(
             constraints: const BoxConstraints(
               maxWidth: 300.0, // 设置最大宽度为200.0
@@ -403,7 +403,7 @@ class ChatItem extends StatelessWidget {
               ],
             ),
           );
-        case MsgType.article_card:
+        case MsgType.articleCard:
           return GestureDetector(
             onTap: () async {
               Get.toNamed(

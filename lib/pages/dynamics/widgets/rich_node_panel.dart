@@ -9,7 +9,7 @@ import 'package:pilipalaz/utils/app_scheme.dart';
 import '../../../models/dynamics/result.dart';
 
 // 富文本
-InlineSpan? richNode(item, context) {
+InlineSpan? richNode(dynamic item, BuildContext context) {
   TextStyle authorStyle = TextStyle(
     color: Theme.of(context).colorScheme.primary,
   );

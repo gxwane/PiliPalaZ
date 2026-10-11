@@ -31,7 +31,7 @@ class _MemberSeasonsAndSeriesPageState
     _futureBuilderFuture = _ctr.onRefresh();
   }
 
-  Widget commonWidget(msg) {
+  Widget commonWidget(String msg) {
     return SliverPadding(
       padding: const EdgeInsets.only(top: 20, bottom: 30),
       sliver: SliverToBoxAdapter(

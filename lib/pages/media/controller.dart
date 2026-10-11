@@ -44,7 +44,7 @@ class MediaController extends GetxController {
       ),
     },
   ];
-  var userInfo;
+  dynamic userInfo;
   int? mid;
   final ScrollController scrollController = ScrollController();
 

@@ -27,7 +27,9 @@ class MemberArchiveController extends GetxController {
   }
 
   // 获取用户投稿
-  Future<ApiResult<MemberArchiveDataModel>> getMemberArchive(type) async {
+  Future<ApiResult<MemberArchiveDataModel>> getMemberArchive(
+    String type,
+  ) async {
     if (type == 'init' || type == 'refresh') {
       pn = 1;
     }
@@ -58,7 +60,7 @@ class MemberArchiveController extends GetxController {
     return res;
   }
 
-  toggleSort() async {
+  Future<void> toggleSort() async {
     List<String> typeList = orderList.map((e) => e['type']!).toList();
     int index = typeList.indexOf(currentOrder['type']!);
     if (index == orderList.length - 1) {
@@ -69,7 +71,7 @@ class MemberArchiveController extends GetxController {
     getMemberArchive('init');
   }
 
-  episodicButton() async {
+  Future<void> episodicButton() async {
     if (episodicButtonUri.isNotEmpty) {
       PiliScheme.routePush(Uri.parse('https:$episodicButtonUri'));
     } else {

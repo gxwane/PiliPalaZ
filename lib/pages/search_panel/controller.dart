@@ -19,13 +19,14 @@ class SearchPanelController extends GetxController {
   // 视频时长筛选 仅用于搜索视频
   RxInt duration = 0.obs;
 
-  Future<ApiResult<SearchPageData>> onSearch({type = 'init'}) async {
+  Future<ApiResult<SearchPageData>> onSearch({String type = 'init'}) async {
     var result = await SearchHttp.searchByType(
-        searchType: searchType!,
-        keyword: keyword!,
-        page: page.value,
-        order: searchType!.type != 'video' ? null : order.value,
-        duration: searchType!.type != 'video' ? null : duration.value);
+      searchType: searchType!,
+      keyword: keyword!,
+      page: page.value,
+      order: searchType!.type != 'video' ? null : order.value,
+      duration: searchType!.type != 'video' ? null : duration.value,
+    );
     if (result case ApiSuccess<SearchPageData>(:final data)) {
       if (type == 'onRefresh') {
         resultList.value = data.items;
@@ -38,7 +39,7 @@ class SearchPanelController extends GetxController {
     return result;
   }
 
-  Future onRefresh() async {
+  Future<void> onRefresh() async {
     page.value = 1;
     await onSearch(type: 'onRefresh');
   }
@@ -48,7 +49,7 @@ class SearchPanelController extends GetxController {
     scrollController.animToTop();
   }
 
-  void onPushDetail(keyword, resultList) async {
+  Future<void> onPushDetail(String? keyword, List resultList) async {
     // 匹配输入内容，如果是AV、BV号且有结果 直接跳转详情页
     Map matchRes = IdUtils.matchAvorBv(input: keyword);
     List matchKeys = matchRes.keys.toList();

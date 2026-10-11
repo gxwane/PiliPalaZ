@@ -64,7 +64,7 @@ class HtmlRenderController extends GetxController {
   }
 
   // 请求评论
-  Future queryReplyList({reqType = 'init'}) async {
+  Future<dynamic> queryReplyList({String reqType = 'init'}) async {
     if (reqType == 'init') {
       nextOffset = "";
       noMore.value = "";
@@ -113,7 +113,7 @@ class HtmlRenderController extends GetxController {
   }
 
   // 排序搜索评论
-  queryBySort() {
+  void queryBySort() {
     feedBack();
     switch (_sortType) {
       case ReplySortType.time:

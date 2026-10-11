@@ -37,7 +37,7 @@ class VideoCardV extends StatelessWidget {
     return numericRegex.hasMatch(str);
   }
 
-  void onPushDetail(heroTag) async {
+  Future<void> onPushDetail(String heroTag) async {
     String goto = videoItem.goto;
     switch (goto) {
       case 'bangumi':

@@ -28,7 +28,14 @@ InlineSpan picsNodes(List<OpusPicsModel> pics, {String? dynamicId}) {
   );
 }
 
-Widget forWard(item, context, ctr, source, {floor = 1, String? heroTag}) {
+Widget forWard(
+  dynamic item,
+  BuildContext context,
+  dynamic ctr,
+  dynamic source, {
+  int floor = 1,
+  String? heroTag,
+}) {
   TextStyle authorStyle = TextStyle(
     color: Theme.of(context).colorScheme.primary,
   );

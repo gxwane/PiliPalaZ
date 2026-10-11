@@ -11,9 +11,15 @@ import 'package:pilipalaz/utils/utils.dart';
 import 'rich_node_panel.dart';
 
 final DynamicsController _dynamicsController = Get.put(DynamicsController());
-Widget liveRcmdPanel(item, context, {floor = 1, String? heroTag}) {
-  TextStyle authorStyle =
-      TextStyle(color: Theme.of(context).colorScheme.primary);
+Widget liveRcmdPanel(
+  dynamic item,
+  BuildContext context, {
+  int floor = 1,
+  String? heroTag,
+}) {
+  TextStyle authorStyle = TextStyle(
+    color: Theme.of(context).colorScheme.primary,
+  );
   DynamicLiveModel liveRcmd = item.modules.moduleDynamic.major.liveRcmd;
   int liveStatus = liveRcmd.liveStatus!;
   Map watchedShow = liveRcmd.watchedShow!;
@@ -29,15 +35,17 @@ Widget liveRcmdPanel(item, context, {floor = 1, String? heroTag}) {
                 style: authorStyle,
                 recognizer: TapGestureRecognizer()
                   ..onTap = () => Get.toNamed(
-                      '/member?mid=${item.modules.moduleAuthor.mid}',
-                      arguments: {'face': item.modules.moduleAuthor.face}),
+                    '/member?mid=${item.modules.moduleAuthor.mid}',
+                    arguments: {'face': item.modules.moduleAuthor.face},
+                  ),
               ),
               const WidgetSpan(child: SizedBox(width: 6)),
               TextSpan(
                 text: Utils.dateFormat(item.modules.moduleAuthor.pubTs),
                 style: TextStyle(
-                    color: Theme.of(context).colorScheme.outline,
-                    fontSize: Theme.of(context).textTheme.labelSmall!.fontSize),
+                  color: Theme.of(context).colorScheme.outline,
+                  fontSize: Theme.of(context).textTheme.labelSmall!.fontSize,
+                ),
               ),
             ],
           ),
@@ -48,8 +56,9 @@ Widget liveRcmdPanel(item, context, {floor = 1, String? heroTag}) {
       const SizedBox(height: 4),
       if (item.modules.moduleDynamic.topic != null) ...[
         Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: StyleString.safeSpace),
+          padding: const EdgeInsets.symmetric(
+            horizontal: StyleString.safeSpace,
+          ),
           child: GestureDetector(
             child: Text(
               '#${item.modules.moduleDynamic.topic.name}',
@@ -64,13 +73,13 @@ Widget liveRcmdPanel(item, context, {floor = 1, String? heroTag}) {
         const SizedBox(height: 6),
       ],
       Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: StyleString.safeSpace),
-          child: GestureDetector(
-            onTap: () {
-              _dynamicsController.pushDetail(item, floor, heroTag: heroTag);
-            },
-            child: LayoutBuilder(builder: (context, box) {
+        padding: const EdgeInsets.symmetric(horizontal: StyleString.safeSpace),
+        child: GestureDetector(
+          onTap: () {
+            _dynamicsController.pushDetail(item, floor, heroTag: heroTag);
+          },
+          child: LayoutBuilder(
+            builder: (context, box) {
               double width = box.maxWidth;
               return Stack(
                 children: [
@@ -107,33 +116,37 @@ Widget liveRcmdPanel(item, context, {floor = 1, String? heroTag}) {
                       padding: const EdgeInsets.fromLTRB(12, 0, 10, 10),
                       clipBehavior: Clip.hardEdge,
                       decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: <Color>[
-                              Colors.transparent,
-                              Colors.black45,
-                            ],
-                          ),
-                          borderRadius: floor == 1
-                              ? null
-                              : const BorderRadius.all(Radius.circular(6))),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: <Color>[Colors.transparent, Colors.black45],
+                        ),
+                        borderRadius: floor == 1
+                            ? null
+                            : const BorderRadius.all(Radius.circular(6)),
+                      ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           DefaultTextStyle.merge(
                             style: TextStyle(
-                                fontSize: Theme.of(context)
-                                    .textTheme
-                                    .labelMedium!
-                                    .fontSize,
-                                color: Colors.white),
+                              fontSize: Theme.of(
+                                context,
+                              ).textTheme.labelMedium!.fontSize,
+                              color: Colors.white,
+                            ),
                             child: Row(
                               children: [
-                                Text(item.modules.moduleDynamic.major.liveRcmd
-                                        .areaName ??
-                                    ''),
+                                Text(
+                                  item
+                                          .modules
+                                          .moduleDynamic
+                                          .major
+                                          .liveRcmd
+                                          .areaName ??
+                                      '',
+                                ),
                               ],
                             ),
                           ),
@@ -143,8 +156,10 @@ Widget liveRcmdPanel(item, context, {floor = 1, String? heroTag}) {
                   ),
                 ],
               );
-            }),
-          )),
+            },
+          ),
+        ),
+      ),
       const SizedBox(height: 6),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: StyleString.safeSpace),

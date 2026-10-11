@@ -52,7 +52,7 @@ class WhisperController extends GetxController {
       msgFeedTop[0]["value"] = msgFeedUnread.value.reply;
       msgFeedTop[1]["value"] = msgFeedUnread.value.at;
       msgFeedTop[2]["value"] = msgFeedUnread.value.like;
-      msgFeedTop[3]["value"] = msgFeedUnread.value.sys_msg;
+      msgFeedTop[3]["value"] = msgFeedUnread.value.sysMsg;
       if (GStorage.setting.get(
         SettingBoxKey.disableLikeMsg,
         defaultValue: false,

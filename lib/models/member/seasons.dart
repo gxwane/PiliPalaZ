@@ -109,7 +109,7 @@ class MemberArchiveItem {
     this.title,
     this.state,
     this.enableVt,
-    this.ugc_pay,
+    this.ugcPay,
     this.interactiveVideo,
     this.vtDisplay,
     this.playbackPosition,
@@ -126,7 +126,7 @@ class MemberArchiveItem {
   String? title;
   int? state;
   dynamic enableVt;
-  int? ugc_pay;
+  int? ugcPay;
   bool? interactiveVideo;
   String? vtDisplay;
   int? playbackPosition;
@@ -143,7 +143,7 @@ class MemberArchiveItem {
     title = json['title'];
     state = json['state'];
     enableVt = json['enable_vt'];
-    ugc_pay = json['ugc_pay'];
+    ugcPay = json['ugc_pay'];
     interactiveVideo = json['interactive_video'];
     vtDisplay = json['vt_display'];
     playbackPosition = json['playback_position'];

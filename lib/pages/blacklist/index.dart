@@ -18,8 +18,9 @@ class BlackListPage extends StatefulWidget {
 }
 
 class _BlackListPageState extends State<BlackListPage> {
-  final BlackListController _blackListController =
-      Get.put(BlackListController());
+  final BlackListController _blackListController = Get.put(
+    BlackListController(),
+  );
   final ScrollController scrollController = ScrollController();
   Future<ApiResult<BlackListDataModel>>? _futureBuilderFuture;
   bool _isLoadingMore = false;
@@ -29,24 +30,23 @@ class _BlackListPageState extends State<BlackListPage> {
   void initState() {
     super.initState();
     _futureBuilderFuture = _blackListController.queryBlacklist();
-    scrollController.addListener(
-      () async {
-        if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 200) {
-          if (!_isLoadingMore) {
-            _isLoadingMore = true;
-            await _blackListController.queryBlacklist(type: 'onLoad');
-            _isLoadingMore = false;
-          }
+    scrollController.addListener(() async {
+      if (scrollController.position.pixels >=
+          scrollController.position.maxScrollExtent - 200) {
+        if (!_isLoadingMore) {
+          _isLoadingMore = true;
+          await _blackListController.queryBlacklist(type: 'onLoad');
+          _isLoadingMore = false;
         }
-      },
-    );
+      }
+    });
   }
 
   @override
   void dispose() {
-    List<int> blackMidsList =
-        _blackListController.blackList.map<int>((e) => e.mid!).toList();
+    List<int> blackMidsList = _blackListController.blackList
+        .map<int>((e) => e.mid!)
+        .toList();
     onlineCache.put(OnlineCacheKey.blackMidsList, blackMidsList);
     scrollController.removeListener(() {});
     super.dispose();
@@ -71,7 +71,7 @@ class _BlackListPageState extends State<BlackListPage> {
         displacement: 10.0,
         edgeOffset: 10.0,
         onRefresh: () async => await _blackListController.queryBlacklist(),
-      child: FutureBuilder<ApiResult<BlackListDataModel>>(
+        child: FutureBuilder<ApiResult<BlackListDataModel>>(
           future: _futureBuilderFuture,
           builder: (BuildContext context, AsyncSnapshot snapshot) {
             if (snapshot.connectionState == ConnectionState.done) {
@@ -103,8 +103,8 @@ class _BlackListPageState extends State<BlackListPage> {
                                 Utils.dateFormat(list[index].mtime),
                                 maxLines: 1,
                                 style: TextStyle(
-                                    color:
-                                        Theme.of(context).colorScheme.outline),
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                               dense: true,
@@ -121,11 +121,12 @@ class _BlackListPageState extends State<BlackListPage> {
                 return CustomScrollView(
                   slivers: [
                     HttpError(
-                    errMsg:
-                        (result as ApiFailure<BlackListDataModel>?)?.message ??
-                        '黑名单加载失败',
+                      errMsg:
+                          (result as ApiFailure<BlackListDataModel>?)
+                              ?.message ??
+                          '黑名单加载失败',
                       fn: () => _blackListController.queryBlacklist(),
-                    )
+                    ),
                   ],
                 );
               }
@@ -146,7 +147,9 @@ class BlackListController extends GetxController {
   RxInt total = 0.obs;
   RxList<BlackListItem> blackList = <BlackListItem>[].obs;
 
-  Future<ApiResult<BlackListDataModel>> queryBlacklist({type = 'init'}) async {
+  Future<ApiResult<BlackListDataModel>> queryBlacklist({
+    String type = 'init',
+  }) async {
     if (type == 'init') {
       currentPage = 1;
     }
@@ -165,7 +168,10 @@ class BlackListController extends GetxController {
     return result;
   }
 
-  Future<ApiResult<void>> removeBlack(mid) async {
+  Future<ApiResult<void>?> removeBlack(int? mid) async {
+    if (mid == null) {
+      return null;
+    }
     var result = await BlackHttp.removeBlack(fid: mid);
     if (result is ApiSuccess<void>) {
       blackList.removeWhere((e) => e.mid == mid);

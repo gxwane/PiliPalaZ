@@ -73,7 +73,7 @@ class VideoIntroController extends GetxController {
   RxMap followStatus = {}.obs;
 
   RxInt lastPlayCid = 0.obs;
-  var userInfo;
+  dynamic userInfo;
 
   // 同时观看
   bool isShowOnlineTotal = false;
@@ -556,7 +556,7 @@ class VideoIntroController extends GetxController {
   }
 
   // （取消）收藏
-  Future actionFavVideo({type = 'choose'}) async {
+  Future<void> actionFavVideo({String type = 'choose'}) async {
     // 收藏至默认文件夹
     if (type == 'default') {
       SmartDialog.showLoading(msg: '请求中');
@@ -668,7 +668,7 @@ class VideoIntroController extends GetxController {
   }
 
   // 选择文件夹
-  onChoose(bool checkValue, int index) {
+  void onChoose(bool checkValue, int index) {
     feedBack();
     List<FavFolderItemData> datalist = favFolderData.value.list!;
     for (var i = 0; i < datalist.length; i++) {
@@ -720,7 +720,11 @@ class VideoIntroController extends GetxController {
   }
 
   // 修改分P或番剧分集
-  Future changeSeasonOrbangu(bvid, cid, aid) async {
+  Future<void> changeSeasonOrbangu(
+    dynamic bvid,
+    dynamic cid,
+    dynamic aid,
+  ) async {
     // 重新获取视频资源
     final VideoDetailController videoDetailCtr =
         Get.find<VideoDetailController>(tag: heroTag);

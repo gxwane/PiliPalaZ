@@ -19,7 +19,7 @@ class FollowController extends GetxController with GetTickerProviderStateMixin {
   RxList<FollowItemModel> followList = <FollowItemModel>[].obs;
   late int? mid;
   late String? name;
-  var userInfo;
+  dynamic userInfo;
   RxString loadingText = '加载中...'.obs;
   RxBool isOwner = false.obs;
   late List<MemberTagItemModel> followTags;
@@ -36,7 +36,7 @@ class FollowController extends GetxController with GetTickerProviderStateMixin {
     name = Get.parameters['name'] ?? userInfo?.uname;
   }
 
-  Future<ApiResult<FollowDataModel>> queryFollowings(type) async {
+  Future<ApiResult<FollowDataModel>> queryFollowings(String type) async {
     if (type == 'init') {
       pn = 1;
       loadingText.value == '加载中...';

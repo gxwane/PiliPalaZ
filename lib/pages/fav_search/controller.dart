@@ -40,7 +40,7 @@ class FavSearchController extends GetxController {
     }
   }
 
-  void onChange(value) {
+  void onChange(String value) {
     searchKeyWord.value = value;
   }
 
@@ -52,7 +52,7 @@ class FavSearchController extends GetxController {
   }
 
   // 搜索收藏夹视频
-  Future searchFav({type = 'init'}) async {
+  Future<void> searchFav({String type = 'init'}) async {
     var res = await UserHttp.userFavFolderDetail(
       pn: currentPage,
       ps: 20,
@@ -72,12 +72,12 @@ class FavSearchController extends GetxController {
     loadingStatus.value = false;
   }
 
-  onLoad() {
+  void onLoad() {
     if (!hasMore) return;
     searchFav(type: 'onLoad');
   }
 
-  onCancelFav(int id) async {
+  Future<void> onCancelFav(int id) async {
     var result = await VideoHttp.favVideo(
       aid: id,
       addIds: '',

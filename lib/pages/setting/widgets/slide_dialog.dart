@@ -20,7 +20,7 @@ class SlideDialog<T extends num> extends StatefulWidget {
   });
 
   @override
-  _SlideDialogState<T> createState() => _SlideDialogState<T>();
+  State<SlideDialog<T>> createState() => _SlideDialogState<T>();
 }
 
 class _SlideDialogState<T extends num> extends State<SlideDialog<T>> {
@@ -36,8 +36,12 @@ class _SlideDialogState<T extends num> extends State<SlideDialog<T>> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(widget.title),
-      contentPadding:
-          const EdgeInsets.only(top: 20, left: 8, right: 8, bottom: 8),
+      contentPadding: const EdgeInsets.only(
+        top: 20,
+        left: 8,
+        right: 8,
+        bottom: 8,
+      ),
       content: SizedBox(
         height: 40,
         child: Slider(
@@ -64,7 +68,7 @@ class _SlideDialogState<T extends num> extends State<SlideDialog<T>> {
         TextButton(
           onPressed: () => Navigator.pop(context, _tempValue as T),
           child: const Text('确定'),
-        )
+        ),
       ],
     );
   }

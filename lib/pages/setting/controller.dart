@@ -24,7 +24,7 @@ class SettingController extends GetxController {
   RxDouble toastOpacity = (1.0).obs;
   RxInt picQuality = 10.obs;
   Rx<ThemeType> themeType = ThemeType.system.obs;
-  var userInfo;
+  dynamic userInfo;
   Rx<DynamicBadgeMode> dynamicBadgeType = DynamicBadgeMode.number.obs;
   RxInt defaultHomePage = 0.obs;
 
@@ -64,7 +64,7 @@ class SettingController extends GetxController {
     );
   }
 
-  loginOut(BuildContext context) async {
+  Future<void> loginOut(BuildContext context) async {
     await showDialog(
       context: context,
       builder: (context) {
@@ -108,14 +108,14 @@ class SettingController extends GetxController {
   }
 
   // 开启关闭震动反馈
-  onOpenFeedBack() {
+  void onOpenFeedBack() {
     feedBack();
     feedBackEnable.value = !feedBackEnable.value;
     setting.put(SettingBoxKey.feedBackEnable, feedBackEnable.value);
   }
 
   // 设置动态未读标记
-  setDynamicBadgeMode(BuildContext context) async {
+  Future<void> setDynamicBadgeMode(BuildContext context) async {
     DynamicBadgeMode? result = await showDialog(
       context: context,
       builder: (context) {
@@ -141,7 +141,7 @@ class SettingController extends GetxController {
   }
 
   // 设置默认启动页
-  setDefaultHomePage(BuildContext context) async {
+  Future<void> setDefaultHomePage(BuildContext context) async {
     int? result = await showDialog(
       context: context,
       builder: (context) {

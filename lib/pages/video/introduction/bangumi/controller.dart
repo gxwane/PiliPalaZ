@@ -94,7 +94,7 @@ class BangumiIntroController extends GetxController {
   RxInt lastPlayCid = Get.parameters['cid'] != null
       ? int.tryParse(Get.parameters['cid']!)!.obs
       : 0.obs;
-  var userInfo;
+  dynamic userInfo;
 
   PgcCatalogType get catalogType => PgcCatalogTypeCode.fromApiValue(
     bangumiDetail.value.type ?? bangumiItem?.type,
@@ -433,7 +433,7 @@ class BangumiIntroController extends GetxController {
   }
 
   // 选择文件夹
-  onChoose(bool checkValue, int index) {
+  void onChoose(bool checkValue, int index) {
     feedBack();
     List<FavFolderItemData> datalist = favFolderData.value.list!;
     for (var i = 0; i < datalist.length; i++) {
@@ -449,7 +449,12 @@ class BangumiIntroController extends GetxController {
   }
 
   // 修改分P或番剧分集
-  Future<bool> changeSeasonOrbangu(bvid, cid, aid, [int? nextEpId]) async {
+  Future<bool> changeSeasonOrbangu(
+    dynamic bvid,
+    dynamic cid,
+    dynamic aid, [
+    int? nextEpId,
+  ]) async {
     // 重新获取视频资源
     VideoDetailController videoDetailCtr = Get.find<VideoDetailController>(
       tag: heroTag,
@@ -527,7 +532,7 @@ class BangumiIntroController extends GetxController {
     isFollowUpdating.value = true;
     hasFollow.value = nextStatus;
     try {
-      var result;
+      dynamic result;
       if (currentStatus) {
         result = await VideoHttp.bangumiDel(
           seasonId: bangumiDetail.value.seasonId,

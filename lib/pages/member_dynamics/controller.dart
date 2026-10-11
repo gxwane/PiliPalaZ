@@ -11,7 +11,7 @@ class MemberDynamicsController extends GetxController {
   bool hasMore = true;
   RxList<DynamicItemModel> dynamicsList = <DynamicItemModel>[].obs;
 
-  Future<ApiResult<DynamicsDataModel>?> getMemberDynamic(type) async {
+  Future<ApiResult<DynamicsDataModel>?> getMemberDynamic(String type) async {
     if (type == 'onRefresh') {
       offset = '';
       dynamicsList.clear();

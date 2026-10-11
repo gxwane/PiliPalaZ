@@ -2,11 +2,10 @@ class MsgFeedLikeMe {
   Latest? latest;
   Total? total;
 
-  MsgFeedLikeMe({latest, total});
+  MsgFeedLikeMe({this.latest, this.total});
 
   MsgFeedLikeMe.fromJson(Map<String, dynamic> json) {
-    latest =
-    json['latest'] != null ? Latest.fromJson(json['latest']) : null;
+    latest = json['latest'] != null ? Latest.fromJson(json['latest']) : null;
     total = json['total'] != null ? Total.fromJson(json['total']) : null;
   }
 
@@ -22,7 +21,7 @@ class Latest {
   List<LikeMeItems>? items;
   int? lastViewAt;
 
-  Latest({items, lastViewAt});
+  Latest({this.items, this.lastViewAt});
 
   Latest.fromJson(Map<String, dynamic> json) {
     if (json['items'] != null) {
@@ -50,13 +49,14 @@ class LikeMeItems {
   int? likeTime;
   int? noticeState;
 
-  LikeMeItems(
-      {id,
-        users,
-        item,
-        counts,
-        likeTime,
-        noticeState});
+  LikeMeItems({
+    this.id,
+    this.users,
+    this.item,
+    this.counts,
+    this.likeTime,
+    this.noticeState,
+  });
 
   LikeMeItems.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -92,13 +92,14 @@ class Users {
   String? midLink;
   bool? follow;
 
-  Users(
-      {mid,
-        fans,
-        nickname,
-        avatar,
-        midLink,
-        follow});
+  Users({
+    this.mid,
+    this.fans,
+    this.nickname,
+    this.avatar,
+    this.midLink,
+    this.follow,
+  });
 
   Users.fromJson(Map<String, dynamic> json) {
     mid = json['mid'];
@@ -137,21 +138,22 @@ class Item {
   String? nativeUri;
   int? ctime;
 
-  Item(
-      {itemId,
-        pid,
-        type,
-        business,
-        businessId,
-        replyBusinessId,
-        likeBusinessId,
-        title,
-        desc,
-        image,
-        uri,
-        detailName,
-        nativeUri,
-        ctime});
+  Item({
+    this.itemId,
+    this.pid,
+    this.type,
+    this.business,
+    this.businessId,
+    this.replyBusinessId,
+    this.likeBusinessId,
+    this.title,
+    this.desc,
+    this.image,
+    this.uri,
+    this.detailName,
+    this.nativeUri,
+    this.ctime,
+  });
 
   Item.fromJson(Map<String, dynamic> json) {
     itemId = json['item_id'];
@@ -194,11 +196,10 @@ class Total {
   Cursor? cursor;
   List<LikeMeItems>? items;
 
-  Total({cursor, items});
+  Total({this.cursor, this.items});
 
   Total.fromJson(Map<String, dynamic> json) {
-    cursor =
-    json['cursor'] != null ? Cursor.fromJson(json['cursor']) : null;
+    cursor = json['cursor'] != null ? Cursor.fromJson(json['cursor']) : null;
     if (json['items'] != null) {
       items = <LikeMeItems>[];
       json['items'].forEach((v) {
@@ -220,7 +221,7 @@ class Cursor {
   int? id;
   int? time;
 
-  Cursor({isEnd, id, time});
+  Cursor({this.isEnd, this.id, this.time});
 
   Cursor.fromJson(Map<String, dynamic> json) {
     isEnd = json['is_end'];

@@ -25,7 +25,9 @@ class HistoryController extends GetxController {
     historyStatus();
   }
 
-  Future<ApiResult<HistoryData>> queryHistoryList({type = 'init'}) async {
+  Future<ApiResult<HistoryData>> queryHistoryList({
+    String type = 'init',
+  }) async {
     int max = 0;
     int viewAt = 0;
     if (type == 'onload') {
@@ -202,7 +204,7 @@ class HistoryController extends GetxController {
   }
 
   // 删除某条历史记录
-  Future delHistory(kid, business) async {
+  Future<void> delHistory(dynamic kid, dynamic business) async {
     final String resKid = resolveResourceKid(kid, business?.toString());
     var res = await UserHttp.delHistory(resKid);
     if (res is ApiSuccess<void>) {
@@ -214,7 +216,7 @@ class HistoryController extends GetxController {
   }
 
   // 删除已看历史记录
-  Future onDelHistory() async {
+  Future<void> onDelHistory() async {
     final List<HisListItem> result = historyList
         .where((e) => e.progress == -1)
         .toList();

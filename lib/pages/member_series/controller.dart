@@ -23,7 +23,7 @@ class MemberSeriesController extends GetxController {
   }
 
   // 获取视频列表详情
-  Future<ApiResult<MemberSeriesList>> getSeriesDetail(type) async {
+  Future<ApiResult<MemberSeriesList>> getSeriesDetail(String type) async {
     if (type == 'onRefresh') {
       pn = 1;
     }

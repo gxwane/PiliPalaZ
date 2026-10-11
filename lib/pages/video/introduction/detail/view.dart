@@ -150,7 +150,7 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
   }
 
   // 收藏
-  showFavBottomSheet({type = 'tap'}) {
+  void showFavBottomSheet({String type = 'tap'}) {
     if (videoIntroController.userInfo == null) {
       SmartDialog.showToast('账号未登录');
       return;
@@ -203,7 +203,7 @@ class _VideoInfoState extends State<VideoInfo> with TickerProviderStateMixin {
   // }
 
   // 用户主页
-  onPushMember() {
+  void onPushMember() {
     feedBack();
     final int? resolvedMid = !loadingStatus
         ? widget.videoDetail?.owner?.mid

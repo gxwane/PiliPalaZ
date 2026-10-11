@@ -19,7 +19,7 @@ class MemberSearchController extends GetxController {
   int archivePn = 1;
   int archiveCount = 0;
   RxList<VListItemModel> archiveList = <VListItemModel>[].obs;
-  int dynamic_pn = 1;
+  int dynamicPn = 1;
   RxList<VListItemModel> dynamicList = <VListItemModel>[].obs;
 
   int ps = 30;
@@ -41,7 +41,7 @@ class MemberSearchController extends GetxController {
     }
   }
 
-  void onChange(value) {
+  void onChange(String value) {
     searchKeyWord.value = value;
   }
 
@@ -56,7 +56,7 @@ class MemberSearchController extends GetxController {
 
   // 搜索视频
   Future<ApiResult<MemberArchiveDataModel>?> searchArchives({
-    type = 'init',
+    String type = 'init',
   }) async {
     if (type == 'onLoad' && loadingText.value == '没有更多了') {
       return null;
@@ -92,7 +92,7 @@ class MemberSearchController extends GetxController {
   Future searchDynamic() async {}
 
   //
-  onLoad() {
+  void onLoad() {
     searchArchives(type: 'onLoad');
   }
 }

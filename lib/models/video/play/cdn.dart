@@ -12,16 +12,16 @@ enum CDNService {
   hw,
   hwb,
   hwo1,
-  hw_08c,
-  hw_08h,
-  hw_08ct,
-  tf_hw,
-  tf_tx,
+  hw08c,
+  hw08h,
+  hw08ct,
+  tfHw,
+  tfTx,
   akamai,
   aliov,
   cosov,
   hwov,
-  hk_bcache,
+  hkBcache,
 }
 
 extension CDNServiceDesc on CDNService {

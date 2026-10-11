@@ -117,7 +117,7 @@ class VideoDetailController extends GetxController
   double? brightness;
   // 默认记录历史记录
   bool enableHeart = true;
-  var userInfo;
+  dynamic userInfo;
   bool isFirstTime = true;
   PreferredSizeWidget? headerControl;
 

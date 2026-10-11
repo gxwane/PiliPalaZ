@@ -13,11 +13,11 @@ import 'additional_panel.dart';
 import 'rich_node_panel.dart';
 
 Widget videoSeasonWidget(
-  item,
-  context,
-  type,
-  source, {
-  floor = 1,
+  dynamic item,
+  BuildContext context,
+  String type,
+  dynamic source, {
+  int floor = 1,
   String? heroTag,
 }) {
   TextStyle authorStyle = TextStyle(

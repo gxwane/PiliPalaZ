@@ -30,7 +30,7 @@ class SubDetailController extends GetxController {
   }
 
   Future<ApiResult<SubDetailModelData>?> queryUserSubFolderDetail({
-    type = 'init',
+    String type = 'init',
   }) async {
     if (type == 'onLoad' && subList.length >= mediaCount) {
       loadingText.value = '没有更多了';
@@ -39,13 +39,10 @@ class SubDetailController extends GetxController {
     isLoadingMore = true;
     late ApiResult<SubDetailModelData> res;
     if (item.type! == 11) {
-      res = await UserHttp.favResourceList(
-        id: id,
-        ps: 20,
-        pn: currentPage,
-      );
+      res = await UserHttp.favResourceList(id: id, ps: 20, pn: currentPage);
     } else {
-      res = await UserHttp.favSeasonList(// item.type! == 21
+      res = await UserHttp.favSeasonList(
+        // item.type! == 21
         id: id,
         ps: 20,
         pn: currentPage,
@@ -57,8 +54,7 @@ class SubDetailController extends GetxController {
         subList.value = data.medias ?? <SubDetailMediaItem>[];
         mediaCount = data.info?.mediaCount ?? 0;
         if (item.type == 11) {
-          playCount.value =
-              (data.info?.cntInfo?['play'] as num?)?.toInt() ?? 0;
+          playCount.value = (data.info?.cntInfo?['play'] as num?)?.toInt() ?? 0;
         }
       } else if (type == 'onLoad') {
         subList.addAll(data.medias ?? <SubDetailMediaItem>[]);
@@ -72,7 +68,7 @@ class SubDetailController extends GetxController {
     return res;
   }
 
-  onLoad() {
+  void onLoad() {
     queryUserSubFolderDetail(type: 'onLoad');
   }
 }

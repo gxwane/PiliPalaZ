@@ -50,7 +50,7 @@ class VideoReplyController extends GetxController {
     sortTypeLabel.value = _sortType.labels;
   }
 
-  Future queryReplyList({type = 'init'}) async {
+  Future<dynamic> queryReplyList({String type = 'init'}) async {
     if (isLoadingMore) {
       return;
     }
@@ -132,7 +132,7 @@ class VideoReplyController extends GetxController {
   }
 
   // 排序搜索评论
-  queryBySort() {
+  void queryBySort() {
     EasyThrottle.throttle('queryBySort', const Duration(seconds: 1), () {
       feedBack();
       switch (_sortType) {

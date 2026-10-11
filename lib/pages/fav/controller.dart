@@ -17,7 +17,9 @@ class FavController extends GetxController {
   int pageSize = 10;
   RxBool hasMore = true.obs;
 
-  Future<ApiResult<FavFolderData>?> queryFavFolder({type = 'init'}) async {
+  Future<ApiResult<FavFolderData>?> queryFavFolder({
+    String type = 'init',
+  }) async {
     userInfo = userInfoCache.get('userInfoCache');
     if (userInfo == null) {
       return const ApiFailure<FavFolderData>(

@@ -29,34 +29,33 @@ class _HistoryPageState extends State<HistoryPage> {
     super.initState();
     _futureBuilderFuture = _historyController.queryHistoryList();
     scrollController = _historyController.scrollController;
-    scrollController.addListener(
-      () {
-        if (scrollController.position.pixels >=
-            scrollController.position.maxScrollExtent - 300) {
-          if (!_historyController.isLoadingMore.value) {
-            EasyThrottle.throttle('history', const Duration(seconds: 1), () {
-              _historyController.onLoad();
-            });
-          }
+    scrollController.addListener(() {
+      if (scrollController.position.pixels >=
+          scrollController.position.maxScrollExtent - 300) {
+        if (!_historyController.isLoadingMore.value) {
+          EasyThrottle.throttle('history', const Duration(seconds: 1), () {
+            _historyController.onLoad();
+          });
         }
-      },
-    );
+      }
+    });
     _historyController.enableMultiple.listen((p0) {
       setState(() {});
     });
   }
 
   // 选中
-  onChoose(index) {
+  void onChoose(int index) {
     _historyController.historyList[index].checked =
         !_historyController.historyList[index].checked!;
-    _historyController.checkedCount.value =
-        _historyController.historyList.where((item) => item.checked!).length;
+    _historyController.checkedCount.value = _historyController.historyList
+        .where((item) => item.checked!)
+        .length;
     _historyController.historyList.refresh();
   }
 
   // 更新多选状态
-  onUpdateMultiple() {
+  void onUpdateMultiple() {
     setState(() {});
   }
 
@@ -74,10 +73,7 @@ class _HistoryPageState extends State<HistoryPage> {
         child1: AppBar(
           titleSpacing: 0,
           centerTitle: false,
-          title: Text(
-            '观看记录',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          title: Text('观看记录', style: Theme.of(context).textTheme.titleMedium),
           actions: [
             IconButton(
               tooltip: '搜索',
@@ -108,9 +104,11 @@ class _HistoryPageState extends State<HistoryPage> {
                 PopupMenuItem<String>(
                   value: 'pause',
                   child: Obx(
-                    () => Text(!_historyController.pauseStatus.value
-                        ? '暂停观看记录'
-                        : '恢复观看记录'),
+                    () => Text(
+                      !_historyController.pauseStatus.value
+                          ? '暂停观看记录'
+                          : '恢复观看记录',
+                    ),
                   ),
                 ),
                 const PopupMenuItem<String>(
@@ -200,30 +198,32 @@ class _HistoryPageState extends State<HistoryPage> {
                           ? SliverGrid(
                               gridDelegate:
                                   SliverGridDelegateWithExtentAndRatio(
-                                      mainAxisSpacing: StyleString.cardSpace,
-                                      crossAxisSpacing: StyleString.safeSpace,
-                                      maxCrossAxisExtent: Grid.maxRowWidth * 2,
-                                      childAspectRatio:
-                                          StyleString.aspectRatio * 2.4,
-                                      mainAxisExtent: 0),
+                                    mainAxisSpacing: StyleString.cardSpace,
+                                    crossAxisSpacing: StyleString.safeSpace,
+                                    maxCrossAxisExtent: Grid.maxRowWidth * 2,
+                                    childAspectRatio:
+                                        StyleString.aspectRatio * 2.4,
+                                    mainAxisExtent: 0,
+                                  ),
                               delegate: SliverChildBuilderDelegate(
-                                  (context, index) {
-                                return HistoryItem(
-                                  videoItem:
-                                      _historyController.historyList[index],
-                                  ctr: _historyController,
-                                  onChoose: () => onChoose(index),
-                                  onUpdateMultiple: () => onUpdateMultiple(),
-                                );
-                              },
-                                  childCount:
-                                      _historyController.historyList.length),
+                                (context, index) {
+                                  return HistoryItem(
+                                    videoItem:
+                                        _historyController.historyList[index],
+                                    ctr: _historyController,
+                                    onChoose: () => onChoose(index),
+                                    onUpdateMultiple: () => onUpdateMultiple(),
+                                  );
+                                },
+                                childCount:
+                                    _historyController.historyList.length,
+                              ),
                             )
                           : _historyController.isLoadingMore.value
-                              ? const SliverToBoxAdapter(
-                                  child: Center(child: Text('加载中')),
-                                )
-                              : const NoData(),
+                          ? const SliverToBoxAdapter(
+                              child: Center(child: Text('加载中')),
+                            )
+                          : const NoData(),
                     );
                   } else {
                     return HttpError(
@@ -237,11 +237,12 @@ class _HistoryPageState extends State<HistoryPage> {
                   // 骨架屏
                   return SliverGrid(
                     gridDelegate: SliverGridDelegateWithExtentAndRatio(
-                        mainAxisSpacing: StyleString.cardSpace,
-                        crossAxisSpacing: StyleString.safeSpace,
-                        maxCrossAxisExtent: Grid.maxRowWidth * 2,
-                        childAspectRatio: StyleString.aspectRatio * 2.4,
-                        mainAxisExtent: 0),
+                      mainAxisSpacing: StyleString.cardSpace,
+                      crossAxisSpacing: StyleString.safeSpace,
+                      maxCrossAxisExtent: Grid.maxRowWidth * 2,
+                      childAspectRatio: StyleString.aspectRatio * 2.4,
+                      mainAxisExtent: 0,
+                    ),
                     delegate: SliverChildBuilderDelegate((context, index) {
                       return const VideoCardHSkeleton();
                     }, childCount: 10),
@@ -253,7 +254,7 @@ class _HistoryPageState extends State<HistoryPage> {
               child: SizedBox(
                 height: MediaQuery.of(context).padding.bottom + 10,
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -281,10 +282,7 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 500),
       transitionBuilder: (Widget child, Animation<double> animation) {
-        return ScaleTransition(
-          scale: animation,
-          child: child,
-        );
+        return ScaleTransition(scale: animation, child: child);
       },
       child: !visible ? child1 : child2,
     );

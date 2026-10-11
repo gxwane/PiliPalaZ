@@ -139,7 +139,7 @@ class _SearchPageState extends State<SearchPage> with RouteAware {
     );
   }
 
-  Widget hotSearch(ctr) {
+  Widget hotSearch(SSearchController ctr) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 14, 4, 20),
       child: Column(

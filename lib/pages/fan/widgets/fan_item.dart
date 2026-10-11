@@ -3,11 +3,13 @@ import 'package:get/get.dart';
 import 'package:pilipalaz/common/widgets/network_img_layer.dart';
 import 'package:pilipalaz/utils/utils.dart';
 
-Widget fanItem({item}) {
+Widget fanItem({dynamic item}) {
   String heroTag = Utils.makeHeroTag(item!.mid);
   return ListTile(
-    onTap: () => Get.toNamed('/member?mid=${item.mid}',
-        arguments: {'face': item.face, 'heroTag': heroTag}),
+    onTap: () => Get.toNamed(
+      '/member?mid=${item.mid}',
+      arguments: {'face': item.face, 'heroTag': heroTag},
+    ),
     leading: Hero(
       tag: heroTag,
       child: NetworkImgLayer(
@@ -18,11 +20,7 @@ Widget fanItem({item}) {
       ),
     ),
     title: Text(item.uname),
-    subtitle: Text(
-      item.sign,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    ),
+    subtitle: Text(item.sign, maxLines: 1, overflow: TextOverflow.ellipsis),
     dense: true,
     trailing: const SizedBox(width: 6),
   );

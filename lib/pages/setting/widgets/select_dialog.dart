@@ -12,7 +12,7 @@ class SelectDialog<T> extends StatefulWidget {
   });
 
   @override
-  _SelectDialogState<T> createState() => _SelectDialogState<T>();
+  State<SelectDialog<T>> createState() => _SelectDialogState<T>();
 }
 
 class _SelectDialogState<T> extends State<SelectDialog<T>> {

@@ -29,7 +29,9 @@ class VideoReplyReplyController extends GetxController {
     currentPage = 0;
   }
 
-  Future<ApiResult<ReplyReplyData>?> queryReplyList({type = 'init'}) async {
+  Future<ApiResult<ReplyReplyData>?> queryReplyList({
+    String type = 'init',
+  }) async {
     if (type == 'init') {
       currentPage = 0;
     }
@@ -45,8 +47,7 @@ class VideoReplyReplyController extends GetxController {
     );
     if (res case ApiSuccess<ReplyReplyData>(:final data)) {
       if (data.root != null) root = data.root;
-      final List<ReplyItemModel> replies =
-          data.replies ?? <ReplyItemModel>[];
+      final List<ReplyItemModel> replies = data.replies ?? <ReplyItemModel>[];
       if (replies.isNotEmpty) {
         noMore.value = '加载中...';
         if (replies.length == data.page?.count) {

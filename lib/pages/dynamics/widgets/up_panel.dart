@@ -23,7 +23,7 @@ class _UpPanelState extends State<UpPanel> {
   List<UpItem> upList = [];
   List<LiveUserItem> liveList = [];
   Box userInfoCache = GStorage.userInfo;
-  var userInfo;
+  dynamic userInfo;
   bool _showLiveItems = false;
   late DynamicsController dynamicsController;
 
@@ -105,7 +105,7 @@ class _UpPanelState extends State<UpPanel> {
     );
   }
 
-  Widget upItemBuild(data, i) {
+  Widget upItemBuild(dynamic data, int i) {
     bool isCurrent = currentMid == data.mid || currentMid == -1;
     return InkWell(
       onTap: () {
