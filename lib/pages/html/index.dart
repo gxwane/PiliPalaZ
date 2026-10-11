@@ -1,4 +1,4 @@
-library html_render;
+library;
 
 export './controller.dart';
 export './view.dart';

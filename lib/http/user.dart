@@ -149,7 +149,7 @@ class UserHttp {
   static Future<ApiResult<void>> toViewLater({String? bvid, int? aid}) async {
     return _postSuccess(Api.toViewLater, 'watchLater.add', <String, dynamic>{
       'csrf': await HttpRuntime.instance.getCsrf(),
-      if (bvid != null) 'bvid': bvid,
+      'bvid': ?bvid,
       if (bvid == null && aid != null) 'aid': aid,
     });
   }

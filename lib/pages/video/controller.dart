@@ -380,7 +380,7 @@ class VideoDetailController extends GetxController
       videoDetailCtr: this,
       heroTag: heroTag,
     );
-    print("resumePlay:${resumePlay},isFirstTime:${isFirstTime}");
+    print("resumePlay:$resumePlay,isFirstTime:$isFirstTime");
     if (!resumePlay) {
       await plPlayerController!.setDataSource(
         DataSource(
@@ -513,11 +513,7 @@ class VideoDetailController extends GetxController
         ),
       );
     }
-    return <String, dynamic>{
-      'status': false,
-      'msg': message,
-      if (code != null) 'code': code,
-    };
+    return <String, dynamic>{'status': false, 'msg': message, 'code': ?code};
   }
 
   void playbackSuccess({required bool showPreviewNotice}) {

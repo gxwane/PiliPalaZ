@@ -1,4 +1,4 @@
-library bangumi_intro;
+library;
 
 export 'controller.dart';
 export 'view.dart';

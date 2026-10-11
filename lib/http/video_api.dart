@@ -38,8 +38,8 @@ final class VideoApi {
       'cid': cid,
       'qn': qn ?? 80,
       'fnval': 4048,
-      if (avid != null) 'avid': avid,
-      if (bvid != null) 'bvid': bvid,
+      'avid': ?avid,
+      'bvid': ?bvid,
     };
     if ((GStorage.userInfo.get('userInfoCache') == null ||
             MineController.anonymity) &&

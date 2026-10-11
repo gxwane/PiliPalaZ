@@ -556,7 +556,7 @@ class DownloadSheetState extends State<DownloadSheet> {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
-          if (badge != null) badge,
+          ?badge,
         ],
       ),
     );

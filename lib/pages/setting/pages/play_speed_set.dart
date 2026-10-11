@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import 'package:hive/hive.dart';
 import 'package:pilipalaz/pages/setting/widgets/switch_item.dart';
 import 'package:pilipalaz/plugin/pl_player/index.dart';
-import 'package:pilipalaz/plugin/pl_player/models/play_speed.dart';
 import 'package:pilipalaz/utils/storage.dart';
 
 class PlaySpeedPage extends StatefulWidget {
@@ -26,28 +25,19 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
     {
       'id': 1,
       'title': '设置为默认倍速',
-      'leading': const Icon(
-        Icons.speed,
-        size: 21,
-      ),
+      'leading': const Icon(Icons.speed, size: 21),
       'show': true,
     },
     {
       'id': 2,
       'title': '设置为默认长按倍速',
-      'leading': const Icon(
-        Icons.speed_sharp,
-        size: 21,
-      ),
+      'leading': const Icon(Icons.speed_sharp, size: 21),
       'show': true,
     },
     {
       'id': -1,
       'title': '删除该项',
-      'leading': const Icon(
-        Icons.delete_outline,
-        size: 21,
-      ),
+      'leading': const Icon(Icons.delete_outline, size: 21),
       'show': true,
     },
   ];
@@ -64,11 +54,15 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
         .get(VideoBoxKey.longPressSpeedDefault, defaultValue: 3.0)
         .toDouble();
     List<double> defaultList = <double>[0.5, 0.75, 1.25, 1.5, 1.75, 3.0];
-    customSpeedsList = List<double>.from(videoStorage
-        .get(VideoBoxKey.customSpeedsList, defaultValue: defaultList)
-        .map((e) => e.toDouble()));
-    enableAutoLongPressSpeed = settingStorage
-        .get(SettingBoxKey.enableAutoLongPressSpeed, defaultValue: false);
+    customSpeedsList = List<double>.from(
+      videoStorage
+          .get(VideoBoxKey.customSpeedsList, defaultValue: defaultList)
+          .map((e) => e.toDouble()),
+    );
+    enableAutoLongPressSpeed = settingStorage.get(
+      SettingBoxKey.enableAutoLongPressSpeed,
+      defaultValue: false,
+    );
     if (enableAutoLongPressSpeed) {
       Map newItem = sheetMenu[1];
       newItem['show'] = false;
@@ -76,8 +70,10 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
         sheetMenu[1] = newItem;
       });
     }
-    enableLongPressSpeedIncrease = settingStorage
-        .get(SettingBoxKey.enableLongPressSpeedIncrease, defaultValue: false);
+    enableLongPressSpeedIncrease = settingStorage.get(
+      SettingBoxKey.enableLongPressSpeedIncrease,
+      defaultValue: false,
+    );
   }
 
   // 添加自定义倍速
@@ -108,21 +104,20 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Get.back(),
-              child: const Text('取消'),
-            ),
+            TextButton(onPressed: () => Get.back(), child: const Text('取消')),
             TextButton(
               onPressed: () async {
                 customSpeedsList.add(customSpeed);
                 await videoStorage.put(
-                    VideoBoxKey.customSpeedsList, customSpeedsList);
+                  VideoBoxKey.customSpeedsList,
+                  customSpeedsList,
+                );
                 PlPlayerController.updateSettingsIfExist();
                 setState(() {});
                 Get.back();
               },
               child: const Text('确认添加'),
-            )
+            ),
           ],
         );
       },
@@ -187,7 +182,9 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
       // 设置默认长按倍速
       longPressSpeedDefault = chooseSpeed;
       videoStorage.put(
-          VideoBoxKey.longPressSpeedDefault, longPressSpeedDefault);
+        VideoBoxKey.longPressSpeedDefault,
+        longPressSpeedDefault,
+      );
     } else if (id == -1) {
       if (customSpeedsList[index] == playSpeedDefault) {
         playSpeedDefault = 1.0;
@@ -196,7 +193,9 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
       if (customSpeedsList[index] == longPressSpeedDefault) {
         longPressSpeedDefault = 3.0;
         videoStorage.put(
-            VideoBoxKey.longPressSpeedDefault, longPressSpeedDefault);
+          VideoBoxKey.longPressSpeedDefault,
+          longPressSpeedDefault,
+        );
       }
       customSpeedsList.removeAt(index);
       await videoStorage.put(VideoBoxKey.customSpeedsList, customSpeedsList);
@@ -214,10 +213,7 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
         scrolledUnderElevation: 0,
         titleSpacing: 0,
         centerTitle: false,
-        title: Text(
-          '倍速设置',
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        title: Text('倍速设置', style: Theme.of(context).textTheme.titleMedium),
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -225,8 +221,10 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
           children: [
             ListTile(
               dense: false,
-              title: Text('当前默认倍速',
-                  style: Theme.of(context).textTheme.titleMedium),
+              title: Text(
+                '当前默认倍速',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               subtitle: Text(playSpeedDefault.toString()),
             ),
             SetSwitchItem(
@@ -247,8 +245,10 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
             !enableAutoLongPressSpeed
                 ? ListTile(
                     dense: false,
-                    title: Text('默认长按倍速',
-                        style: Theme.of(context).textTheme.titleMedium),
+                    title: Text(
+                      '默认长按倍速',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
                     subtitle: Text(longPressSpeedDefault.toString()),
                   )
                 : const SizedBox(),
@@ -262,8 +262,12 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
               },
             ),
             Padding(
-              padding:
-                  const EdgeInsets.only(left: 14, right: 14, top: 6, bottom: 0),
+              padding: const EdgeInsets.only(
+                left: 14,
+                right: 14,
+                top: 6,
+                bottom: 0,
+              ),
               child: Text(
                 '点击下方按钮设置默认倍速、默认长按倍速',
                 style: TextStyle(color: Theme.of(context).colorScheme.outline),
@@ -282,11 +286,7 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(
-                left: 18,
-                right: 18,
-                bottom: 30,
-              ),
+              padding: const EdgeInsets.only(left: 18, right: 18, bottom: 30),
               child: Wrap(
                 alignment: WrapAlignment.start,
                 spacing: 8,
@@ -297,28 +297,23 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
                       onPressed: () => showBottomSheet('system', i.index),
                       child: Text(i.description),
                     ),
-                  ]
+                  ],
                 ],
               ),
             ),
             Padding(
-                padding: const EdgeInsets.only(
-                  left: 14,
-                  right: 14,
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      '自定义倍速',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(width: 12),
-                    TextButton(
-                      onPressed: () => onAddSpeed(),
-                      child: const Text('添加'),
-                    )
-                  ],
-                )),
+              padding: const EdgeInsets.only(left: 14, right: 14),
+              child: Row(
+                children: [
+                  Text('自定义倍速', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(width: 12),
+                  TextButton(
+                    onPressed: () => onAddSpeed(),
+                    child: const Text('添加'),
+                  ),
+                ],
+              ),
+            ),
             Padding(
               padding: EdgeInsets.only(
                 left: 18,
@@ -336,7 +331,7 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
                             onPressed: () => showBottomSheet('custom', i),
                             child: Text(customSpeedsList[i].toString()),
                           ),
-                        ]
+                        ],
                       ],
                     )
                   : SizedBox(
@@ -345,7 +340,8 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
                         child: Text(
                           '未添加',
                           style: TextStyle(
-                              color: Theme.of(context).colorScheme.outline),
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
                         ),
                       ),
                     ),
@@ -353,11 +349,9 @@ class _PlaySpeedPageState extends State<PlaySpeedPage> {
             ListTile(
               subtitle: Text(
                 '注：由于播放器性能限制，4k、8k视频以大于2倍速播放，可能会出现卡顿、音画不同步等问题，请酌情选择。',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.outline,
-                ),
+                style: TextStyle(color: Theme.of(context).colorScheme.outline),
               ),
-            )
+            ),
           ],
         ),
       ),

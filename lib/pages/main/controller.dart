@@ -43,7 +43,7 @@ class MainController extends GetxController {
     selectedIndex = defaultNavigationBars.indexWhere(
       (item) => item['id'] == defaultHomePage,
     );
-    print("selectedIndex: ${selectedIndex}");
+    print("selectedIndex: $selectedIndex");
     pageController = PageController(initialPage: selectedIndex);
     var userInfo = userInfoCache.get('userInfoCache');
     userLogin.value = userInfo != null;

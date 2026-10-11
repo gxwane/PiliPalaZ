@@ -1,4 +1,4 @@
-library member_search;
+library;
 
 export './controller.dart';
 export './view.dart';

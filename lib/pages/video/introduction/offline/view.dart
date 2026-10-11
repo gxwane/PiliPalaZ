@@ -389,7 +389,7 @@ class _OfflinePartSelector extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: parts.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, int i) {
           final DownloadTask part = parts[i];
           final bool isCurrent = part.cid == currentCid;

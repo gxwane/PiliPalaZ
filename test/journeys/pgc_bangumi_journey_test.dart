@@ -146,8 +146,9 @@ void main() {
           step: const Duration(milliseconds: 100),
           maxSteps: 1,
         );
-        if ((bangumiIntroCtr.bangumiDetail.value.episodes ?? []).isNotEmpty)
+        if ((bangumiIntroCtr.bangumiDetail.value.episodes ?? []).isNotEmpty) {
           break;
+        }
       }
 
       final episodes = bangumiIntroCtr.bangumiDetail.value.episodes;

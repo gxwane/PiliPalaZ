@@ -101,8 +101,8 @@ final class PgcApi {
       Api.bangumiInfo,
       endpoint: 'pgc.info',
       queryParameters: <String, dynamic>{
-        if (seasonId != null) 'season_id': seasonId,
-        if (epId != null) 'ep_id': epId,
+        'season_id': ?seasonId,
+        'ep_id': ?epId,
       },
       decode: (json) => BiliApiDecoder.result<BangumiInfoModel>(
         json,
@@ -196,7 +196,7 @@ final class PgcApi {
   }) {
     final data = <String, dynamic>{
       'ep_id': epId,
-      if (cid != null) 'cid': cid,
+      'cid': ?cid,
       'qn': qn ?? 80,
       'fnval': 4048,
       'fourk': 1,

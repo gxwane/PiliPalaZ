@@ -1,4 +1,4 @@
-library member_season;
+library;
 
 export 'controller.dart';
 export 'view.dart';

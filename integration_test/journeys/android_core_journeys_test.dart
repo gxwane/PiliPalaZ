@@ -262,8 +262,9 @@ void main() {
           await tester.runAsync(
             () => Future<void>.delayed(const Duration(milliseconds: 50)),
           );
-          if (plController.playerStatus.status.value == PlayerStatus.paused)
+          if (plController.playerStatus.status.value == PlayerStatus.paused) {
             break;
+          }
         }
         expect(
           plController.playerStatus.status.value,
@@ -278,8 +279,9 @@ void main() {
           await tester.runAsync(
             () => Future<void>.delayed(const Duration(milliseconds: 50)),
           );
-          if (plController.playerStatus.status.value == PlayerStatus.playing)
+          if (plController.playerStatus.status.value == PlayerStatus.playing) {
             break;
+          }
         }
         expect(
           plController.playerStatus.status.value,
@@ -353,8 +355,9 @@ void main() {
           await tester.runAsync(
             () => Future<void>.delayed(const Duration(milliseconds: 50)),
           );
-          if (plController.playerStatus.status.value == PlayerStatus.paused)
+          if (plController.playerStatus.status.value == PlayerStatus.paused) {
             break;
+          }
         }
         expect(
           plController.playerStatus.status.value,
@@ -367,8 +370,9 @@ void main() {
           await tester.runAsync(
             () => Future<void>.delayed(const Duration(milliseconds: 50)),
           );
-          if (plController.playerStatus.status.value == PlayerStatus.playing)
+          if (plController.playerStatus.status.value == PlayerStatus.playing) {
             break;
+          }
         }
         expect(
           plController.playerStatus.status.value,

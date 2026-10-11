@@ -263,7 +263,7 @@ abstract final class MemberHttp {
         'sort': sortReverse ? 'desc' : 'asc',
         'pn': pn,
         'ps': ps,
-        if (currentMid != null) 'current_mid': currentMid,
+        'current_mid': ?currentMid,
       },
       endpoint: 'member.seriesDetail',
       decode: (json) => _data<MemberSeriesList>(

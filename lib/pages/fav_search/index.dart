@@ -1,4 +1,4 @@
-library fav_search;
+library;
 
 export './controller.dart';
 export './view.dart';

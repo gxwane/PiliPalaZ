@@ -188,12 +188,13 @@ HttpTestHarness setupJourneyHarness({
   bool simulateOffline = false,
   bool simulateTimeout = false,
 }) {
-  final defaultResponder = (RequestOptions options) => journeyMockDispatcher(
-    options,
-    customHandler: customHandler,
-    simulateOffline: simulateOffline,
-    simulateTimeout: simulateTimeout,
-  );
+  ResponseBody defaultResponder(RequestOptions options) =>
+      journeyMockDispatcher(
+        options,
+        customHandler: customHandler,
+        simulateOffline: simulateOffline,
+        simulateTimeout: simulateTimeout,
+      );
   final harness = HttpTestHarness(responder ?? defaultResponder);
   HttpRuntime.setInstanceForTesting(harness.runtime);
   VideoApi.resetForTesting();

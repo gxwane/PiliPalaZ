@@ -709,8 +709,8 @@ abstract final class VideoHttp {
     return _client.getJson<VideoPlayerMetadata>(
       Api.videoMetaInfo,
       queryParameters: <String, dynamic>{
-        if (aid != null) 'aid': aid,
-        if (bvid != null) 'bvid': bvid,
+        'aid': ?aid,
+        'bvid': ?bvid,
         'cid': cid,
       },
       endpoint: 'video.metadata',
@@ -866,8 +866,8 @@ abstract final class VideoHttp {
       queryParameters: <String, dynamic>{
         'goto': goto,
         'id': id,
-        if (reasonId != null) 'reason_id': reasonId,
-        if (feedbackId != null) 'feedback_id': feedbackId,
+        'reason_id': ?reasonId,
+        'feedback_id': ?feedbackId,
         'build': 1,
         'mobi_app': 'android',
         'access_key': accessKey,

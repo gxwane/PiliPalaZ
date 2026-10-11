@@ -452,7 +452,7 @@ class _PlayQueueBottomSheetState extends State<PlayQueueBottomSheet> {
                         bottom: MediaQuery.paddingOf(context).bottom + 12,
                       ),
                       itemCount: queue.length,
-                      separatorBuilder: (_, __) => Divider(
+                      separatorBuilder: (_, _) => Divider(
                         indent: 52,
                         endIndent: 14,
                         height: 1,

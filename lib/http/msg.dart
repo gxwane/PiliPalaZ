@@ -119,7 +119,7 @@ abstract final class MsgHttp {
         'sort_rule': 2,
         'build': 0,
         'mobi_app': 'web',
-        if (endTs != null) 'end_ts': endTs,
+        'end_ts': ?endTs,
       },
       decode: SessionDataModel.fromJson,
     );

@@ -97,8 +97,8 @@ class SearchHttp {
       'search_type': searchType.type,
       'keyword': keyword,
       'page': page,
-      if (order != null) 'order': order,
-      if (duration != null) 'duration': duration,
+      'order': ?order,
+      'duration': ?duration,
     };
     final signed = await WbiSign().sign(unsigned);
     if (signed case ApiFailure<Map<String, dynamic>> failure) {
@@ -158,7 +158,7 @@ class SearchHttp {
       Api.ab2c,
       endpoint: 'video.cid',
       queryParameters: <String, dynamic>{
-        if (aid != null) 'aid': aid,
+        'aid': ?aid,
         if (aid == null && bvid != null) 'bvid': bvid,
       },
       decode: (json) => BiliApiDecoder.data<int>(

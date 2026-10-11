@@ -1,4 +1,4 @@
-library bangumi_panel;
+library;
 
 export './controller.dart';
 export './view.dart';
