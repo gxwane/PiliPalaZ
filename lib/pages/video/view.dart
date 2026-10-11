@@ -37,13 +37,31 @@ import 'package:pilipalaz/common/widgets/spring_physics.dart';
 import 'package:flutter_floating/floating/manager/floating_manager.dart';
 import 'package:custom_refresh_indicator/custom_refresh_indicator.dart';
 
+/// 视频详情页专用路由监听器，忽略透明/浮层等非不透明 PageRoute，避免误触发页面离开与播放器销毁重构
+class VideoRouteObserver extends RouteObserver<PageRoute<dynamic>> {
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is PageRoute && !route.opaque) {
+      return;
+    }
+    super.didPush(route, previousRoute);
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (route is PageRoute && !route.opaque) {
+      return;
+    }
+    super.didPop(route, previousRoute);
+  }
+}
+
 class VideoDetailPage extends StatefulWidget {
   const VideoDetailPage({super.key});
 
   @override
   State<VideoDetailPage> createState() => _VideoDetailPageState();
-  static final RouteObserver<PageRoute> routeObserver =
-      RouteObserver<PageRoute>();
+  static final RouteObserver<PageRoute> routeObserver = VideoRouteObserver();
 }
 
 class _VideoDetailPageState extends State<VideoDetailPage>
@@ -405,6 +423,10 @@ class _VideoDetailPageState extends State<VideoDetailPage>
   @override
   // 离开当前页面时
   void didPushNext() {
+    if (videoDetailController.isPlaybackModalActive) {
+      super.didPushNext();
+      return;
+    }
     final PlPlayerController? controller = plPlayerController;
     if (controller == null) {
       super.didPushNext();
@@ -433,6 +455,9 @@ class _VideoDetailPageState extends State<VideoDetailPage>
   // 返回当前页面时
   void didPopNext() {
     super.didPopNext();
+    if (videoDetailController.isPlaybackModalActive) {
+      return;
+    }
     if (videoDetailController.sourceType.isPgc) {
       bangumiIntroController.playbackQueueController.markActive();
     } else {

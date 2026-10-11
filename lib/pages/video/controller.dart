@@ -62,6 +62,9 @@ class VideoDetailController extends GetxController
   File? offlineChapterFile;
   PlaybackQueueController? playbackQueueController;
 
+  /// 临时模态（如评论区全屏透明大图预览）活动标记，避免触发页面级播放器销毁与重新初始化
+  bool isPlaybackModalActive = false;
+
   /// tabs相关配置
   int tabInitialIndex = 0;
   late TabController tabCtr;

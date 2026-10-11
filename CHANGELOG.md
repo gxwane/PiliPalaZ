@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### 修复
+
+- 视频评论区大图预览返回自动恢复播放（`VideoRouteObserver` 与 `_showReplyImagePreview`）：
+  - 过滤透明浮层路由（`VideoRouteObserver`）：派生专用路由监听器，忽略透明非不透明 PageRoute（`TransparentRoute`），避免打开全屏图片预览时误触发视频页离开逻辑（`didPushNext`），杜绝播放器底层解码引擎被错误停止（`controller.disable()`）；
+  - 控制器与模态生命周期双重守卫：在 `VideoDetailController` 引入 `isPlaybackModalActive` 临时浮层保护，健全 `_showReplyImagePreview` 中控制器查找回退链，确保图片放大后缩小退出时，视频能平滑无缝地自动继续播放。
+
 ## [1.6.0-beta.2] - 2026-10-10
 
 ### 修复

@@ -669,15 +669,29 @@ Future<void> _showReplyImagePreview(
     return;
   }
 
-  late final VideoDetailController videoController;
+  VideoDetailController? videoController;
   try {
     final Object? heroTag = Get.arguments?['heroTag'];
-    if (heroTag == null) {
-      await showPreview();
-      return;
+    if (heroTag != null &&
+        Get.isRegistered<VideoDetailController>(tag: heroTag.toString())) {
+      videoController = Get.find<VideoDetailController>(
+        tag: heroTag.toString(),
+      );
+    } else {
+      final String? bvid = Get.parameters['bvid'];
+      if (bvid != null && bvid.isNotEmpty) {
+        final String computedTag = Utils.makeHeroTag(bvid);
+        if (Get.isRegistered<VideoDetailController>(tag: computedTag)) {
+          videoController = Get.find<VideoDetailController>(tag: computedTag);
+        }
+      }
     }
-    videoController = Get.find<VideoDetailController>(tag: heroTag.toString());
-  } catch (_) {
+    if (videoController == null && Get.isRegistered<VideoDetailController>()) {
+      videoController = Get.find<VideoDetailController>();
+    }
+  } catch (_) {}
+
+  if (videoController == null) {
     await showPreview();
     return;
   }
@@ -694,19 +708,24 @@ Future<void> _showReplyImagePreview(
   final bool wasPlaying =
       player.playerStatus.status.value == PlayerStatus.playing;
 
-  await runPlaybackAwareModal<void>(
-    wasPlaying: wasPlaying,
-    pause: player.pause,
-    showModal: showPreview,
-    canResume: () =>
-        context.mounted &&
-        identical(videoController.plPlayerController, player) &&
-        player.ownsNativeResources(owner) &&
-        player.bvid == bvid &&
-        player.cid == cid &&
-        player.playerStatus.status.value == PlayerStatus.paused,
-    resume: player.play,
-  );
+  videoController.isPlaybackModalActive = true;
+  try {
+    await runPlaybackAwareModal<void>(
+      wasPlaying: wasPlaying,
+      pause: player.pause,
+      showModal: showPreview,
+      canResume: () =>
+          context.mounted &&
+          identical(videoController?.plPlayerController, player) &&
+          player.ownsNativeResources(owner) &&
+          player.bvid == bvid &&
+          player.cid == cid &&
+          player.playerStatus.status.value == PlayerStatus.paused,
+      resume: player.play,
+    );
+  } finally {
+    videoController.isPlaybackModalActive = false;
+  }
 }
 
 Size _measureTopBadge(BuildContext context) {
