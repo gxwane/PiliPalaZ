@@ -36,10 +36,8 @@ class _RcmdPageState extends State<RcmdPage>
     super.initState();
     _futureBuilderFuture = _rcmdController.queryRcmdFeed('init');
     ScrollController scrollController = _rcmdController.scrollController;
-    StreamController<bool> mainStream =
-        Get.find<MainController>().bottomBarStream;
-    StreamController<bool> searchBarStream =
-        Get.find<HomeController>().searchBarStream;
+    final mainController = Get.find<MainController>();
+    final homeController = Get.find<HomeController>();
     scrollController.addListener(() {
       if (scrollController.position.pixels >=
           scrollController.position.maxScrollExtent - 200) {
@@ -54,11 +52,11 @@ class _RcmdPageState extends State<RcmdPage>
       final ScrollDirection direction =
           scrollController.position.userScrollDirection;
       if (direction == ScrollDirection.forward) {
-        mainStream.add(true);
-        searchBarStream.add(true);
+        mainController.bottomBarStream.add(true);
+        homeController.searchBarStream.add(true);
       } else if (direction == ScrollDirection.reverse) {
-        mainStream.add(false);
-        searchBarStream.add(false);
+        mainController.bottomBarStream.add(false);
+        homeController.searchBarStream.add(false);
       }
     });
   }

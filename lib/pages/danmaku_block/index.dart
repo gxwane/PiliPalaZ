@@ -20,16 +20,13 @@ class DanmakuBlockPage extends StatefulWidget {
 }
 
 class _DanmakuBlockPageState extends State<DanmakuBlockPage> {
-  final DanmakuBlockController _danmakuBlockController =
-      Get.put(DanmakuBlockController());
+  final DanmakuBlockController _danmakuBlockController = Get.put(
+    DanmakuBlockController(),
+  );
   final ScrollController scrollController = ScrollController();
   Box onlineCache = GStorage.onlineCache;
 
-  static const Map<int, String> ruleLabels = {
-    0: '关键词',
-    1: '正则',
-    2: '用户',
-  };
+  static const Map<int, String> ruleLabels = {0: '关键词', 1: '正则', 2: '用户'};
 
   @override
   void initState() {
@@ -38,7 +35,6 @@ class _DanmakuBlockPageState extends State<DanmakuBlockPage> {
       _danmakuBlockController.queryDanmakuFilter();
     });
   }
-
 
   @override
   void dispose() {
@@ -66,13 +62,16 @@ class _DanmakuBlockPageState extends State<DanmakuBlockPage> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text('添加新的${ruleLabels[type]}规则'),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(hintText),
-            TextField(
-              controller: textController,
-              //decoration: InputDecoration(hintText: hintText),
-            )
-          ]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(hintText),
+              TextField(
+                controller: textController,
+                //decoration: InputDecoration(hintText: hintText),
+              ),
+            ],
+          ),
           actions: <Widget>[
             TextButton(
               child: const Text('取消'),
@@ -86,7 +85,9 @@ class _DanmakuBlockPageState extends State<DanmakuBlockPage> {
                 String filter = textController.text;
                 if (filter.isNotEmpty) {
                   await _danmakuBlockController.danmakuFilterAdd(
-                      filter: filter, type: type);
+                    filter: filter,
+                    type: type,
+                  );
                   if (!context.mounted) return;
                   Navigator.of(context).pop();
                 } else {
@@ -105,14 +106,18 @@ class _DanmakuBlockPageState extends State<DanmakuBlockPage> {
     return Scaffold(
       appBar: AppBar(
         title: TabBar(
-            controller: _danmakuBlockController.tabController,
-            dividerColor: Colors.transparent,
-            tabs: [
-              for (var i = 0; i < ruleLabels.length; i++)
-                Obx(() => Tab(
-                    text:
-                        '${ruleLabels[i]}(${_danmakuBlockController.ruleTypes[i]!.length})')),
-            ]),
+          controller: _danmakuBlockController.tabController,
+          dividerColor: Colors.transparent,
+          tabs: [
+            for (var i = 0; i < ruleLabels.length; i++)
+              Obx(
+                () => Tab(
+                  text:
+                      '${ruleLabels[i]}(${_danmakuBlockController.ruleTypes[i]!.length})',
+                ),
+              ),
+          ],
+        ),
       ),
       body: TabBarView(
         physics: const CustomTabBarViewScrollPhysics(),
@@ -143,11 +148,14 @@ class _DanmakuBlockPageState extends State<DanmakuBlockPage> {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           trailing: IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: () async {
-                await _danmakuBlockController.danmakuFilterDel(
-                    tabIndex, list[listIndex].id);
-              }),
+            icon: const Icon(Icons.delete),
+            onPressed: () async {
+              await _danmakuBlockController.danmakuFilterDel(
+                tabIndex,
+                list[listIndex].id,
+              );
+            },
+          ),
         );
       },
     );
@@ -174,13 +182,15 @@ class DanmakuBlockController extends GetxController
     List<Map<String, dynamic>> simpleRuleList = ruleTypes.values
         .expand((element) => element)
         .map<Map<String, dynamic>>((e) {
-      //当正则表达式前后都有"/"时，去掉，避免RegExp解析错误
-      if (e.type == 1 && e.filter.startsWith('/') && e.filter.endsWith('/')) {
-        e.filter = e.filter.substring(1, e.filter.length - 1);
-      }
-      return e.toMap();
-    }).toList();
-    print("simpleRuleList:$simpleRuleList");
+          //当正则表达式前后都有"/"时，去掉，避免RegExp解析错误
+          if (e.type == 1 &&
+              e.filter.startsWith('/') &&
+              e.filter.endsWith('/')) {
+            e.filter = e.filter.substring(1, e.filter.length - 1);
+          }
+          return e.toMap();
+        })
+        .toList();
     onlineCache.put(OnlineCacheKey.danmakuFilterRule, simpleRuleList);
     PlDanmakuController.refresh();
   }
@@ -232,8 +242,10 @@ class DanmakuBlockController extends GetxController
 
   Future danmakuFilterAdd({required String filter, required int type}) async {
     SmartDialog.showLoading(msg: '正在添加弹幕屏蔽规则……');
-    var result =
-        await DanmakuFilterHttp.danmakuFilterAdd(filter: filter, type: type);
+    var result = await DanmakuFilterHttp.danmakuFilterAdd(
+      filter: filter,
+      type: type,
+    );
     SmartDialog.dismiss();
     if (result case ApiSuccess<Rule>(:final data)) {
       danmakuRules.add(data);

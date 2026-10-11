@@ -380,7 +380,6 @@ class VideoDetailController extends GetxController
       videoDetailCtr: this,
       heroTag: heroTag,
     );
-    print("resumePlay:$resumePlay,isFirstTime:$isFirstTime");
     if (!resumePlay) {
       await plPlayerController!.setDataSource(
         DataSource(
@@ -1047,9 +1046,7 @@ class VideoDetailController extends GetxController
   }
 
   // mob端全屏状态关闭二级回复
-  hiddenReplyReplyPanel() {
-    replyReplyBottomSheetCtr != null
-        ? replyReplyBottomSheetCtr!.close()
-        : print('replyReplyBottomSheetCtr is null');
+  void hiddenReplyReplyPanel() {
+    replyReplyBottomSheetCtr?.close();
   }
 }

@@ -54,18 +54,16 @@ class _BangumiPageState extends State<BangumiPage>
       );
     }
 
-    final StreamController<bool> mainStream =
-        Get.find<MainController>().bottomBarStream;
-    final StreamController<bool> searchBarStream =
-        Get.find<HomeController>().searchBarStream;
+    final mainController = Get.find<MainController>();
+    final homeController = Get.find<HomeController>();
     final ScrollDirection direction =
         scrollController.position.userScrollDirection;
     if (direction == ScrollDirection.forward) {
-      mainStream.add(true);
-      searchBarStream.add(true);
+      mainController.bottomBarStream.add(true);
+      homeController.searchBarStream.add(true);
     } else if (direction == ScrollDirection.reverse) {
-      mainStream.add(false);
-      searchBarStream.add(false);
+      mainController.bottomBarStream.add(false);
+      homeController.searchBarStream.add(false);
     }
   }
 

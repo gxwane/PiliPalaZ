@@ -231,7 +231,6 @@ class VideoIntroController extends GetxController {
     try {
       videoDetailCtr = Get.find<VideoDetailController>(tag: heroTag);
     } catch (_) {}
-    print("videoDetailCtr: $videoDetailCtr");
     if (videoDetailCtr == null) {
       Get.toNamed(
         '/video?bvid=$bvid&cid=${lastPlayCid.value}&resume=true',
@@ -242,9 +241,6 @@ class VideoIntroController extends GetxController {
     videoDetailCtr.resumePlay = true;
     popRouteStackContinuously = '/video?bvid=$bvid&cid=${lastPlayCid.value}';
     Get.until((Route<dynamic> route) {
-      print(route.settings.name);
-      print(route.settings.arguments);
-      print(route.settings.arguments.runtimeType);
       if (route.settings.arguments is Map) {
         String? heroTagCurr =
             (route.settings.arguments as Map<String, dynamic>)['heroTag'];

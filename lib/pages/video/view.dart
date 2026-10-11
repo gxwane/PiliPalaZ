@@ -67,7 +67,6 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     with TickerProviderStateMixin, RouteAware {
   late VideoDetailController videoDetailController;
   PlPlayerController? plPlayerController;
-  late StreamController<double> appbarStream;
   late VideoIntroController videoIntroController;
   late BangumiIntroController bangumiIntroController;
   late String heroTag;
@@ -163,7 +162,6 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     if (removeSafeArea) hideStatusBar();
     floatingManager.closeFloating(globalId);
     videoSourceInit();
-    appbarStreamListen();
     // lifecycleListener();
     autoScreen();
 
@@ -254,14 +252,8 @@ class _VideoDetailPageState extends State<VideoDetailPage>
   //   }
   // }
 
-  // 流
-  appbarStreamListen() {
-    appbarStream = StreamController<double>();
-  }
-
   // 播放器状态监听
   void playerListener(PlayerStatus? status) async {
-    print("playerListener $status");
     playerStatus = status!;
     switch (status) {
       case PlayerStatus.playing:

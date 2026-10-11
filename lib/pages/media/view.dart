@@ -34,8 +34,7 @@ class _MediaPageState extends State<MediaPage>
     mediaController = Get.put(MediaController());
     _futureBuilderFuture = mediaController.queryFavFolder();
     ScrollController scrollController = mediaController.scrollController;
-    StreamController<bool> mainStream =
-        Get.find<MainController>().bottomBarStream;
+    final mainController = Get.find<MainController>();
 
     mediaController.userLogin.listen((status) {
       setState(() {
@@ -46,9 +45,9 @@ class _MediaPageState extends State<MediaPage>
       final ScrollDirection direction =
           scrollController.position.userScrollDirection;
       if (direction == ScrollDirection.forward) {
-        mainStream.add(true);
+        mainController.bottomBarStream.add(true);
       } else if (direction == ScrollDirection.reverse) {
-        mainStream.add(false);
+        mainController.bottomBarStream.add(false);
       }
     });
   }

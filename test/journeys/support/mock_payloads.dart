@@ -440,7 +440,6 @@ ResponseBody journeyMockDispatcher(
   }
 
   final path = options.path;
-  print('DISPATCHER: path = $path');
 
   // 1. 导航与登录信息
   if (path.contains('/x/web-interface/nav')) {

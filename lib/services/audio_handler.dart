@@ -300,7 +300,6 @@ class VideoPlayerServiceHandler extends BaseAudioHandler
 
   bool checkTop() {
     String top = Get.currentRoute;
-    print("top:$top");
     return top.startsWith('/video') || top.startsWith('/live');
   }
 

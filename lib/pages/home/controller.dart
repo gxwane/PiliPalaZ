@@ -149,4 +149,11 @@ class HomeController extends GetxController with GetTickerProviderStateMixin {
           const Dialog(insetPadding: EdgeInsets.zero, child: MinePage()),
     );
   }
+
+  @override
+  void onClose() {
+    searchBarStream.close();
+    tabController.dispose();
+    super.onClose();
+  }
 }

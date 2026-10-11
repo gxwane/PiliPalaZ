@@ -173,14 +173,12 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         PlPlayerController.getPlayerStatusIfExists() == PlayerStatus.playing &&
         !onlyPlayAudioUponEnteringBackgroundMode &&
         !widget.controller.onlyPlayAudio.value) {
-      print('onlyPlayAudioUponEnteringBackgroundMode On');
       onlyPlayAudioUponEnteringBackgroundMode = true;
       widget.controller.setOnlyPlayAudio(true);
     } else if (PlPlayerController.getPlayerStatusIfExists() ==
             PlayerStatus.playing &&
         onlyPlayAudioUponEnteringBackgroundMode &&
         widget.controller.onlyPlayAudio.value) {
-      print('onlyPlayAudioUponEnteringBackgroundMode Off');
       onlyPlayAudioUponEnteringBackgroundMode = false;
       widget.controller.setOnlyPlayAudio(false);
     }
@@ -385,7 +383,7 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
         await ScreenBrightness.instance.setApplicationScreenBrightness(value);
       }
     } catch (e) {
-      print(e);
+      debugPrint('ScreenBrightness error: $e');
     }
     _brightnessIndicator.value = true;
     _brightnessTimer?.cancel();
@@ -1201,12 +1199,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                 // 左边区域 👈
                 final double level =
                     min(renderBox.size.height, renderBox.size.width) * 2.0;
-                print("level:$level");
                 final double brightness =
                     _brightnessValue.value - delta.dy / level;
-                print("brightness:$brightness");
                 final double result = brightness.clamp(0.0, 1.0);
-                print("result:$result");
                 setBrightness(result);
               } else if (_gestureType == 'middle') {
                 // 全屏/应用内小窗
@@ -1261,8 +1256,6 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                         case PlayerGestureAction.pipOutside:
                           // lib/pages/video/widgets/header_control.dart
 
-                          print(playerController.dataSource.videoSource);
-                          print(playerController.dataSource.audioSource);
                           playerController.controls = false;
                           int rationalWidth = 16;
                           int rationalHeight = 9;

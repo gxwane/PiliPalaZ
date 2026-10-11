@@ -43,7 +43,6 @@ class MainController extends GetxController {
     selectedIndex = defaultNavigationBars.indexWhere(
       (item) => item['id'] == defaultHomePage,
     );
-    print("selectedIndex: $selectedIndex");
     pageController = PageController(initialPage: selectedIndex);
     var userInfo = userInfoCache.get('userInfoCache');
     userLogin.value = userInfo != null;
@@ -104,5 +103,12 @@ class MainController extends GetxController {
       navigationBars[dynamicItemIndex]['count'] = 0; // 修改 count 属性为新的值
     }
     navigationBars.refresh();
+  }
+
+  @override
+  void onClose() {
+    bottomBarStream.close();
+    pageController.dispose();
+    super.onClose();
   }
 }

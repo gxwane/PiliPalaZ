@@ -53,7 +53,6 @@ class FansController extends GetxController {
       } else if (type == 'onLoad') {
         fansList.addAll(list);
       }
-      print('fansList: ${fansList.length}, total: $total');
       if ((pn == 1 && total < ps) || list.isEmpty) {
         loadingText.value = '没有更多了';
       }

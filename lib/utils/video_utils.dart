@@ -119,10 +119,8 @@ class VideoUtils {
     if (videoUrl?.isEmpty != false) {
       return "";
     }
-    print("videoUrl:$videoUrl");
 
     String defaultCDNHost = CDNServiceCode.fromCode(defaultCDNService)!.host;
-    print("defaultCDNHost:$defaultCDNHost");
     if (videoUrl!.contains("szbdyd.com")) {
       String hostname =
           Uri.parse(videoUrl).queryParameters['xy_usource'] ?? defaultCDNHost;
@@ -140,7 +138,6 @@ class VideoUtils {
         videoUrl,
       ).replace(host: defaultCDNHost, port: 443).toString();
     }
-    print("videoUrl:$videoUrl");
 
     // /// 先获取backupUrl 一般是upgcxcode地址 播放更稳定
     // if (item is VideoItem) {

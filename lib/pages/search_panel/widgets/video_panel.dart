@@ -44,7 +44,6 @@ class SearchVideoPanel extends StatelessWidget {
                             type: i['type'],
                             selectedType: controller.selectedType.value,
                             callFn: (bool selected) async {
-                              print('selected: $selected');
                               controller.selectedType.value = i['type'];
                               ctr.order.value = i['type']
                                   .toString()

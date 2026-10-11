@@ -45,7 +45,9 @@ class ShutdownTimerService with WidgetsBindingObserver {
     }
     SmartDialog.showToast("设置 $scheduledExitInMinutes 分钟后定时关闭");
     _shutdownTimer = Timer(
-        Duration(minutes: scheduledExitInMinutes), () => _shutdownDecider());
+      Duration(minutes: scheduledExitInMinutes),
+      () => _shutdownDecider(),
+    );
     isTimerRunning = true;
   }
 
@@ -72,7 +74,7 @@ class ShutdownTimerService with WidgetsBindingObserver {
 
   void _showShutdownDialog() {
     if (isInBackground) {
-      print("app在后台运行，不弹窗");
+      debugPrint("app在后台运行，不弹窗");
       _executeShutdown();
       return;
     }
