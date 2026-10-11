@@ -89,8 +89,12 @@ abstract final class MemberHttp {
         'web_location': 1550101,
         'order_avoided': orderAvoided,
         'dm_img_list': '[]',
-        'dm_img_str': dmImage.substring(0, dmImage.length - 2),
-        'dm_cover_img_str': dmCover.substring(0, dmCover.length - 2),
+        'dm_img_str': dmImage.length >= 2
+            ? dmImage.substring(0, dmImage.length - 2)
+            : dmImage,
+        'dm_cover_img_str': dmCover.length >= 2
+            ? dmCover.substring(0, dmCover.length - 2)
+            : dmCover,
         'dm_img_inter': '{"ds":[],"wh":[0,0,0],"of":[0,0,0]}',
       },
       decode: (value) => MemberArchiveDataModel.fromJson(

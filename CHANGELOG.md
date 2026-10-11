@@ -6,6 +6,9 @@
 
 ### 修复
 
+- 用户主页投稿加载随机崩溃修复（`MemberHttp.memberArchive` 与 `Utils.generateRandomBytes`）：
+  - 修复随机字节生成下限丢失缺陷：纠正 `Utils.generateRandomBytes` 中未加 `minLength` 导致偶发生成 0 字节并触发 `RangeError (end): -2` 越界异常的问题，确保字节长度严格落在 `[minLength, maxLength]` 区间内；
+  - 接口参数安全切片防御：在 `MemberHttp.memberArchive` 为 `dm_img_str` 与 `dm_cover_img_str` 补充长度防御检查，杜绝空串或极短字符导致的未处理异步异常。
 - 视频评论区大图预览返回自动恢复播放（`VideoRouteObserver` 与 `_showReplyImagePreview`）：
   - 过滤透明浮层路由（`VideoRouteObserver`）：派生专用路由监听器，忽略透明非不透明 PageRoute（`TransparentRoute`），避免打开全屏图片预览时误触发视频页离开逻辑（`didPushNext`），杜绝播放器底层解码引擎被错误停止（`controller.disable()`）；
   - 控制器与模态生命周期双重守卫：在 `VideoDetailController` 引入 `isPlaybackModalActive` 临时浮层保护，健全 `_showReplyImagePreview` 中控制器查找回退链，确保图片放大后缩小退出时，视频能平滑无缝地自动继续播放。

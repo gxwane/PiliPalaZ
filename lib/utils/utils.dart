@@ -355,10 +355,9 @@ class Utils {
   }
 
   static List<int> generateRandomBytes(int minLength, int maxLength) {
-    return List<int>.generate(
-      random.nextInt(maxLength - minLength + 1),
-      (_) => random.nextInt(0x60) + 0x20,
-    );
+    assert(minLength >= 0 && maxLength >= minLength);
+    final count = minLength + random.nextInt(maxLength - minLength + 1);
+    return List<int>.generate(count, (_) => random.nextInt(0x60) + 0x20);
   }
 
   static String base64EncodeRandomString(int minLength, int maxLength) {
