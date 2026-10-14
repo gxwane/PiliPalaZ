@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:dismissible_page/dismissible_page.dart';
 import 'package:extended_image/extended_image.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
@@ -55,8 +56,43 @@ class _ImagePreviewState extends State<ImagePreview>
   late DoubleClickAnimationListener _doubleClickAnimationListener;
   final List<double> doubleTapScales = <double>[1.0, 2.5];
 
+  /// 持久 Subtree Key，防止 DismissiblePage 在 disabled 切换时重构子树与销毁手势
+  final GlobalKey _previewSubtreeKey = GlobalKey();
+
+  /// 活跃触控点集合，解决异步落点与系统手势中断（如边缘滑动、Palm Rejection）时的状态泄露
+  final Set<int> _activePointers = <int>{};
+
   /// 是否处于放大浏览状态（缩放比例 > 1.0）
   bool _isZoomed = false;
+
+  /// 当处于缩放状态或屏幕有多指触控时，禁用下滑退出以保障内层 Scale 手势与自由拖拽漫游
+  bool get _isDismissDisabled => _isZoomed || _activePointers.length >= 2;
+
+  void _updatePointer(int pointer, bool isDown) {
+    final int oldLen = _activePointers.length;
+    if (isDown) {
+      _activePointers.add(pointer);
+    } else {
+      _activePointers.remove(pointer);
+    }
+    if ((oldLen >= 2) != (_activePointers.length >= 2) && mounted) {
+      setState(() {});
+    }
+  }
+
+  void _onGestureDetailsChanged(GestureDetails? details) {
+    final double scale = details?.totalScale ?? 1.0;
+    final bool zoomed = scale > 1.001;
+    if (_isZoomed != zoomed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _isZoomed != zoomed) {
+          setState(() {
+            _isZoomed = zoomed;
+          });
+        }
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -147,6 +183,7 @@ class _ImagePreviewState extends State<ImagePreview>
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     } on Exception catch (_) {}
     _doubleClickAnimationController.dispose();
+    _activePointers.clear();
     clearGestureDetailsCache();
     if (Get.isRegistered<PreviewController>()) {
       Get.delete<PreviewController>();
@@ -161,212 +198,229 @@ class _ImagePreviewState extends State<ImagePreview>
       return const Scaffold(backgroundColor: Colors.transparent);
     }
 
-    return DismissiblePage(
-      onDismissed: () => Navigator.of(context).pop(),
-      disabled: _isZoomed,
-      direction: DismissiblePageDismissDirection.down,
-      backgroundColor: Colors.black,
-      startingOpacity: 1.0,
-      minScale: 0.8,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        primary: false,
-        extendBody: true,
-        appBar: AppBar(
-          primary: false,
-          toolbarHeight: 0,
-          backgroundColor: Colors.transparent,
-          systemOverlayStyle: SystemUiOverlayStyle.light,
-        ),
-        body: Stack(
-          children: [
-            Semantics(
-              label: '长按保存，下滑退出',
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                onLongPress: onOpenMenu,
-                child: ExtendedImageGesturePageView.builder(
-                  controller: ExtendedPageController(
-                    initialPage: _previewController.initialPage.value,
-                    pageSpacing: 0,
-                  ),
-                  onPageChanged: (int index) {
-                    _previewController.onChange(index);
-                    if (_isZoomed) {
-                      setState(() {
-                        _isZoomed = false;
-                      });
-                    }
-                  },
-                  canScrollPage: (GestureDetails? gestureDetails) {
-                    final double scale = gestureDetails?.totalScale ?? 1.0;
-                    final bool zoomed = scale > 1.001;
-                    if (_isZoomed != zoomed) {
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted && _isZoomed != zoomed) {
+    return Listener(
+      onPointerDown: (PointerDownEvent e) => _updatePointer(e.pointer, true),
+      onPointerUp: (PointerUpEvent e) => _updatePointer(e.pointer, false),
+      onPointerCancel: (PointerCancelEvent e) =>
+          _updatePointer(e.pointer, false),
+      child: DismissiblePage(
+        onDismissed: () => Navigator.of(context).pop(),
+        disabled: _isDismissDisabled,
+        direction: DismissiblePageDismissDirection.down,
+        dragStartBehavior: DragStartBehavior.start,
+        backgroundColor: Colors.black,
+        startingOpacity: 1.0,
+        minScale: 0.8,
+        child: KeyedSubtree(
+          key: _previewSubtreeKey,
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            primary: false,
+            extendBody: true,
+            appBar: AppBar(
+              primary: false,
+              toolbarHeight: 0,
+              backgroundColor: Colors.transparent,
+              systemOverlayStyle: SystemUiOverlayStyle.light,
+            ),
+            body: Stack(
+              children: [
+                Semantics(
+                  label: '长按保存，下滑退出',
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    onLongPress: onOpenMenu,
+                    child: ExtendedImageGesturePageView.builder(
+                      controller: ExtendedPageController(
+                        initialPage: _previewController.initialPage.value,
+                        pageSpacing: 0,
+                      ),
+                      onPageChanged: (int index) {
+                        _previewController.onChange(index);
+                        _activePointers.clear();
+                        if (_isZoomed) {
                           setState(() {
-                            _isZoomed = zoomed;
+                            _isZoomed = false;
                           });
                         }
-                      });
-                    }
-                    return !zoomed;
-                  },
-                  itemCount: list.length,
-                  itemBuilder: (BuildContext ctx, int index) {
-                    final String? heroTag = widget.heroTags != null &&
-                            index < widget.heroTags!.length
-                        ? widget.heroTags![index]
-                        : null;
-
-                    Widget image = ExtendedImage.network(
-                      list[index],
-                      fit: BoxFit.contain,
-                      mode: ExtendedImageMode.gesture,
-                      onDoubleTap: (ExtendedImageGestureState state) {
-                        final Offset? pointerDownPosition =
-                            state.pointerDownPosition;
-                        final double? begin = state.gestureDetails!.totalScale;
-                        double end;
-
-                        _doubleClickAnimation?.removeListener(
-                          _doubleClickAnimationListener,
-                        );
-                        _doubleClickAnimationController.stop();
-                        _doubleClickAnimationController.reset();
-
-                        end = begin == doubleTapScales[0]
-                            ? doubleTapScales[1]
-                            : doubleTapScales[0];
-
-                        _doubleClickAnimationListener = () {
-                          state.handleDoubleTap(
-                            scale: _doubleClickAnimation!.value,
-                            doubleTapPosition: pointerDownPosition,
-                          );
-                        };
-                        _doubleClickAnimation =
-                            _doubleClickAnimationController.drive(
-                          Tween<double>(begin: begin, end: end),
-                        );
-                        _doubleClickAnimation!.addListener(
-                          _doubleClickAnimationListener,
-                        );
-                        _doubleClickAnimationController.forward();
                       },
-                      loadStateChanged: (ExtendedImageState state) {
-                        if (state.extendedImageLoadState == LoadState.loading) {
-                          final ImageChunkEvent? loadingProgress =
-                              state.loadingProgress;
-                          final double? progress =
-                              loadingProgress?.expectedTotalBytes != null
+                      canScrollPage: (GestureDetails? gestureDetails) {
+                        final double scale = gestureDetails?.totalScale ?? 1.0;
+                        final bool zoomed = scale > 1.001;
+                        if (_isZoomed != zoomed) {
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted && _isZoomed != zoomed) {
+                              setState(() {
+                                _isZoomed = zoomed;
+                              });
+                            }
+                          });
+                        }
+                        return !zoomed;
+                      },
+                      itemCount: list.length,
+                      itemBuilder: (BuildContext ctx, int index) {
+                        final String? heroTag =
+                            widget.heroTags != null &&
+                                index < widget.heroTags!.length
+                            ? widget.heroTags![index]
+                            : null;
+
+                        Widget image = ExtendedImage.network(
+                          list[index],
+                          fit: BoxFit.contain,
+                          mode: ExtendedImageMode.gesture,
+                          onDoubleTap: (ExtendedImageGestureState state) {
+                            final Offset? pointerDownPosition =
+                                state.pointerDownPosition;
+                            final double? begin =
+                                state.gestureDetails!.totalScale;
+                            double end;
+
+                            _doubleClickAnimation?.removeListener(
+                              _doubleClickAnimationListener,
+                            );
+                            _doubleClickAnimationController.stop();
+                            _doubleClickAnimationController.reset();
+
+                            end = begin == doubleTapScales[0]
+                                ? doubleTapScales[1]
+                                : doubleTapScales[0];
+
+                            if (end > 1.001 && !_isZoomed) {
+                              setState(() {
+                                _isZoomed = true;
+                              });
+                            }
+
+                            _doubleClickAnimationListener = () {
+                              state.handleDoubleTap(
+                                scale: _doubleClickAnimation!.value,
+                                doubleTapPosition: pointerDownPosition,
+                              );
+                            };
+                            _doubleClickAnimation =
+                                _doubleClickAnimationController.drive(
+                                  Tween<double>(begin: begin, end: end),
+                                );
+                            _doubleClickAnimation!.addListener(
+                              _doubleClickAnimationListener,
+                            );
+                            _doubleClickAnimationController.forward();
+                          },
+                          loadStateChanged: (ExtendedImageState state) {
+                            if (state.extendedImageLoadState ==
+                                LoadState.loading) {
+                              final ImageChunkEvent? loadingProgress =
+                                  state.loadingProgress;
+                              final double? progress =
+                                  loadingProgress?.expectedTotalBytes != null
                                   ? loadingProgress!.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
+                                        loadingProgress.expectedTotalBytes!
                                   : null;
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: <Widget>[
-                                SizedBox(
-                                  width: 150.0,
-                                  child: LinearProgressIndicator(
-                                    value: progress,
-                                    color: Colors.white,
-                                  ),
+                              return Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: <Widget>[
+                                    SizedBox(
+                                      width: 150.0,
+                                      child: LinearProgressIndicator(
+                                        value: progress,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          );
-                        }
-                        if (state.extendedImageLoadState == LoadState.failed) {
-                          return const Center(
-                            child: Icon(
-                              Icons.broken_image_outlined,
-                              color: Colors.white70,
-                              size: 48,
-                            ),
-                          );
-                        }
-                        return null;
-                      },
-                      initGestureConfigHandler: (ExtendedImageState state) {
-                        return GestureConfig(
-                          inPageView: true,
-                          initialScale: 1.0,
-                          maxScale: 15.0,
-                          animationMaxScale: 16.0,
-                          initialAlignment: InitialAlignment.center,
+                              );
+                            }
+                            if (state.extendedImageLoadState ==
+                                LoadState.failed) {
+                              return const Center(
+                                child: Icon(
+                                  Icons.broken_image_outlined,
+                                  color: Colors.white70,
+                                  size: 48,
+                                ),
+                              );
+                            }
+                            return null;
+                          },
+                          initGestureConfigHandler: (ExtendedImageState state) {
+                            return GestureConfig(
+                              inPageView: true,
+                              initialScale: 1.0,
+                              maxScale: 15.0,
+                              animationMaxScale: 16.0,
+                              initialAlignment: InitialAlignment.center,
+                              gestureDetailsIsChanged: _onGestureDetailsChanged,
+                            );
+                          },
                         );
-                      },
-                    );
 
-                    if (heroTag != null && heroTag.isNotEmpty) {
-                      image = Hero(
-                        tag: heroTag,
-                        child: image,
-                      );
-                    }
-                    return image;
-                  },
-                ),
-              ),
-            ),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: EdgeInsets.only(
-                  left: 20,
-                  right: 20,
-                  bottom: MediaQuery.of(context).padding.bottom + 20,
-                  top: 16,
-                ),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: <Color>[Colors.transparent, Colors.black87],
+                        if (heroTag != null && heroTag.isNotEmpty) {
+                          image = Hero(tag: heroTag, child: image);
+                        }
+                        return image;
+                      },
+                    ),
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    list.length > 1
-                        ? Obx(
-                            () => Text.rich(
-                              textAlign: TextAlign.center,
-                              TextSpan(
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                children: [
-                                  TextSpan(
-                                    text: _previewController.currentPage
-                                        .toString(),
-                                  ),
-                                  const TextSpan(text: ' / '),
-                                  TextSpan(
-                                    text: list.length.toString(),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        : const SizedBox(),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      tooltip: '关闭',
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: EdgeInsets.only(
+                      left: 20,
+                      right: 20,
+                      bottom: MediaQuery.of(context).padding.bottom + 20,
+                      top: 16,
                     ),
-                  ],
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: <Color>[Colors.transparent, Colors.black87],
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        list.length > 1
+                            ? Obx(
+                                () => Text.rich(
+                                  textAlign: TextAlign.center,
+                                  TextSpan(
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        text: _previewController.currentPage
+                                            .toString(),
+                                      ),
+                                      const TextSpan(text: ' / '),
+                                      TextSpan(text: list.length.toString()),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : const SizedBox(),
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close, color: Colors.white),
+                          tooltip: '关闭',
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

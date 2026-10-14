@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### 优化
+
+- 大图与相册预览手势协同与缩放拖拽优化（`ImagePreview`）：
+  - 引入多指触控守卫（Multi-pointer Guard）：基于不可泄露的活跃指针集合（`_activePointers`），在双指及以上触控时自动隔离外层 `DismissiblePage` 下拉手势，消除手势竞技场中由于双指微秒级落点时间差（Landing Gap）导致缩放被误截获的问题，保障双指捏合拉伸缩放流畅触发；
+  - 实时双向缩放状态同步（`gestureDetailsIsChanged`）：在 `GestureConfig` 中实时追踪缩放比例，放大后安全禁用下滑退出手势，完全释放单指在全方向上的自由拖拽漫游浏览能力，解决放大状态下向上滑动无响应、向下滑动误退出页面的缺陷；
+  - 声明周期与渲染树保护：在 `DismissiblePage` 状态切换时使用 `KeyedSubtree` 与持久 `GlobalKey` 保护子树元素，彻底杜绝状态切换引发的组件重构与手势断裂；切页与销毁时严密重置手势状态与触控点集合。
+
 ## [1.6.0-beta.4] - 2026-10-12
 
 ### 重构
