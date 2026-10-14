@@ -4,6 +4,135 @@
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-15
+
+### 新增
+
+- 动态多类型流沉浸排版与九宫格相册体系（Phase 4.2: Dynamic Feeds & Grid Gallery）：
+  - 打造统一九宫格沉浸相册组件（`NineGridGallery`）：全面消除动态图文、正文与转发中历史冗余 GridView，实现高内聚排版与统一交互维护；
+  - 4 图 2x2 经典对称宫格与视觉对齐：重构网格几何引擎（`NineGridGalleryLayout`），针对 4 图输出 2x2 对称排版，单图尺寸精准与 3 列宫格等宽对齐，终结 3+1 不对称孤悬空位缺陷；
+  - 单图视口智能钳制与长图识别角标：针对超长图（宽高比 < 0.5）限制宽度为容器 65% 并将高度安全钳制在 180~360dp，自动附加 `PBadge(text: '长图')` 灰色标签；超宽横图高度钳制在 100~200dp，杜绝极端图片撑裂动态流；
+  - 全屏透明路由大图预览与 Hero 共享元素动画（`ImagePreview.show`）：接入 `context.pushTransparentRoute` 沉浸式透明页面路由，建立全局唯一 Hero 标签规范，实现列表缩略图与大图之间无碰撞、无闪烁的平滑共享元素展开与收缩动效。
+- 弹幕高级类型、色彩与发射交互加固体系（Phase 4.1: Danmaku Advanced Types, Colors & Shoot UX）：
+  - 打造 Material 3 独立弹幕发射面板（`ShootDanmakuSheet`）：将发射弹幕逻辑解耦为高内聚底部抽屉组件，配备圆角底栏、顶部拖拽手柄、字数实时统计（100 字符限制）与清空按钮；
+  - 12 种标准色彩调色板与位运算色彩修复：接入 B 站官方 12 种标准色彩预设，修复 24 位 RGB 颜色传入 Flutter 时 Alpha 丢失为 0 导致透明的底层缺陷；调色盘支持横向平滑滚动、微动效聚焦环、自适应发光投影与明暗反差勾号；
+  - 丰富弹幕模式选择：支持滚动（Mode 1）、顶部固定（Mode 5）、底部固定（Mode 4）三种标准模式，采用 Material 3 `SegmentedButton` 提供清晰直观的切换与点选触觉反馈；
+  - 播放与暂停双态时钟对齐注入与回溯时序加固：播放状态下发射即刻向画布喷出并登记去重 ID 杜绝跳帧重复；暂停状态下引入 `pendingLocalDanmakus` 缓冲队列，起播瞬间毫秒级喷出并注入本地分段字典，保证 Seek 与循环回放准时呈现；
+  - 横屏全屏并排紧凑工具栏与软键盘自适应：横屏下自动转换为左侧模式选择器（40%）与右侧调色板（60%）并排工具栏；动态避让软键盘，杜绝任何 `RenderFlex overflow` 溢出；
+  - 偏好持久化与登录态守卫：记忆用户上次选取的弹幕模式与颜色，未登录账号发射时友好拦截并提示。
+- 批量下载与多 P 队列调度治理体系（Phase 3.2: Batch Download & Queue Resilience）：
+  - 打造指数退避网络韧性重试引擎（`DownloadTaskExecutor`）：集成 Full Jitter 指数退避模型（1s -> 2s -> 4s），精准区分致命错误（404、401/403 鉴权失败、磁盘空间不足）与瞬态抖动网络异常；重试期间任务状态保持 `downloading` 并通过琥珀色感知提示，消除弱网或网络切换导致的成批报错飘红；
+  - HTTP 416 损坏断点单流自愈与 403 续期防死循环单次熔断：隔离针对单流的 HTTP 416 捕获与自愈机制，自动删除损坏的 `.part` 临时文件并重置断点从 0 字节重新拉取；增加 `renewAttempts <= 1` 熔断守卫，杜绝因账号权限或 CDN 失效导致的死循环流量损耗；
+  - 原生原子批量提交接口与排队公平调度（`DownloadService.startTasks`）：支持一键批量入库与原子持久化，统一触发单次任务调度，消除多 P 批量下载时重复写库与事件轰炸性能损耗；
+  - 动态并发槽位与瞬时槽位预留（Slot Reservation）：支持 1~4 个下载并发槽位（默认 2 个）并对接本地配置，支持热更新（`updateMaxConcurrent`）即时扩缩容调度；引入 `_startingTaskIds` 瞬时槽位锁定机制，彻底解决异步 URL 解析过程中的并发超分配与竞态漏洞；
+  - 多 P 选集同批次有序调度：智能识别同批次多 P 任务，调度器自动按分 P 序号（`cid`）单调递增正序下载，避免分 P 倒序或无序轰炸；
+  - 三级磁盘水位强检防御架构：确立 UI 层提交前预检、Service 层拉起/恢复前拦截（`200MB`）与 Executor 运行时流式监控（`2MB`）三级纵深防御体系，磁盘不足时友好拦截并提示清理空间；
+  - 选集缓存弹窗与交互感知优化：缓存弹窗（`DownloadSheet`）智能识别已缓存清晰度分 P 并展示专属徽标，“全选”按钮智能切为“全选未缓存”；下载管理页卡片独立展示瞬态重试信息与细粒度实时速率。
+- 视频分段章节元数据（view_points）离线持久化与离线播放一致性体系（Phase 3.1: Offline Chapters & Audiovisual Parity）：
+  - 打造高内聚离线章节领域服务（`OfflineChapterService`）：接入 B 站 `VideoHttp.videoPlayerMetadata` 接口，支持纯函数依赖注入与零网络本地加载；采用临时文件原子写入（`.tmp` -> `flush: true` -> `rename`），杜绝因进程意外中断导致的损坏文件；智能跳过无分段视频，避免生成 0 字节无效孤儿文件；
+  - 扩展离线下载任务与持久化存储（`DownloadTask` / `DownloadStorageManager`）：增加 `chaptersRelativePath` 字段并全向兼容 Hive 历史遗留存量任务；在创建任务与路径解析时自动规划 `${taskDir}/chapters.json`，并在任务删除时级联清理；
+  - 异步下载流水线非致命辅助资产集成（`DownloadTaskExecutor`）：在 `_downloadAuxiliaryAssets` 中并行拉取章节数据，任何网络超时或服务端缺失异常安全降级，绝不阻断主音视频轨道下载；
+  - 离线播放器视听体验完全对齐（`PlPlayerController` / `VideoDetailController`）：扩展 `DataSource.offlineChapterFile`，在离线起播与多 P 切换时自动装配本地分章文件；在播放器引擎中解耦 `_initializeChapters` 并设立 Session 守卫防异步竞态，离线播放状态下无缝激活分段间隙进度条、看点按钮、磁吸吸附、手势寻道 HUD 及 `ChapterBottomSheet`；
+  - 离线详情面板与极端断网体验加固：离线视频规格卡联动检测本地章节，高亮呈现「分章看点 (共 N 个分段)」芯片；`NetworkImgLayer` 扩展错误降级组件，断网环境下章节缩略图优雅退化为矢量播放图标，杜绝红屏白屏或阻塞卡死。
+- 播放器进度条与播控交互深度适配视频分章分节（ViewPoints / 章节标记）完整交互体系：
+  - 接入 B 站视频分段元数据接口（`view_points`），智能解析视频分段起止时间、章节标题与看点缩略图；
+  - 进度条（`ProgressBar`）适配分段绘制：支持配置切分点列表（`chapterPoints`）与分段物理间隙（`chapterGapWidth`），对底色轨、缓冲轨与进度填充轨实现独立分节与圆角自适应绘制，无章节视频平滑保持连续；
+  - 底栏控件新增「看点/章节」按钮（`BottomControlType.chapter`），随视频分段状态动态挂载或溢出至更多菜单；
+  - 打造 Material 3 沉浸式看点列表抽屉（`ChapterBottomSheet`）：展示章节封面大纲、起止时间区间与播放中高亮标记，支持点选即时跳章定位；
+  - 交互手感与微动效打磨：拖拽进度条跨越章节边界时触发细微触觉震动反馈（`HapticFeedback.selectionClick`），手势寻道 HUD 居中联动显示目标分段标题与大纲封面卡片；
+  - 净化收起态微型进度条与竖屏底栏布局，杜绝控件挤压溢出，保证各终端最佳视觉观感；
+  - 打造全屏与横屏沉浸态右侧看点面板（`FullScreenChapterPanel`）：在全屏/横屏模式下自适应分发右侧半透明滑出式看点面板，左侧覆盖暗色遮罩并彻底阻断触摸穿透；支持点选章节即刻 Seek 定位并自动收起、向右侧滑手势平滑退出，以及旋转切回竖屏自动销毁防御。
+- 评论区时间戳与播放器深度联动（Timestamp Deep-link & Seek）：
+  - 提取高内聚纯函数解析与统一寻道服务（`ReplyTimestampParser`），彻底废除原逻辑对 `Get.arguments['heroTag']` 的脆弱依赖，彻底解决外部直达、推荐流跳转及二级评论中点击时间戳抛出“跳转失败”的缺陷；
+  - 强化时间戳匹配与防护：支持 `mm:ss`、`m:ss`、`hh:mm:ss`、`h:mm:ss` 以及中文全角冒号 `：`，引入前后负向断言严密隔离 URL 端口与非法多段连缀冒号；
+  - 增强寻道交互闭环：点击时间戳精准定位并自动起播（解除暂停态），伴随轻微触感震动反馈，智能识别并弹出章节感知 Toast（如 `跳转至 11:10 · 结尾`）；
+  - 二级回复抽屉（楼中楼）深度联动：在二级评论面板内点击时间戳后毫秒级自动关闭收起抽屉，让用户视口无缝平滑回归视频播放器；
+  - 完善手势竞技防护与总时长边界拦截，超出视频时长的非法时间戳友好拦截并提示。
+- 进度条磁吸吸附（Snap-to-chapter）与手势震动打磨：
+  - 打造高内聚数学物理吸附协调器（`ChapterSnapCoordinator`）：基于视宽自适应计算抓取距离，引入施密特触发器（Schmitt Trigger）逃逸滞后模型，彻底杜绝临界区抖颤；
+  - 拟物弹性阻尼与脱吸手感：在吸附捕获区与逃逸区之间提供柔和的弹性拉扯张力，超出阈值后瞬时平滑脱吸；支持高速度挥动跳过（Velocity Bypass）；
+  - 120Hz 高刷 Zero-GC 优化：在进度条渲染对象（`_RenderProgressBar`）中对清洗后章节断点进行不可变缓存预计算，仅在属性变更与重新布局时失效，根除拖拽寻道时的微内存分配与 GC 抖动；
+  - 多感官微动效反馈：滑块吸附瞬间触发轻脆微触觉反馈（`selectionClick`）并配备 120ms 防蜂鸣限频；吸附状态下滑块半径放大 1.25 倍并呈现 1.3 倍半径 Halo 外层柔光晕；
+  - 屏幕横向滑动手势寻道（Screen Gesture Seek）跨越章节分段边界时即时联动轻微触觉反馈与 HUD 章节封面卡片高亮。
+- 播放器长按动态高倍速（Press-to-Fast-Forward）与动效触觉微反馈：
+  - 打造极简高质感毛玻璃胶囊指示器（`FastForwardIndicator`）：采用高斯模糊（`BackdropFilter`）、微亮描边与悬浮投影设计，结合正弦波相位差双箭头流光波浪推进微动效与极简倍速数值（如 `>> 2.0X`），去繁从简、零文字冗余，彻底取代旧版单调的静态浮动文本框；
+  - 120Hz 高刷 Zero-Jank 架构隔离：指示器内置 `RepaintBoundary` 图层隔离，手势退场后彻底关闭 Ticker 并收敛为 `SizedBox.shrink()`，保证超高帧率下视频解码与界面渲染零卡顿；
+  - 视口形态自适应与安全区规避：外层结合 `SafeArea(top: true)` 与 `LayoutBuilder` 避让防线，自适应竖屏、横屏全屏与打孔屏，并在迷你小窗/画中画等矮视口（$< 160\,\text{dp}$）中智能避让隐藏；
+  - 严密状态机守卫与自愈防线：仅在视频处于播放中且控件未锁定、非直播模式下响应长按；补齐 `onLongPressCancel` 手势取消监听，彻底根除系统手势中断、通知栏下拉或来电打断造成的“永久高倍速锁死”问题；
+  - 异步竞态防御与平滑还原：引入单调自增 `_speedSessionToken`，杜绝急速连续点按产生的平台通道时序竞争与定时器复活；长按结束后 100% 精确还原用户先前的基准播放倍速；
+  - 累进加速硬件保护与多层次触觉反馈：将自动递增倍速上限收敛钳制为 4.0x，防范移动端硬解码器掉帧与音频缓冲区溢出；长按起速、回弹与封顶分别触发分级细腻触感。
+- 普通视频详情页（VideoDetailPage）大屏/平板横屏双栏与响应式重构（Tablet & Responsive Dual-Column Excellence）：
+  - 打造高内聚大屏几何与约束协调器（`VideoDetailLayoutCoordinator`）：设立 640dp 物理宽度门槛，低于门槛或分屏塌陷时自适应平滑降级；实现黄金分割比例切分（左栏 ~62%，右栏 Expanded）与播放器 16:9 视高安全钳制，确保大屏下播放器下方简介与选集卡片拥有充裕视口；
+  - 架构重构与单一 Scaffold 容器：彻底废除原系统针对全屏、平板双栏、近方屏与竖屏分散实例化的 4 个独立 Scaffold 反模式，收敛为根节点唯一的单一 Scaffold 容器，彻底消除设备旋转、分屏尺寸拉伸时的组件重建闪烁、白屏跳动与状态丢失；
+  - 软键盘单侧消费与 Inset 隔离：根 Scaffold 启用 `resizeToAvoidBottomInset: false`，杜绝软键盘弹起时挤压左侧播放器引发的变形与 `RenderFlex overflow`；右栏通过 `clampedKeyboardHeight` 动态预留至少 120dp 视口高度，并通过 `MediaQuery.removeViewInsets(removeBottom: true)` 彻底切断内层组件二次 Inset 重复消费；
+  - 根 PopScope 导航防死锁与画中画联动：将返回监听提升至根节点，`didPop == false` 时仅精准消费全屏退出与手机横屏旋转，杜绝深层 child PopScopes 递归导致的无限死锁；平板横屏模式放行返回事件并平滑联动画中画小窗；
+  - 平板大屏横屏观影与交互净化：修复 `HeaderControl` 顶栏返回键在平板横屏下误触强制转竖屏的缺陷；在双栏模式下移除左栏下划全屏手势包装，杜绝大屏滑动浏览简介时的误触全屏。
+- 番剧/影视详情页（PGC VideoDetail）与电影观影模式大屏适配（Cinema Viewport & FullScreenEpisodePanel）：
+  - 打造电影级宽银幕动态视口引擎（Cinema Viewport Engine）：在 `VideoDetailLayoutCoordinator` 中实现动态宽高比计算，精准自适应 16:9、21:9、2.35:1 与 2.39:1 电影宽银幕视频，并将极限比例安全钳制在 4:3 至 2.40 黄金区间；根据真实流媒体宽高比动态缩放播放器高度，从根源消除宽银幕电影在大屏双栏下的无效黑场与留白；
+  - PGC 大屏双栏动态 Tab 架构：在双栏模式下智能感知内容形态，将右栏 Tab 动态切换为【剧集选集】与【评论交流】，彻底解决番剧/影视选集被硬塞在左栏狭窄区域内的痛点；
+  - 打造独立大屏双栏剧集目录组件（`BangumiEpisodeCatalog`）：支持多季/PV/花絮横向滑动 Chip 筛选，以网格与卡片形态优雅呈现全话列表，并集成正在播放实时高亮与初始自动定位居中滚动；
+  - 参数解耦与生命周期安全防线：重构 `BangumiPanel`、`BangumiInfo` 与 `BangumiIntroController`，显式传递 `heroTag` 与控制器实例，彻底消除空参外部调用与 Scheme 直达时的 `TypeError` 崩溃风险；并在控制器与面板 `dispose` 时可靠取消 `StreamSubscription`，根绝内存泄漏；
+  - 打造全屏与横屏沉浸态右侧选集面板（`FullScreenEpisodePanel`）：在全屏/横屏模式下点击选集按钮时自适应滑出右侧半透明选集抽屉，左侧覆盖暗色遮罩；全面兼容 UGC 分 P、合集、番剧选集以及统一播放队列，支持正在播放指示器、大会员权益拦截、右滑手势退场与竖屏自我销毁；
+  - 播放队列弹窗防抖加固：为 `PlayQueueBottomSheet.show` 增加 `_isShowing` 单例守卫，杜绝快速连续点击造成的弹窗多层叠加与文字重叠渲染。
+
+### 优化
+
+- 大图与相册预览手势协同与缩放拖拽优化（`ImagePreview`）：
+  - 引入多指触控守卫（Multi-pointer Guard）：基于不可泄露的活跃指针集合（`_activePointers`），在双指及以上触控时自动隔离外层 `DismissiblePage` 下拉手势，消除手势竞技场中由于双指微秒级落点时间差（Landing Gap）导致缩放被误截获的问题，保障双指捏合拉伸缩放流畅触发；
+  - 实时双向缩放状态同步（`gestureDetailsIsChanged`）：在 `GestureConfig` 中实时追踪缩放比例，放大后安全禁用下滑退出手势，完全释放单指在全方向上的自由拖拽漫游浏览能力，解决放大状态下向上滑动无响应、向下滑动误退出页面的缺陷；
+  - 声明周期与渲染树保护：在 `DismissiblePage` 状态切换时使用 `KeyedSubtree` 与持久 `GlobalKey` 保护子树元素，彻底杜绝状态切换引发的组件重构与手势断裂；切页与销毁时严密重置手势状态与触控点集合。
+- 平板横屏双栏播放器画幅标准化与防跳变优化（`VideoDetailLayoutCoordinator` 与 `_buildDualColumnLayout`）：
+  - 统一固定 16:9 播放器容器基准：将平板双栏左栏播放器容器高度固定为标准的 16:9 视口，彻底消除 2.39:1 / 4:3 等非标画幅起播与切集时的剧烈高度伸缩（CLS 归零），消除下方 UP 主信息、选集与评论区发生位移导致的误触风险，并保留超扁平分屏下 62% 视高安全钳制；
+  - 统一手机与平板心智模型：分栏浏览态专注交互与操作稳定性，极致沉浸画幅体验统一交由全屏模式与 80dp 下拉放大手势承接。
+- 大屏/平板双栏下拉全屏体验重构（`VideoDetailLayoutCoordinator`）：
+  - 为 `pullToFullScreen` 建立自适应防误触门槛，双栏大屏提升至 80.0dp 并辅以 `HapticFeedback.mediumImpact` 临界触感震动，在左栏简介所有变体重新挂载下拉放大，彻底解决横屏大屏无法下拉放大的心智模型割裂。
+
+### 修复
+
+- 专栏/Opus 正文解析与排版重构（`lib/http/html.dart` 与 `lib/pages/html/view.dart`）：
+  - 彻底根除章节分幕标题神秘丢失（`para_type == 8`）：升级 Opus 模块内容解析器，建立对分级标题节点（`heading: {level, nodes}`）的完整识别与 `<h$level>` 标签输出，修复全部分幕标题（如《序曲》、《第一幕》至《尾声》等）被静默丢弃的严重缺陷；
+  - 恢复分段装饰分割线（`para_type == 3`）：识别分割线段落并输出标准 `<hr/>` 水平线，恢复章节阅读视效节奏；
+  - 专栏主标题与头部排版升级：提取 `MODULE_TYPE_TITLE` 专栏主标题并下发至 `HtmlArticleData.title`，在正文阅读视图作者信息上方呈现加粗大标题，且路由无标题参数时自动更新 AppBar 标题；
+  - 富文本样式与安全转义加固：全面支持段落文字加粗（`<strong>`）、斜体（`<em>`）、删除线（`<del>`）、下划线（`<u>`）与自定义颜色，识别居中/居右排版，采用语义化 `<p>` 标签并辅以 `HtmlEscapeMode.attribute` 安全字符转义，终结段落拥挤黏连问题；
+  - 扩充引用块（`blockquote`）、代码块（`pre/code`）、有序/无序列表（`ol/ul/li`）与链接卡片解析支持。
+- 专栏动态（`DYNAMIC_TYPE_ARTICLE`）双重渲染与转发封面图丢失缺陷修复：
+  - 彻底根除专栏动态卡片重复渲染：修复主动态流（`floor == 1`）下 `Content` 与 `forWard` 重复消费专栏标题与正文摘要的问题；主动态下废除底部多余的灰色嵌套卡片与二次纯文本输出，由 `Content` + `NineGridGallery` 统一沉浸承载话题、加粗标题、富文本正文与封面画册；
+  - 转发专栏（`floor == 2`）体验完善与封面修复：消除转发卡片内多余的双层灰色背景嵌套；为 `picWidget` 建立 `floor` 上下文仲裁，修复转发 Opus 专栏时因防重逻辑误伤导致封面图丢失的缺陷；
+  - 增强新老专栏协议兼容性：在富文本解析与画册中为旧版 `major.article` 建立平滑回退，提升摘要字符拼接容错性。
+- 直播广场卡片文字全区域点击跳转修复（`LiveCardV`）：
+  - 重构卡片手势为标准 `InkWell`：消除 `GestureDetector(deferToChild)` 导致仅图片可点、点击卡片标题/主播昵称/空白无法进入直播间的缺陷，与普通视频卡片规范完全统一，补全标准 Material 水波纹触控反馈。
+- 播放器单例进出直播间视频倍速隔离与保持修复（`PlPlayerController`）：
+  - 隔离直播拉流原速与视频偏好倍速：直播模式下直接调整底层引擎播放速率为 1.0，禁止覆写全局 `_playbackSpeed.value` 用户倍速变量；
+  - 进出直播间记忆保持：切回或重新打开普通视频时，播放器确定性恢复并应用用户先前设定的倍速（如 1.5x、2.0x），根除倍速被静默重置为 1.0 的状态泄漏缺陷。
+- 用户主页投稿加载随机崩溃修复（`MemberHttp.memberArchive` 与 `Utils.generateRandomBytes`）：
+  - 修复随机字节生成下限丢失缺陷：纠正 `Utils.generateRandomBytes` 中未加 `minLength` 导致偶发生成 0 字节并触发 `RangeError (end): -2` 越界异常的问题，确保字节长度严格落在 `[minLength, maxLength]` 区间内；
+  - 接口参数安全切片防御：在 `MemberHttp.memberArchive` 为 `dm_img_str` 与 `dm_cover_img_str` 补充长度防御检查，杜绝空串或极短字符导致的未处理异步异常。
+- 视频评论区大图预览返回自动恢复播放（`VideoRouteObserver` 与 `_showReplyImagePreview`）：
+  - 过滤透明浮层路由（`VideoRouteObserver`）：派生专用路由监听器，忽略透明非不透明 PageRoute（`TransparentRoute`），避免打开全屏图片预览时误触发视频页离开逻辑（`didPushNext`），杜绝播放器底层解码引擎被错误停止（`controller.disable()`）；
+  - 控制器与模态生命周期双重守卫：在 `VideoDetailController` 引入 `isPlaybackModalActive` 临时浮层保护，健全 `_showReplyImagePreview` 中控制器查找回退链，确保图片放大后缩小退出时，视频能平滑无缝地自动继续播放。
+- 彻底根除屏幕旋转 2 秒延时定时器竞态（`verticalScreenForTwoSeconds`）：
+  - 废除延时解除朝向锁的定时器，重构 `PlPlayerController.triggerFullScreen` 针对竖屏流（`direction == 'vertical'`）的朝向状态机，手机端进退全屏确定性锁定与恢复竖屏半屏模式，杜绝竖屏直播在横屏设备上进出全屏时发生的反向二度翻转与死锁缺陷。
+
+### 重构
+
+- 代码风格与现代 Dart 语法规范化（Batch 1）：
+  - 清理各页面模块 `index.dart` 顶部的历史冗余 `library` 命名声明；
+  - 移除无用导入，升级集合字面量空判断为现代 Dart `?`（`null_aware_elements`）语法；
+  - 规范字符串插值与控制流大括号，精简回调通配符下划线。
+- Flutter SDK 现代化与弃用 API 适配（Batch 2）：
+  - 全面消除 `deprecated_member_use` 提示（实现 0 废弃调用）；
+  - 主题色彩对齐：`colorScheme.background` $\to$ `surface`，`onBackground` $\to$ `onSurface`；
+  - 交互状态对齐：`MaterialState` $\to$ `WidgetState`，`Color.withOpacity` $\to$ `Color.withValues(alpha: ...)`；
+  - 单选控件对齐：设置与筛选弹窗中的 `RadioListTile` 接入现代化 `RadioGroup` 上下文；
+  - 进度条与无障碍对齐：`ProgressBar` 迁移至 `TextScaler`，语义测试对齐 `flagsCollection.isSelected`。
+- 日志输出与流资源生命周期规范化（Batch 3）：
+  - 清理调试打印（实现 0 `avoid_print`）：移除手势拖拽、URL 解析、路由调度等高频路径下的临时 `print` 语句，必要诊断转为 `debugPrint`；
+  - 规范 Stream 资源生命周期（实现 0 `close_sinks`）：在 `MainController` 与 `HomeController` 的 `onClose()` 中严密闭合全局广播流，重构多页面局部控制器流引用，清理未使用的冗余流定义。
+- 类型推断严密化与标识符命名规范化（Batch 4）：
+  - 达成全项目静态分析 0 警告、0 建议（实现 0 `strict_top_level_inference`、0 `constant_identifier_names`、0 `non_constant_identifier_names` 等，整体诊断项 493 -> 0 清零）；
+  - 全面补充顶级方法、控制器动作、回调参数与模型方法的显式类型注解，消除弱类型隐患并提升代码严密性；
+  - 统一小驼峰命名规范，将 `lib/models/video/play/CDN.dart` 重命名为 `cdn.dart`，规范 `SettingBoxKey.cdnService`、`MsgType`、网络验证等标识符命名。
+
 ## [1.6.0-beta.5] - 2026-10-15
 
 ### 优化
@@ -1146,7 +1275,8 @@
 - 首次公开版本，包含直播、推荐、动态、投稿、番剧和视频播放。
 - 支持播放器手势、画质/音质/解码格式选择、点赞/投币/收藏、关注与用户主页、评论、历史记录和稍后再看。
 
-[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.6...HEAD
+[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0...v1.6.0
 [1.5.0-beta.6]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.5...v1.5.0-beta.6
 [1.5.0-beta.5]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.4...v1.5.0-beta.5
 [1.5.0-beta.4]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.3...v1.5.0-beta.4
