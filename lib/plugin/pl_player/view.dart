@@ -1994,10 +1994,12 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                                   },
                                 );
                               } else {
-                                SmartDialog.showToast('截图失败');
+                                SmartDialog.showToast('截图失败，请稍后重试');
                               }
                             },
-                          );
+                          ).catchError((err) {
+                            SmartDialog.showToast('截图发生异常: $err');
+                          });
                         },
                       );
                     },

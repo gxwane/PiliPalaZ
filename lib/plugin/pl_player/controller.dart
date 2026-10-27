@@ -2912,15 +2912,25 @@ class PlPlayerController with WidgetsBindingObserver {
 
   /// 截屏
   Future<Uint8List?> screenshot({String format = 'image/png'}) async {
-    if (!canControlPlayback || _videoPlayerController == null) {
+    if (!canControlPlayback) {
       return null;
     }
+    final int session = _playbackSession;
     try {
-      final Uint8List? screenshot = await _videoPlayerController!.screenshot(
-        format: format,
-      );
-      return screenshot;
-    } catch (_) {
+      Uint8List? result;
+      if (_engine != null) {
+        result = await _engine!.screenshot(format: format);
+      } else if (_videoPlayerController != null) {
+        result = await _videoPlayerController!.screenshot(
+          format: format,
+        );
+      }
+      if (session != _playbackSession || !canControlPlayback) {
+        return null;
+      }
+      return result;
+    } catch (err) {
+      debugPrint('PlPlayerController: screenshot failed: $err');
       return null;
     }
   }

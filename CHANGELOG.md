@@ -6,6 +6,7 @@
 
 ### 修复
 
+- 修复播放器视频截图功能在 Media3 内核下失效与控制器强耦合 MPV 的缺陷：引入基于 PixelCopy 与专用后台 HandlerThread 的原生高保真硬件截帧通道，统一 PlPlayerController 双内核路由与切集会话隔离，补齐 UI 异常捕获与失败闭环。
 - 修复 Android 平台默认推荐解码内核（Media3 / ExoPlayer）下字幕完全无法加载与显示的严重缺陷：
   - 打造轻量高性能纯 Dart WebVTT / SRT 时码解析器，毫秒级解析字幕时间切片，安全清洗 HTML 样式标签与实体转义；
   - 接入 Media3 播放器时钟流与 Seek 同步机制，实现 O(1) ~ O(log N) 局部精准匹配与多切片重叠对白合并；

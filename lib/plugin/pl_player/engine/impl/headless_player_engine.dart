@@ -180,8 +180,24 @@ class HeadlessPlayerEngine implements IPlayerEngine {
     lastSubtitleTrack = track;
   }
 
+  Uint8List? stubScreenshotBytes;
+  int screenshotCallCount = 0;
+  String? lastScreenshotFormat;
+  bool shouldThrowOnScreenshot = false;
+  Completer<Uint8List?>? screenshotCompleter;
+
   @override
-  Future<Uint8List?> screenshot({String? format}) async => null;
+  Future<Uint8List?> screenshot({String? format}) async {
+    screenshotCallCount++;
+    lastScreenshotFormat = format;
+    if (shouldThrowOnScreenshot) {
+      throw StateError('Simulated screenshot failure in HeadlessPlayerEngine');
+    }
+    if (screenshotCompleter != null) {
+      return await screenshotCompleter!.future;
+    }
+    return stubScreenshotBytes;
+  }
 
   @override
   Future<Map<String, Object?>> getDiagnosticsInfo() async => {

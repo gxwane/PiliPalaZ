@@ -24,7 +24,7 @@ class Media3SurfaceManager(
     private val surfaceTexture: SurfaceTexture =
         textureEntry.surfaceTexture()
 
-    private val surface: Surface =
+    val surface: Surface =
         Surface(surfaceTexture)
 
     val textureId: Long

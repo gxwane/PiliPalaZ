@@ -322,7 +322,19 @@ class Media3PlayerEngine implements IPlayerEngine {
   }
 
   @override
-  Future<Uint8List?> screenshot({String? format}) async => null;
+  Future<Uint8List?> screenshot({String? format}) async {
+    if (_textureId == null || _isDisposed) return null;
+    try {
+      final result = await _channel.invokeMethod<Uint8List>(
+        'screenshot',
+        {'format': format ?? 'image/png'},
+      );
+      return result;
+    } catch (e) {
+      debugPrint('Media3PlayerEngine: screenshot failed: $e');
+      return null;
+    }
+  }
 
   @override
   Future<Map<String, Object?>> getDiagnosticsInfo() async {
