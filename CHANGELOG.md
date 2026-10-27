@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.6.1-beta.1] - 2026-10-27
+
 ### 修复
 
 - 修复用户个人空间（`/member`）中因 API 等级字段键名不匹配导致所有账号固定错误显示为 Lv0 的缺陷，建立多级容错解析与 `[0, 6]` 边界防护；
@@ -1284,7 +1286,8 @@
 - 首次公开版本，包含直播、推荐、动态、投稿、番剧和视频播放。
 - 支持播放器手势、画质/音质/解码格式选择、点赞/投币/收藏、关注与用户主页、评论、历史记录和稍后再看。
 
-[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.6.1-beta.1...HEAD
+[1.6.1-beta.1]: https://github.com/gxwane/PiliPalaZ/compare/v1.6.0...v1.6.1-beta.1
 [1.6.0]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0...v1.6.0
 [1.5.0-beta.6]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.5...v1.5.0-beta.6
 [1.5.0-beta.5]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.4...v1.5.0-beta.5
