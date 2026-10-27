@@ -112,7 +112,7 @@ Widget forWard(
               Text.rich(
                 picsNodes(
                   pics,
-                  dynamicId: (item.idStr ?? item.basic?.commentIdStr ?? '')
+                  dynamicId: (item.idStr ?? item.basic?['comment_id_str'] ?? '')
                       .toString(),
                 ),
                 // semanticsLabel: '动态图片',

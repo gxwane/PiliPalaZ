@@ -72,21 +72,24 @@ class DynamicItemModel {
 class ItemOrigModel {
   ItemOrigModel({
     this.basic,
-    this.isStr,
+    String? idStr,
+    String? isStr,
     this.modules,
     this.type,
     this.visible,
-  });
+  }) : idStr = idStr ?? isStr;
 
   Map? basic;
-  String? isStr;
+  String? idStr;
+  String? get isStr => idStr;
+  set isStr(String? val) => idStr = val;
   ItemModulesModel? modules;
   String? type;
   bool? visible;
 
   ItemOrigModel.fromJson(Map<String, dynamic> json) {
     basic = _parseMap(json['basic']);
-    isStr = _parseString(json['is_str']);
+    idStr = _parseString(json['id_str'] ?? json['is_str']);
     final modulesMap = _parseMap(json['modules']);
     modules = modulesMap != null ? ItemModulesModel.fromJson(modulesMap) : null;
     type = _parseString(json['type']);

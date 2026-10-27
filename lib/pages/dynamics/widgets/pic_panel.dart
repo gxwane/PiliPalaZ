@@ -23,7 +23,7 @@ Widget picWidget(dynamic item, BuildContext context, {int floor = 1}) {
   }
   if (pictures.isEmpty) return const SizedBox.shrink();
 
-  final String dynamicId = (item.idStr ?? item.basic?.commentIdStr ?? '')
+  final String dynamicId = (item.idStr ?? item.basic?['comment_id_str'] ?? '')
       .toString();
 
   return NineGridGallery(

@@ -4,6 +4,11 @@
 
 ## [Unreleased]
 
+### 修复
+
+- 修复转发动态包含图文画册时抛出 `ItemOrigModel has no instance getter 'idStr'` 导致动态流崩溃红屏的缺陷；
+- 修复动态组件中提取动态评论 ID 时对 `item.basic` 的伪属性调用，改为安全 Map 索引读取。
+
 ## [1.6.0] - 2026-10-15
 
 ### 新增

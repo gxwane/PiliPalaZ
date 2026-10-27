@@ -42,7 +42,8 @@ class _ContentState extends State<Content> {
   InlineSpan picsNodes() {
     if (pics.isEmpty) return const TextSpan();
     final String dynamicId =
-        (widget.item.idStr ?? widget.item.basic?.commentIdStr ?? '').toString();
+        (widget.item.idStr ?? widget.item.basic?['comment_id_str'] ?? '')
+            .toString();
 
     return WidgetSpan(
       child: NineGridGallery(
