@@ -3028,6 +3028,10 @@ class PlPlayerController with WidgetsBindingObserver {
       _direction.value = 'horizontal';
       videoDimension.value = VideoDimension.zero;
       videoPlayerServiceHandler.clear();
+      _vttSubtitles.clear();
+      _vttSubtitlesIndex.value = 0;
+      chapters.clear();
+      currentChapter.value = null;
     } catch (err, stackTrace) {
       await diagnostic?.checkpoint(
         'native_player_release_error',
@@ -3174,9 +3178,9 @@ class PlPlayerController with WidgetsBindingObserver {
 
   void _initializeSubtitles(DataSource dataSource, int session) {
     _initializeChapters(dataSource, session);
+    _vttSubtitles.clear();
+    _vttSubtitlesIndex.value = 0;
     if (dataSource.type == DataSourceType.file) {
-      _vttSubtitles.clear();
-      _vttSubtitlesIndex.value = 0;
       final File? subFile = dataSource.offlineSubtitleFile;
       if (subFile != null) {
         OfflineSubtitleService.loadSubtitlesFromFile(subFile)
@@ -3238,6 +3242,7 @@ class PlPlayerController with WidgetsBindingObserver {
     if (isStale()) return;
 
     _vttSubtitles.clear();
+    _vttSubtitlesIndex.value = 0;
     chapters.clear();
     currentChapter.value = null;
     final metadata = await VideoHttp.videoPlayerMetadata(

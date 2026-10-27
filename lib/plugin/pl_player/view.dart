@@ -947,8 +947,8 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
             child: PopupMenuButton<int>(
               onSelected: _selectSubtitle,
               initialValue:
-                  playerController.vttSubtitles.length <
-                      playerController.vttSubtitlesIndex.value
+                  playerController.vttSubtitlesIndex.value >=
+                      playerController.vttSubtitles.length
                   ? 0
                   : playerController.vttSubtitlesIndex.value,
               color: Colors.black.withValues(alpha: 0.8),
@@ -984,9 +984,9 @@ class _PLVideoPlayerState extends State<PLVideoPlayer>
                 height: 48,
                 alignment: Alignment.center,
                 child: Icon(
-                  (playerController.vttSubtitlesIndex.value == 0 ||
-                          playerController.vttSubtitles.length <
-                              playerController.vttSubtitlesIndex.value)
+                  (playerController.vttSubtitlesIndex.value <= 0 ||
+                          playerController.vttSubtitlesIndex.value >=
+                              playerController.vttSubtitles.length)
                       ? Icons.closed_caption_off
                       : Icons.closed_caption,
                   size: 25,
