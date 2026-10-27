@@ -4,14 +4,19 @@
 
 ## [Unreleased]
 
-### 修复
+## [1.6.1-beta.2] - 2026-10-27
 
-- 修复播放器视频截图功能在 Media3 内核下失效与控制器强耦合 MPV 的缺陷：引入基于 PixelCopy 与专用后台 HandlerThread 的原生高保真硬件截帧通道，统一 PlPlayerController 双内核路由与切集会话隔离，补齐 UI 异常捕获与失败闭环。
-- 修复 Android 平台默认推荐解码内核（Media3 / ExoPlayer）下字幕完全无法加载与显示的严重缺陷：
+### 新增
+
+- 播放器 Media3 内核字幕全链路支持与自适应渲染引擎：
   - 打造轻量高性能纯 Dart WebVTT / SRT 时码解析器，毫秒级解析字幕时间切片，安全清洗 HTML 样式标签与实体转义；
   - 接入 Media3 播放器时钟流与 Seek 同步机制，实现 O(1) ~ O(log N) 局部精准匹配与多切片重叠对白合并；
   - 在视口顶层挂载带 IgnorePointer 手势穿透保障的响应式自适应字幕覆盖图层，完美对齐字体缩放与底边距避让；
   - 扩展 SubtitleTrackOption，实现 PlPlayerController 在 Media3、MPV 及 Headless 架构下的统一派发与生命周期重置。
+
+### 修复
+
+- 修复播放器视频截图功能在 Media3 内核下失效与控制器强耦合 MPV 的缺陷：引入基于 PixelCopy 与专用后台 HandlerThread 的原生高保真硬件截帧通道，统一 PlPlayerController 双内核路由与切集会话隔离，补齐 UI 异常捕获与失败闭环；
 - 修复播放器在切换视频或重新打开播放页时单例残留字幕序号导致新视频状态跳变与语言错位的缺陷；
 - 确立字幕会话完全独立原则，新视频起播与页面销毁时确定性复位字幕索引为 0，严格遵循全局偏好（off / on / withoutAi）重新决策；
 - 修正播放器底栏字幕图标及菜单的数组索引越界判定，杜绝瞬态闪烁与异常状态显示。
@@ -1298,7 +1303,8 @@
 - 首次公开版本，包含直播、推荐、动态、投稿、番剧和视频播放。
 - 支持播放器手势、画质/音质/解码格式选择、点赞/投币/收藏、关注与用户主页、评论、历史记录和稍后再看。
 
-[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.6.1-beta.1...HEAD
+[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.6.1-beta.2...HEAD
+[1.6.1-beta.2]: https://github.com/gxwane/PiliPalaZ/compare/v1.6.1-beta.1...v1.6.1-beta.2
 [1.6.1-beta.1]: https://github.com/gxwane/PiliPalaZ/compare/v1.6.0...v1.6.1-beta.1
 [1.6.0]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0...v1.6.0
 [1.5.0-beta.6]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0-beta.5...v1.5.0-beta.6
