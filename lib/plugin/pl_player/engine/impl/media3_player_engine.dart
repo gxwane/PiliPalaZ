@@ -1,12 +1,17 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pilipalaz/plugin/pl_player/engine/player_engine_interface.dart';
+import 'package:pilipalaz/plugin/pl_player/utils/web_vtt_parser.dart';
 
 /// Android 原生 Media3 (ExoPlayer) 播放器引擎实现
 class Media3PlayerEngine implements IPlayerEngine {
+  static const double kTextScaleFactorReferenceWidth = 1920.0;
+  static const double kTextScaleFactorReferenceHeight = 1080.0;
+
   static const MethodChannel _channel = MethodChannel(
     'io.github.gxwane.pilipalaz/media3',
   );
@@ -17,6 +22,11 @@ class Media3PlayerEngine implements IPlayerEngine {
   int? _textureId;
   final ValueNotifier<EnginePlaybackState> _playbackState =
       ValueNotifier<EnginePlaybackState>(EnginePlaybackState.idle);
+
+  List<SubtitleCue> _subtitleCues = const [];
+  final ValueNotifier<String> _currentSubtitle = ValueNotifier<String>('');
+
+  ValueListenable<String> get currentSubtitle => _currentSubtitle;
 
   VideoDimension _dimension = VideoDimension.zero;
   Duration _position = Duration.zero;
@@ -81,6 +91,8 @@ class Media3PlayerEngine implements IPlayerEngine {
         _bufferedPosition = Duration(milliseconds: bufMs);
         _duration = Duration(milliseconds: durMs);
         _isPlaying = playing;
+
+        _updateSubtitle(_position);
 
         _positionController.add(_position);
         _bufferedPositionController.add(_bufferedPosition);
@@ -149,6 +161,19 @@ class Media3PlayerEngine implements IPlayerEngine {
     }
     _playbackState.value = EnginePlaybackState.loading;
     _position = item.startPosition ?? Duration.zero;
+    _subtitleCues = const [];
+    _currentSubtitle.value = '';
+
+    if (item.offlineSubtitleFile != null &&
+        item.offlineSubtitleFile!.existsSync()) {
+      try {
+        final content = item.offlineSubtitleFile!.readAsStringSync();
+        _subtitleCues = WebVttParser.parse(content);
+        _updateSubtitle(_position);
+      } catch (e) {
+        debugPrint('Media3PlayerEngine: failed to load offline subtitle: $e');
+      }
+    }
 
     try {
       await _channel.invokeMethod<void>('open', {
@@ -227,6 +252,7 @@ class Media3PlayerEngine implements IPlayerEngine {
     if (_isDisposed) return;
     await _channel.invokeMethod<void>('stop');
     _isPlaying = false;
+    _currentSubtitle.value = '';
     _playbackState.value = EnginePlaybackState.idle;
   }
 
@@ -237,6 +263,7 @@ class Media3PlayerEngine implements IPlayerEngine {
       'positionMs': position.inMilliseconds,
     });
     _position = position;
+    _updateSubtitle(_position);
     _positionController.add(_position);
   }
 
@@ -262,7 +289,37 @@ class Media3PlayerEngine implements IPlayerEngine {
   Future<void> setAudioTrack(AudioTrackOption track) async {}
 
   @override
-  Future<void> setSubtitleTrack(SubtitleTrackOption track) async {}
+  Future<void> setSubtitleTrack(SubtitleTrackOption track) async {
+    if (_isDisposed) return;
+    if (track.id == 'off' || (track.data == null && track.file == null)) {
+      _subtitleCues = const [];
+      _currentSubtitle.value = '';
+      return;
+    }
+
+    String content = '';
+    if (track.data != null && track.data!.isNotEmpty) {
+      content = track.data!;
+    } else if (track.file != null && await track.file!.exists()) {
+      content = await track.file!.readAsString();
+    }
+
+    _subtitleCues = WebVttParser.parse(content);
+    _updateSubtitle(_position);
+  }
+
+  void _updateSubtitle(Duration position) {
+    if (_subtitleCues.isEmpty) {
+      if (_currentSubtitle.value.isNotEmpty) {
+        _currentSubtitle.value = '';
+      }
+      return;
+    }
+    final text = WebVttParser.findActiveText(_subtitleCues, position);
+    if (_currentSubtitle.value != text) {
+      _currentSubtitle.value = text;
+    }
+  }
 
   @override
   Future<Uint8List?> screenshot({String? format}) async => null;
@@ -320,7 +377,72 @@ class Media3PlayerEngine implements IPlayerEngine {
 
         return Container(
           color: Colors.black,
-          child: Center(child: videoWidget),
+          child: Center(
+            child: Stack(
+              fit: StackFit.passthrough,
+              children: [
+                videoWidget,
+                Positioned.fill(
+                  child: IgnorePointer(
+                    ignoring: true,
+                    child: ValueListenableBuilder<String>(
+                      valueListenable: _currentSubtitle,
+                      builder:
+                          (BuildContext context, String text, Widget? child) {
+                            if (text.isEmpty) {
+                              return const SizedBox.shrink();
+                            }
+                            return LayoutBuilder(
+                              builder: (context, constraints) {
+                                final nr =
+                                    constraints.maxWidth *
+                                    constraints.maxHeight;
+                                const dr =
+                                    kTextScaleFactorReferenceWidth *
+                                    kTextScaleFactorReferenceHeight;
+                                final textScaleFactor = sqrt(
+                                  (nr / dr).clamp(0.0, 1.0),
+                                );
+                                final textScaler = TextScaler.linear(
+                                  textScaleFactor,
+                                );
+
+                                final effectiveStyle =
+                                    subtitleStyle ??
+                                    const TextStyle(
+                                      height: 1.3,
+                                      fontSize: 24.0,
+                                      letterSpacing: 0.1,
+                                      wordSpacing: 0.1,
+                                      color: Color(0xffffffff),
+                                      backgroundColor: Color(0xaa000000),
+                                    );
+
+                                return Material(
+                                  color: Colors.transparent,
+                                  child: AnimatedContainer(
+                                    padding: EdgeInsets.only(
+                                      bottom: subtitleBottomPadding ?? 24.0,
+                                    ),
+                                    duration: const Duration(milliseconds: 100),
+                                    alignment: Alignment.bottomCenter,
+                                    child: Text(
+                                      text,
+                                      style: effectiveStyle,
+                                      textAlign: TextAlign.center,
+                                      textScaler: textScaler,
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -340,6 +462,9 @@ class Media3PlayerEngine implements IPlayerEngine {
 
     _textureId = null;
     _playbackState.value = EnginePlaybackState.idle;
+    _subtitleCues = const [];
+    _currentSubtitle.value = '';
+    _currentSubtitle.dispose();
 
     await _positionController.close();
     await _durationController.close();

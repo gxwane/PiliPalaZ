@@ -3030,6 +3030,8 @@ class PlPlayerController with WidgetsBindingObserver {
       videoPlayerServiceHandler.clear();
       _vttSubtitles.clear();
       _vttSubtitlesIndex.value = 0;
+      unawaited(_safeSetSubtitleTrack(SubtitleTrack.no()));
+      unawaited(_safeSetEngineSubtitleTrack(SubtitleTrackOption.off));
       chapters.clear();
       currentChapter.value = null;
     } catch (err, stackTrace) {
@@ -3176,10 +3178,23 @@ class PlPlayerController with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _safeSetEngineSubtitleTrack(SubtitleTrackOption track) async {
+    if (!canControlPlayback) return;
+    try {
+      await _engine?.setSubtitleTrack(track);
+    } catch (err) {
+      debugPrint(
+        'PlPlayerController: engine setSubtitleTrack safely caught error: $err',
+      );
+    }
+  }
+
   void _initializeSubtitles(DataSource dataSource, int session) {
     _initializeChapters(dataSource, session);
     _vttSubtitles.clear();
     _vttSubtitlesIndex.value = 0;
+    unawaited(_safeSetSubtitleTrack(SubtitleTrack.no()));
+    unawaited(_safeSetEngineSubtitleTrack(SubtitleTrackOption.off));
     if (dataSource.type == DataSourceType.file) {
       final File? subFile = dataSource.offlineSubtitleFile;
       if (subFile != null) {
@@ -3321,21 +3336,37 @@ class PlPlayerController with WidgetsBindingObserver {
   void setSubtitle(int index) {
     if (!canControlPlayback) return;
     if (index < 0 || (index > 0 && index >= _vttSubtitles.length)) return;
-    if (_videoPlayerController == null && !isHeadlessTestMode) return;
+    if (_videoPlayerController == null &&
+        _engine == null &&
+        !isHeadlessTestMode) {
+      return;
+    }
 
     if (index == 0) {
       unawaited(_safeSetSubtitleTrack(SubtitleTrack.no()));
+      unawaited(_safeSetEngineSubtitleTrack(SubtitleTrackOption.off));
       _vttSubtitlesIndex.value = 0;
       return;
     }
     Map<String, String> s = _vttSubtitles[index];
-    debugPrint(s['text']);
+    final String text = s['text'] ?? '';
+    debugPrint(text);
     unawaited(
       _safeSetSubtitleTrack(
         SubtitleTrack.data(
-          s['text']!,
-          title: s['title']!,
-          language: s['language']!,
+          text,
+          title: s['title'] ?? '',
+          language: s['language'] ?? '',
+        ),
+      ),
+    );
+    unawaited(
+      _safeSetEngineSubtitleTrack(
+        SubtitleTrackOption.data(
+          text,
+          id: index.toString(),
+          label: s['title'] ?? '',
+          language: s['language'] ?? '',
         ),
       ),
     );

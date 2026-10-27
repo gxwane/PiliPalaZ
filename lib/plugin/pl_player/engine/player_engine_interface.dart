@@ -137,18 +137,48 @@ class SubtitleTrackOption {
   final String label;
   final String? language;
   final File? file;
+  final String? data;
 
   const SubtitleTrackOption({
     required this.id,
     required this.label,
     this.language,
     this.file,
+    this.data,
   });
 
   static const SubtitleTrackOption off = SubtitleTrackOption(
     id: 'off',
     label: 'Off',
   );
+
+  factory SubtitleTrackOption.data(
+    String data, {
+    String id = 'data',
+    String label = '',
+    String? language,
+  }) {
+    return SubtitleTrackOption(
+      id: id,
+      label: label,
+      language: language,
+      data: data,
+    );
+  }
+
+  factory SubtitleTrackOption.file(
+    File file, {
+    String id = 'file',
+    String label = '',
+    String? language,
+  }) {
+    return SubtitleTrackOption(
+      id: id,
+      label: label,
+      language: language,
+      file: file,
+    );
+  }
 }
 
 /// 统一播放器内核抽象契约

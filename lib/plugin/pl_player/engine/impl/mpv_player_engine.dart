@@ -359,8 +359,16 @@ class MpvPlayerEngine implements IPlayerEngine {
   @override
   Future<void> setSubtitleTrack(SubtitleTrackOption track) async {
     if (_isDisposed) return;
-    if (track == SubtitleTrackOption.off) {
+    if (track == SubtitleTrackOption.off || track.id == 'off') {
       await _player?.setSubtitleTrack(SubtitleTrack.no());
+    } else if (track.data != null && track.data!.isNotEmpty) {
+      await _player?.setSubtitleTrack(
+        SubtitleTrack.data(
+          track.data!,
+          title: track.label,
+          language: track.language,
+        ),
+      );
     } else if (track.file != null) {
       await _player?.setSubtitleTrack(SubtitleTrack.uri(track.file!.path));
     }

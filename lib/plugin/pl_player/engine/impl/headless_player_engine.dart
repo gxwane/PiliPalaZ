@@ -173,8 +173,12 @@ class HeadlessPlayerEngine implements IPlayerEngine {
   @override
   Future<void> setAudioTrack(AudioTrackOption track) async {}
 
+  SubtitleTrackOption? lastSubtitleTrack;
+
   @override
-  Future<void> setSubtitleTrack(SubtitleTrackOption track) async {}
+  Future<void> setSubtitleTrack(SubtitleTrackOption track) async {
+    lastSubtitleTrack = track;
+  }
 
   @override
   Future<Uint8List?> screenshot({String? format}) async => null;
