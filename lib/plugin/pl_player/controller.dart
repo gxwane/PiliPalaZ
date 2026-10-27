@@ -3161,6 +3161,17 @@ class PlPlayerController with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _safeSetSubtitleTrack(SubtitleTrack track) async {
+    if (!canControlPlayback || _videoPlayerController == null) return;
+    try {
+      await _videoPlayerController?.setSubtitleTrack(track);
+    } catch (err) {
+      debugPrint(
+        'PlPlayerController: setSubtitleTrack safely caught error: $err',
+      );
+    }
+  }
+
   void _initializeSubtitles(DataSource dataSource, int session) {
     _initializeChapters(dataSource, session);
     if (dataSource.type == DataSourceType.file) {
@@ -3168,25 +3179,33 @@ class PlPlayerController with WidgetsBindingObserver {
       _vttSubtitlesIndex.value = 0;
       final File? subFile = dataSource.offlineSubtitleFile;
       if (subFile != null) {
-        OfflineSubtitleService.loadSubtitlesFromFile(subFile).then((tracks) {
-          if (session == _playbackSession) {
-            if (tracks != null && tracks.isNotEmpty) {
-              _vttSubtitles.value = tracks;
-              chooseSubtitle();
-            } else {
-              _videoPlayerController?.setSubtitleTrack(SubtitleTrack.no());
-            }
-          }
-        });
+        OfflineSubtitleService.loadSubtitlesFromFile(subFile)
+            .then((tracks) {
+              if (session == _playbackSession && canControlPlayback) {
+                if (tracks != null && tracks.isNotEmpty) {
+                  _vttSubtitles.value = tracks;
+                  chooseSubtitle();
+                } else {
+                  unawaited(_safeSetSubtitleTrack(SubtitleTrack.no()));
+                }
+              }
+            })
+            .catchError((err) {
+              debugPrint('loadSubtitlesFromFile failed: $err');
+            });
       } else {
-        _videoPlayerController?.setSubtitleTrack(SubtitleTrack.no());
+        unawaited(_safeSetSubtitleTrack(SubtitleTrack.no()));
       }
     } else if (videoType.value != 'live' && _cid != 0) {
-      refreshVideoMetaInfo().then((_) {
-        if (session == _playbackSession) {
-          chooseSubtitle();
-        }
-      });
+      refreshVideoMetaInfo(session)
+          .then((_) {
+            if (session == _playbackSession && canControlPlayback) {
+              chooseSubtitle();
+            }
+          })
+          .catchError((err) {
+            debugPrint('refreshVideoMetaInfo failed: $err');
+          });
     }
   }
 
@@ -3196,21 +3215,28 @@ class PlPlayerController with WidgetsBindingObserver {
     if (dataSource.type == DataSourceType.file) {
       final File? chapterFile = dataSource.offlineChapterFile;
       if (chapterFile != null) {
-        OfflineChapterService.loadChaptersFromFile(chapterFile).then((
-          loadedChapters,
-        ) {
-          if (session == _playbackSession) {
-            if (loadedChapters != null && loadedChapters.isNotEmpty) {
-              chapters.assignAll(loadedChapters);
-              updateCurrentChapter(sliderPositionSeconds.value);
-            }
-          }
-        });
+        OfflineChapterService.loadChaptersFromFile(chapterFile)
+            .then((loadedChapters) {
+              if (session == _playbackSession && canControlPlayback) {
+                if (loadedChapters != null && loadedChapters.isNotEmpty) {
+                  chapters.assignAll(loadedChapters);
+                  updateCurrentChapter(sliderPositionSeconds.value);
+                }
+              }
+            })
+            .catchError((err) {
+              debugPrint('loadChaptersFromFile failed: $err');
+            });
       }
     }
   }
 
-  Future refreshVideoMetaInfo() async {
+  Future<void> refreshVideoMetaInfo([int? session]) async {
+    final int currentSession = session ?? _playbackSession;
+    bool isStale() => currentSession != _playbackSession || !canControlPlayback;
+
+    if (isStale()) return;
+
     _vttSubtitles.clear();
     chapters.clear();
     currentChapter.value = null;
@@ -3218,6 +3244,7 @@ class PlPlayerController with WidgetsBindingObserver {
       bvid: _bvid,
       cid: _cid,
     );
+    if (isStale()) return;
     if (metadata case ApiFailure<VideoPlayerMetadata> failure) {
       SmartDialog.showToast('查询视频元信息（字幕、防挡、章节等）错误，${failure.message}');
       return;
@@ -3232,6 +3259,7 @@ class PlPlayerController with WidgetsBindingObserver {
       return;
     }
     final subtitles = await VideoHttp.vttSubtitles(sources);
+    if (isStale()) return;
     if (subtitles case ApiSuccess<List<Map<String, String>>>(:final data)) {
       _vttSubtitles.value = data;
     } else {
@@ -3239,14 +3267,11 @@ class PlPlayerController with WidgetsBindingObserver {
         (subtitles as ApiFailure<List<Map<String, String>>>).message,
       );
     }
-    // if (_vttSubtitles.isEmpty) {
-    //   SmartDialog.showToast('字幕均加载失败');
-    // }
     return;
   }
 
   void chooseSubtitle() {
-    if (_vttSubtitles.isEmpty) return;
+    if (!canControlPlayback || _vttSubtitles.isEmpty) return;
 
     int findSubtitleWithoutAi() {
       return _vttSubtitles.indexWhere((element) {
@@ -3289,18 +3314,24 @@ class PlPlayerController with WidgetsBindingObserver {
 
   // 设定字幕轨道
   void setSubtitle(int index) {
+    if (!canControlPlayback) return;
+    if (index < 0 || (index > 0 && index >= _vttSubtitles.length)) return;
+    if (_videoPlayerController == null && !isHeadlessTestMode) return;
+
     if (index == 0) {
-      _videoPlayerController?.setSubtitleTrack(SubtitleTrack.no());
+      unawaited(_safeSetSubtitleTrack(SubtitleTrack.no()));
       _vttSubtitlesIndex.value = 0;
       return;
     }
     Map<String, String> s = _vttSubtitles[index];
     debugPrint(s['text']);
-    _videoPlayerController?.setSubtitleTrack(
-      SubtitleTrack.data(
-        s['text']!,
-        title: s['title']!,
-        language: s['language']!,
+    unawaited(
+      _safeSetSubtitleTrack(
+        SubtitleTrack.data(
+          s['text']!,
+          title: s['title']!,
+          language: s['language']!,
+        ),
       ),
     );
     _vttSubtitlesIndex.value = index;
