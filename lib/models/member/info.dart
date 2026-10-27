@@ -67,7 +67,20 @@ class Card {
     sign = (json['sign'] == null || json['sign'] == '')
         ? '该用户还没有签名'
         : json['sign'].toString().replaceAll('\n', '');
-    level = json['level_info']?['level'] ?? 0;
+    final levelInfo = json['level_info'];
+    final rawLevel = levelInfo is Map
+        ? (levelInfo['current_level'] ?? levelInfo['level'])
+        : (json['level'] ??
+              (levelInfo is num || levelInfo is String ? levelInfo : null));
+
+    int? parsedLevel;
+    if (rawLevel is num) {
+      parsedLevel = rawLevel.toInt();
+    } else if (rawLevel is String) {
+      parsedLevel = int.tryParse(rawLevel);
+    }
+
+    level = (parsedLevel != null && parsedLevel >= 0) ? parsedLevel : null;
 
     isFollow = json['relation']?['is_follow'] == 1;
     isFollowed = json['relation']?['is_followed'] == 1;

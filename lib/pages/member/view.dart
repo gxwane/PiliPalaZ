@@ -248,16 +248,17 @@ class _MemberPageState extends State<MemberPage>
                 ),
               ),
             ),
-            const SizedBox(width: 4),
-            if (_memberController.memberInfo.value.card?.level != null)
+            if (_memberController.memberInfo.value.card?.level case final level?
+                when level >= 0 && level <= 6) ...[
+              const SizedBox(width: 4),
               Image.asset(
-                'assets/images/lv/lv${_memberController.memberInfo.value.card!.level}.png',
+                'assets/images/lv/lv$level.png',
                 height: 11,
-                semanticLabel:
-                    '等级${_memberController.memberInfo.value.card!.level}',
+                semanticLabel: '等级$level',
               ),
-            const SizedBox(width: 6),
+            ],
             if (_memberController.memberInfo.value.card?.vip?.status == 1) ...[
+              const SizedBox(width: 6),
               if (_memberController
                       .memberInfo
                       .value
