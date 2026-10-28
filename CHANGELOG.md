@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.6.1-beta.3] - 2026-10-28
+
 ### 修复
 
 - 修复退出视频播放页时因父页面提前关闭 Controller 内部 Rx 响应流导致子面板卸载崩溃的缺陷：
@@ -1310,7 +1312,8 @@
 - 首次公开版本，包含直播、推荐、动态、投稿、番剧和视频播放。
 - 支持播放器手势、画质/音质/解码格式选择、点赞/投币/收藏、关注与用户主页、评论、历史记录和稍后再看。
 
-[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.6.1-beta.2...HEAD
+[Unreleased]: https://github.com/gxwane/PiliPalaZ/compare/v1.6.1-beta.3...HEAD
+[1.6.1-beta.3]: https://github.com/gxwane/PiliPalaZ/compare/v1.6.1-beta.2...v1.6.1-beta.3
 [1.6.1-beta.2]: https://github.com/gxwane/PiliPalaZ/compare/v1.6.1-beta.1...v1.6.1-beta.2
 [1.6.1-beta.1]: https://github.com/gxwane/PiliPalaZ/compare/v1.6.0...v1.6.1-beta.1
 [1.6.0]: https://github.com/gxwane/PiliPalaZ/compare/v1.5.0...v1.6.0
