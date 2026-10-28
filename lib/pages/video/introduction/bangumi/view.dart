@@ -72,8 +72,18 @@ class _BangumiIntroPanelState extends State<BangumiIntroPanel>
 
   @override
   void dispose() {
-    _bangumiDetailSubscription?.cancel();
-    _cidSubscription?.cancel();
+    if (bangumiIntroController.bangumiDetail.subject.isClosed) {
+      _bangumiDetailSubscription = null;
+    } else {
+      _bangumiDetailSubscription?.cancel();
+      _bangumiDetailSubscription = null;
+    }
+    if (videoDetailCtr.cid.subject.isClosed) {
+      _cidSubscription = null;
+    } else {
+      _cidSubscription?.cancel();
+      _cidSubscription = null;
+    }
     super.dispose();
   }
 
@@ -204,7 +214,12 @@ class _BangumiInfoState extends State<BangumiInfo> {
 
   @override
   void dispose() {
-    _cidSubscription?.cancel();
+    if (videoDetailCtr.cid.subject.isClosed) {
+      _cidSubscription = null;
+    } else {
+      _cidSubscription?.cancel();
+      _cidSubscription = null;
+    }
     super.dispose();
   }
 

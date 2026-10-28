@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:pilipalaz/common/widgets/list_sheet.dart';
@@ -35,6 +36,7 @@ class _PagesPanelState extends State<PagesPanel> {
   late final String heroTag;
   late VideoDetailController _videoDetailController;
   final ScrollController _scrollController2 = ScrollController();
+  StreamSubscription<int>? _cidSub;
 
   @override
   void initState() {
@@ -47,7 +49,7 @@ class _PagesPanelState extends State<PagesPanel> {
     if (currentIndex == -1 && episodes.isNotEmpty) {
       currentIndex = 0;
     }
-    _videoDetailController.cid.listen((int p0) {
+    _cidSub = _videoDetailController.cid.listen((int p0) {
       cid = p0;
       currentIndex = episodes.indexWhere((Part e) => e.cid == cid);
       if (currentIndex == -1 && episodes.isNotEmpty) {
@@ -72,6 +74,13 @@ class _PagesPanelState extends State<PagesPanel> {
 
   @override
   void dispose() {
+    if (Get.isRegistered<VideoDetailController>(tag: heroTag) &&
+        Get.find<VideoDetailController>(tag: heroTag).cid.subject.isClosed) {
+      _cidSub = null;
+    } else {
+      _cidSub?.cancel();
+      _cidSub = null;
+    }
     _scrollController2.dispose();
     super.dispose();
   }

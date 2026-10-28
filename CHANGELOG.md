@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+### 修复
+
+- 修复退出视频播放页时因父页面提前关闭 Controller 内部 Rx 响应流导致子面板卸载崩溃的缺陷：
+  - 移除 VideoDetailPage 中对 `cid.close()`、`videoDetail.close()` 与 `bangumiDetail.close()` 的侵入式提前关闭，解除 GetX 内部 `GetStream._isBusy` 空指针毒化；
+  - 为分 P 列表（PagesPanel）补齐 `StreamSubscription` 生命周期管理，并在组件销毁时安全释放；
+  - 为合集列表（SeasonPanel）、分 P 列表与番剧简介面板的订阅注销增加流关闭防御检查，杜绝卸载时抛出 `Null check operator used on a null value` 未处理异步异常。
+
 ## [1.6.1-beta.2] - 2026-10-27
 
 ### 新增

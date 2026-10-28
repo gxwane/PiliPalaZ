@@ -79,7 +79,12 @@ class _BangumiPanelState extends State<BangumiPanel> {
 
   @override
   void dispose() {
-    _cidSubscription?.cancel();
+    if (videoDetailCtr?.cid.subject.isClosed ?? false) {
+      _cidSubscription = null;
+    } else {
+      _cidSubscription?.cancel();
+      _cidSubscription = null;
+    }
     listViewScrollCtr.dispose();
     listViewScrollCtr_2.dispose();
     super.dispose();

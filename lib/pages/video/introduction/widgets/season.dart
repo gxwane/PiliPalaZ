@@ -59,7 +59,13 @@ class _SeasonPanelState extends State<SeasonPanel> {
 
   @override
   void dispose() {
-    _cidSub?.cancel();
+    if (Get.isRegistered<VideoDetailController>(tag: widget.heroTag) &&
+        Get.find<VideoDetailController>(tag: widget.heroTag).cid.subject.isClosed) {
+      _cidSub = null;
+    } else {
+      _cidSub?.cancel();
+      _cidSub = null;
+    }
     super.dispose();
   }
 

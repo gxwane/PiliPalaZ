@@ -383,7 +383,7 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     }
     // floating.dispose();
     // videoDetailController.floating?.dispose();
-    videoDetailController.cid.close();
+
     if (!ScreenUtils.isTabletDevice() && !horizontalScreen) {
       unawaited(verticalScreen());
     }
@@ -391,8 +391,8 @@ class _VideoDetailPageState extends State<VideoDetailPage>
     // _bufferedListener?.cancel();
     if (plPlayerController != null) {
       if (!floatingManager.containsFloating(globalId)) {
-        videoIntroController.videoDetail.close();
-        bangumiIntroController.bangumiDetail.close();
+
+
         plPlayerController!.removeStatusLister(playerListener);
         unawaited(fullScreenStatusListener?.cancel() ?? Future<void>.value());
         unawaited(
